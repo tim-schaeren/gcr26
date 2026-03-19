@@ -8,6 +8,7 @@ export interface User {
   teamId: string | null;
   pushToken: string | null;   // Expo push token for notifications
   createdAt: number;          // Unix timestamp
+  lastLocation: { lat: number; lng: number; updatedAt: number } | null;
 }
 
 // ─── Teams ────────────────────────────────────────────────────────────────────
@@ -99,6 +100,7 @@ export interface Game {
   cityCoordinates: GeoPoint;
   questOrder: string[];     // ordered list of quest IDs (subcollection)
   maxTeamSize?: number;     // optional soft limit shown in admin UI
+  maxTeamSpreadMeters: number | null; // null = unlimited; blocks answer submission if exceeded
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────

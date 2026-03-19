@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -20,7 +20,7 @@ function ClickHandler({ onPick }) {
   return null;
 }
 
-export default function LocationPicker({ value, onChange, defaultCenter }) {
+export default function LocationPicker({ value, onChange, defaultCenter, fenceRadius }) {
   const hasLocation = value?.lat && value?.lng;
   const fallback = defaultCenter
     ? [defaultCenter.lat, defaultCenter.lng]
@@ -44,7 +44,16 @@ export default function LocationPicker({ value, onChange, defaultCenter }) {
           />
           <ClickHandler onPick={handlePick} />
           {hasLocation && (
-            <Marker position={[parseFloat(value.lat), parseFloat(value.lng)]} />
+            <>
+              <Marker position={[parseFloat(value.lat), parseFloat(value.lng)]} />
+              {fenceRadius > 0 && (
+                <Circle
+                  center={[parseFloat(value.lat), parseFloat(value.lng)]}
+                  radius={fenceRadius}
+                  pathOptions={{ color: '#6366f1', fillColor: '#6366f1', fillOpacity: 0.1, weight: 1.5 }}
+                />
+              )}
+            </>
           )}
         </MapContainer>
       </div>

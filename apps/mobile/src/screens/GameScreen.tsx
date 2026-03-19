@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,16 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
-import { doc, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
+import { useUser } from '../hooks/useUser';
+import {
+  doc, collection, onSnapshot, updateDoc, addDoc, arrayUnion,
+  query, where, documentId,
+} from 'firebase/firestore';
 import * as Location from 'expo-location';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,6 +35,7 @@ interface Game {
   name: string;
   startDateTime: number;
   questOrder: string[];
+  maxTeamSpreadMeters: number | null;
 }
 
 interface Quest {
@@ -155,6 +162,17 @@ function FinishedView({ game }: { game: Game }) {
   );
 }
 
+function SpreadOverlay() {
+  return (
+    <View style={styles.spreadOverlay}>
+      <Text style={styles.spreadTitle}>Team too spread out</Text>
+      <Text style={styles.spreadMessage}>
+        Get back together before you can submit an answer.
+      </Text>
+    </View>
+  );
+}
+
 function LocationDeniedView() {
   return (
     <View style={styles.container}>
@@ -167,6 +185,34 @@ function LocationDeniedView() {
   );
 }
 
+// ─── Profile button + sheet ───────────────────────────────────────────────────
+
+function ProfileButton({ name, onPress }: { name: string; onPress: () => void }) {
+  const initial = name ? name[0].toUpperCase() : '?';
+  return (
+    <TouchableOpacity style={styles.profileButton} onPress={onPress}>
+      <Text style={styles.profileButtonText}>{initial}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function ProfileSheet({ visible, name, onClose }: { visible: boolean; name: string; onClose: () => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.sheetBackdrop}>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
+        <View style={styles.sheet}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetName}>{name}</Text>
+          <TouchableOpacity style={styles.sheetRow} onPress={() => signOut(auth)}>
+            <Text style={styles.sheetRowDestructive}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function GameScreen({ teamId }: { teamId: string }) {
@@ -175,10 +221,17 @@ export default function GameScreen({ teamId }: { teamId: string }) {
   const [quest, setQuest] = useState<Quest | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
+  const [memberLocations, setMemberLocations] = useState<Record<string, { lat: number; lng: number } | null>>({});
   const [answer, setAnswer] = useState('');
   const [wrong, setWrong] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(Date.now());
+
+  const lastWrittenRef = useRef<{ lat: number; lng: number; t: number } | null>(null);
+  const lastTrailRef = useRef<{ lat: number; lng: number; t: number } | null>(null);
+
+  const { profile } = useUser();
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Tick for countdown
   useEffect(() => {
@@ -213,7 +266,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
     });
   }, [game?.id, currentQuestId]);
 
-  // Location
+  // Location — watch position, write lastLocation + trail to Firestore (throttled)
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
     (async () => {
@@ -224,16 +277,87 @@ export default function GameScreen({ teamId }: { teamId: string }) {
       }
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
-        loc => setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude }),
+        loc => {
+          const { latitude: lat, longitude: lng } = loc.coords;
+          setCoords({ lat, lng });
+
+          const uid = auth.currentUser?.uid;
+          if (!uid || !team || !game) return;
+
+          const t = Date.now();
+          const last = lastWrittenRef.current;
+          const dist = last ? distanceMeters(last.lat, last.lng, lat, lng) : Infinity;
+          const elapsed = last ? t - last.t : Infinity;
+
+          // Write lastLocation every 10 m or 30 s
+          if (dist > 10 || elapsed > 30000) {
+            lastWrittenRef.current = { lat, lng, t };
+            updateDoc(doc(db, 'users', uid), { lastLocation: { lat, lng, updatedAt: t } }).catch(() => {});
+
+            // Write trail point every 50 m or 2 min
+            const lastTrail = lastTrailRef.current;
+            const trailDist = lastTrail ? distanceMeters(lastTrail.lat, lastTrail.lng, lat, lng) : Infinity;
+            const trailElapsed = lastTrail ? t - lastTrail.t : Infinity;
+            if (trailDist > 50 || trailElapsed > 120000) {
+              lastTrailRef.current = { lat, lng, t };
+              addDoc(collection(db, 'trail'), {
+                userId: uid,
+                teamId: team.id,
+                gameId: game.id,
+                lat,
+                lng,
+                t,
+              }).catch(() => {});
+            }
+          }
+        },
       );
     })();
     return () => {
       sub?.remove();
     };
-  }, []);
+  }, [team?.id, game?.id]);
+
+  // Team member locations — for spread check
+  useEffect(() => {
+    if (!team?.memberIds?.length || team.memberIds.length < 2) {
+      setMemberLocations({});
+      return;
+    }
+    return onSnapshot(
+      query(collection(db, 'users'), where(documentId(), 'in', team.memberIds)),
+      snap => {
+        const locs: Record<string, { lat: number; lng: number } | null> = {};
+        snap.docs.forEach(d => {
+          const loc = d.data().lastLocation;
+          locs[d.id] = loc ?? null;
+        });
+        setMemberLocations(locs);
+      },
+    );
+  }, [JSON.stringify(team?.memberIds)]);
+
+  const spreadTooLarge = useMemo(() => {
+    if (!game?.maxTeamSpreadMeters) return false;
+    const positions = Object.values(memberLocations).filter(
+      (p): p is { lat: number; lng: number } => p !== null,
+    );
+    if (positions.length < 2) return false;
+    for (let i = 0; i < positions.length; i++) {
+      for (let j = i + 1; j < positions.length; j++) {
+        if (
+          distanceMeters(positions[i].lat, positions[i].lng, positions[j].lat, positions[j].lng) >
+          game.maxTeamSpreadMeters
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, [memberLocations, game?.maxTeamSpreadMeters]);
 
   async function submitAnswer() {
-    if (!quest || !team || !game || submitting || !answer.trim()) return;
+    if (!quest || !team || !game || submitting || !answer.trim() || spreadTooLarge) return;
     const normalized = answer.trim().toLowerCase();
     const correct = quest.answers.some(a => a.trim().toLowerCase() === normalized);
     if (!correct) {
@@ -259,46 +383,60 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (locationDenied) return <LocationDeniedView />;
-  if (!team || !game) {
+  const userName = profile?.name ?? '';
+
+  function renderContent() {
+    if (locationDenied) return <LocationDeniedView />;
+    if (!team || !game) {
+      return (
+        <View style={styles.container}>
+          <ActivityIndicator size="large" />
+        </View>
+      );
+    }
+
+    if (now < game.startDateTime) return <WaitingView game={game} now={now} />;
+    if (team.finishedAt) return <FinishedView game={game} />;
+    if (!quest) {
+      return (
+        <View style={styles.container}>
+          <Text style={styles.message}>No quests available yet.</Text>
+        </View>
+      );
+    }
+
+    const distance =
+      coords != null
+        ? distanceMeters(coords.lat, coords.lng, quest.location.lat, quest.location.lng)
+        : null;
+    const insideFence = distance !== null && distance <= (quest.fenceRadius ?? 50);
+    const questNumber = game.questOrder.indexOf(quest.id) + 1;
+
+    if (!insideFence) return <NavigationView quest={quest} distance={distance} />;
+
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1 }}>
+        <QuestView
+          quest={quest}
+          questNumber={questNumber}
+          totalQuests={game.questOrder.length}
+          answer={answer}
+          setAnswer={setAnswer}
+          wrong={wrong}
+          submitting={submitting}
+          onSubmit={submitAnswer}
+        />
+        {spreadTooLarge && <SpreadOverlay />}
       </View>
     );
   }
-
-  if (now < game.startDateTime) return <WaitingView game={game} now={now} />;
-  if (team.finishedAt) return <FinishedView game={game} />;
-  if (!quest) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>No quests available yet.</Text>
-      </View>
-    );
-  }
-
-  const distance =
-    coords != null
-      ? distanceMeters(coords.lat, coords.lng, quest.location.lat, quest.location.lng)
-      : null;
-  const insideFence = distance !== null && distance <= (quest.fenceRadius ?? 50);
-
-  const questNumber = game.questOrder.indexOf(quest.id) + 1;
-
-  if (!insideFence) return <NavigationView quest={quest} distance={distance} />;
 
   return (
-    <QuestView
-      quest={quest}
-      questNumber={questNumber}
-      totalQuests={game.questOrder.length}
-      answer={answer}
-      setAnswer={setAnswer}
-      wrong={wrong}
-      submitting={submitting}
-      onSubmit={submitAnswer}
-    />
+    <View style={{ flex: 1 }}>
+      {renderContent()}
+      <ProfileButton name={userName} onPress={() => setProfileOpen(true)} />
+      <ProfileSheet visible={profileOpen} name={userName} onClose={() => setProfileOpen(false)} />
+    </View>
   );
 }
 
@@ -434,6 +572,84 @@ const styles = StyleSheet.create({
   finishedSub: {
     fontSize: 16,
     color: '#aaa',
+  },
+
+  // Spread overlay
+  spreadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  spreadTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  spreadMessage: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.75)',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  // Profile button
+  profileButton: {
+    position: 'absolute',
+    top: 52,
+    right: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#111',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // Profile sheet
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 48,
+    paddingTop: 12,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 24,
+  },
+  sheetName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 24,
+  },
+  sheetRow: {
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  sheetRowDestructive: {
+    fontSize: 16,
+    color: '#ef4444',
   },
 
   // Generic

@@ -192,6 +192,7 @@ export default function QuestForm({ quest, existingTitles, cityCoordinates, onSa
                 value={form.location}
                 onChange={loc => set('location', loc)}
                 defaultCenter={cityCoordinates}
+                fenceRadius={parseFloat(form.fenceRadius) || 0}
               />
               {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
             </div>

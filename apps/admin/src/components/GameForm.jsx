@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { geocodeCity } from '../utils/geocode';
 
-const EMPTY = { name: '', startDateTime: '', city: '', maxTeamSize: '' };
+const EMPTY = { name: '', startDateTime: '', city: '', maxTeamSize: '', maxTeamSpreadMeters: '' };
 
 function toFormState(game) {
   if (!game) return EMPTY;
@@ -13,6 +13,7 @@ function toFormState(game) {
     startDateTime: dt,
     city: game.city,
     maxTeamSize: game.maxTeamSize ?? '',
+    maxTeamSpreadMeters: game.maxTeamSpreadMeters ?? '',
   };
 }
 
@@ -52,14 +53,16 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
         setErrors(e => ({ ...e, city: 'Could not find this city. Check the spelling.' }));
         return;
       }
-      const parsed = parseInt(form.maxTeamSize);
+      const parsedSize = parseInt(form.maxTeamSize);
+      const parsedSpread = parseInt(form.maxTeamSpreadMeters);
       onSave({
         name: form.name.trim(),
         startDateTime: new Date(form.startDateTime).getTime(),
         city: form.city.trim(),
         cityCoordinates: coords,
         questOrder: game?.questOrder ?? [],
-        ...(Number.isFinite(parsed) && parsed > 0 ? { maxTeamSize: parsed } : { maxTeamSize: null }),
+        maxTeamSize: Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : null,
+        maxTeamSpreadMeters: Number.isFinite(parsedSpread) && parsedSpread > 0 ? parsedSpread : null,
       });
     } finally {
       setGeocoding(false);
@@ -146,6 +149,19 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
                 placeholder="No limit"
               />
               <p className="text-xs text-gray-400 mt-1">Leave blank for no limit.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max team spread (meters)</label>
+              <input
+                type="number"
+                min="1"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                value={form.maxTeamSpreadMeters}
+                onChange={e => set('maxTeamSpreadMeters', e.target.value)}
+                placeholder="No limit"
+              />
+              <p className="text-xs text-gray-400 mt-1">Max distance between team members. Leave blank for no limit.</p>
             </div>
           </div>
         )}

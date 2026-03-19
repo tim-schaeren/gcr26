@@ -14,7 +14,13 @@ service cloud.firestore {
     // Users: own doc is readable/writable by self; admins can read all
     // create is allowed for any authenticated user so signup can write the initial doc
     match /users/{uid} {
-      allow read:   if isAuth() && (request.auth.uid == uid || isAdmin());
+      // Own doc, admin, or a teammate (same teamId, non-null)
+      allow read:   if isAuth() && (
+                      request.auth.uid == uid
+                      || isAdmin()
+                      || (resource.data.teamId != null
+                          && resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId)
+                    );
       allow create: if isAuth() && request.auth.uid == uid;
       allow update: if request.auth.uid == uid || isAdmin();
       allow delete: if isAdmin();
@@ -63,6 +69,12 @@ service cloud.firestore {
     match /settings/{id} {
       allow read:  if isAuth();
       allow write: if isAdmin();
+    }
+
+    // Location trail: players write their own points; admins/players read
+    match /trail/{trailId} {
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      allow read:   if isAuth();
     }
 
     // Registrations: anyone can submit; only admins manage them
