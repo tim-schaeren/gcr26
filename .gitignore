@@ -20,6 +20,12 @@ apps/admin/dist/
 firebase-debug.log
 firestore-debug.log
 
+# Mobile builds
+**/*.ipa
+**/*.apk
+**/*.aab
+apps/mobile/build/
+
 # OS
 .DS_Store
 Thumbs.db
