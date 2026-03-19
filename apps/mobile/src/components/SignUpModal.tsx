@@ -40,12 +40,8 @@ export default function SignUpModal({ visible, onClose }: Props) {
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password);
       await setDoc(doc(db, 'users', user.uid), {
-        id: user.uid,
         name: name.trim(),
         email: email.trim(),
-        isAdmin: false,
-        teamId: null,
-        pushToken: null,
         createdAt: Date.now(),
       });
       // auth state change will automatically navigate to HomeScreen
