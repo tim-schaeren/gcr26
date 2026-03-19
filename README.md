@@ -54,6 +54,13 @@ Copy from `.env.example` and fill in values from Firebase Console → Project Se
 
 For EAS builds, these are also stored as environment variables in the Expo dashboard under the `preview` environment.
 
+`apps/mobile/.env` also needs Apple credentials for `npm run ship`:
+
+```
+APPLE_ID=your@apple.id
+ASC_APP_ID=           # numeric app ID from the App Store Connect URL
+```
+
 ### Admin (`apps/admin/.env`)
 
 ```
