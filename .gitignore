@@ -26,6 +26,9 @@ firestore-debug.log
 **/*.aab
 apps/mobile/build/
 
+# Local scratch (not for commit)
+local/
+
 # OS
 .DS_Store
 Thumbs.db

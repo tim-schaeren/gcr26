@@ -65,20 +65,22 @@ function DraggablePlayerChip({ user }) {
 
 function DroppableTeamCard({ team, members, maxTeamSize, onRemove, onEdit }) {
   const isFull = maxTeamSize && members.length >= maxTeamSize;
-  const { setNodeRef, isOver } = useDroppable({ id: team.id, disabled: !!isFull });
+  const { setNodeRef, isOver } = useDroppable({ id: team.id });
 
   return (
     <div
       ref={setNodeRef}
       className={`rounded-lg p-4 border-2 transition-colors ${
-        isOver && !isFull ? 'border-gray-900 bg-gray-50' : 'border-gray-200 bg-white'
+        isOver && isFull ? 'border-red-400 bg-white'
+        : isOver ? 'border-gray-900 bg-gray-50'
+        : 'border-gray-200 bg-white'
       }`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="font-medium text-gray-900">{team.name}</span>
           {maxTeamSize && (
-            <span className={`text-xs font-medium ${isFull ? 'text-red-400' : 'text-gray-400'}`}>
+            <span className="text-xs font-medium text-gray-400">
               {members.length}/{maxTeamSize}
             </span>
           )}
@@ -104,7 +106,7 @@ function DroppableTeamCard({ team, members, maxTeamSize, onRemove, onEdit }) {
         ))}
       </div>
 
-      {isFull && <p className="text-xs text-red-400 mt-2">Team is full</p>}
+      {isFull && isOver && <p className="text-xs text-red-400 mt-2">Team is full</p>}
     </div>
   );
 }
@@ -262,6 +264,9 @@ export default function TeamsPage() {
       : null;
 
     if (sourceTeam?.id === targetTeam.id) return;
+
+    const targetMembers = (targetTeam.memberIds ?? []).filter(id => id !== user.id);
+    if (game?.maxTeamSize && targetMembers.length >= game.maxTeamSize) return;
 
     // Optimistic update: reflect the move immediately so there's no snap-back
     // while we wait for the Firestore round-trip.
