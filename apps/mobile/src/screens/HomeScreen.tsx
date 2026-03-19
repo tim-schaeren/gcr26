@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'rea
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useUser } from '../hooks/useUser';
+import GameScreen from './GameScreen';
 
 export default function HomeScreen() {
   const { profile, loading } = useUser();
@@ -14,27 +15,17 @@ export default function HomeScreen() {
     );
   }
 
-  // User has no team yet
-  if (!profile?.teamId) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>GCR</Text>
-        <Text style={styles.heading}>You're all set!</Text>
-        <Text style={styles.message}>
-          Your admins will assign you to a team soon.
-        </Text>
-        <TouchableOpacity style={styles.signOutButton} onPress={() => signOut(auth)}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
-    );
+  if (profile?.teamId) {
+    return <GameScreen teamId={profile.teamId} />;
   }
 
-  // Has a team — game screen placeholder
   return (
     <View style={styles.container}>
       <Text style={styles.title}>GCR</Text>
-      <Text style={styles.heading}>Welcome, {profile?.name}</Text>
+      <Text style={styles.heading}>You're all set!</Text>
+      <Text style={styles.message}>
+        Your admins will assign you to a team soon.
+      </Text>
       <TouchableOpacity style={styles.signOutButton} onPress={() => signOut(auth)}>
         <Text style={styles.signOutText}>Sign Out</Text>
       </TouchableOpacity>

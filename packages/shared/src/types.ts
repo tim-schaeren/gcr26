@@ -29,6 +29,8 @@ export interface Quest {
   id: string;
   title: string;
   description: string;
+  navigationHint: string; // shown to players outside the fence to guide them to the location
+  fenceRadius: number;    // meters; player must be within this radius to see the quest
   location: GeoPoint;
   answers: string[];      // trimmed; multiple valid answers allowed
   hints: string[];

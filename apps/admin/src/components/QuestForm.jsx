@@ -4,6 +4,8 @@ import LocationPicker from './LocationPicker';
 const EMPTY = {
   title: '',
   description: '',
+  navigationHint: '',
+  fenceRadius: '50',
   location: { lat: '', lng: '' },
   answers: [''],
   hints: [''],
@@ -15,6 +17,8 @@ function toFormState(quest) {
   return {
     title: quest.title,
     description: quest.description,
+    navigationHint: quest.navigationHint ?? '',
+    fenceRadius: String(quest.fenceRadius ?? 50),
     location: { lat: String(quest.location?.lat ?? ''), lng: String(quest.location?.lng ?? '') },
     answers: quest.answers?.length ? quest.answers : [''],
     hints: quest.hints?.length ? quest.hints : [''],
@@ -68,6 +72,9 @@ export default function QuestForm({ quest, existingTitles, cityCoordinates, onSa
       e.title = 'A quest with this title already exists.';
     }
     if (!form.description.trim()) e.description = 'Description is required.';
+    if (!form.navigationHint.trim()) e.navigationHint = 'Navigation hint is required.';
+    const radius = parseFloat(form.fenceRadius);
+    if (isNaN(radius) || radius <= 0) e.fenceRadius = 'Fence radius must be a positive number.';
     const lat = parseFloat(form.location.lat);
     const lng = parseFloat(form.location.lng);
     if (isNaN(lat) || isNaN(lng) || !form.location.lat || !form.location.lng) {
@@ -88,6 +95,8 @@ export default function QuestForm({ quest, existingTitles, cityCoordinates, onSa
     onSave({
       title: form.title.trim(),
       description: form.description.trim(),
+      navigationHint: form.navigationHint.trim(),
+      fenceRadius: parseFloat(form.fenceRadius),
       location: { lat: parseFloat(form.location.lat), lng: parseFloat(form.location.lng) },
       answers,
       hints,
@@ -150,6 +159,31 @@ export default function QuestForm({ quest, existingTitles, cityCoordinates, onSa
                 placeholder="What must players do to complete this quest?"
               />
               {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Navigation Hint</label>
+              <textarea
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none ${errors.navigationHint ? 'border-red-400' : 'border-gray-300'}`}
+                rows={2}
+                value={form.navigationHint}
+                onChange={e => set('navigationHint', e.target.value)}
+                placeholder="How do players find this quest? (e.g. 'Find the oldest tree in the city')"
+              />
+              {errors.navigationHint && <p className="text-xs text-red-500 mt-1">{errors.navigationHint}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fence Radius (meters)</label>
+              <input
+                type="number"
+                min="1"
+                className={`w-32 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.fenceRadius ? 'border-red-400' : 'border-gray-300'}`}
+                value={form.fenceRadius}
+                onChange={e => set('fenceRadius', e.target.value)}
+                placeholder="50"
+              />
+              {errors.fenceRadius && <p className="text-xs text-red-500 mt-1">{errors.fenceRadius}</p>}
             </div>
 
             <div>

@@ -32,9 +32,14 @@ service cloud.firestore {
     }
 
     // Teams: authenticated users read; admins write
+    // Team members may update only the quest progress fields
     match /teams/{id} {
-      allow read:  if isAuth();
-      allow write: if isAdmin();
+      allow read:   if isAuth();
+      allow write:  if isAdmin();
+      allow update: if isAuth()
+        && request.auth.uid in resource.data.memberIds
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt']);
     }
 
     // Shop items: authenticated users read; admins write
