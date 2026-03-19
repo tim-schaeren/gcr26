@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
 import {
-  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
   useDroppable, useDraggable,
 } from '@dnd-kit/core';
 import { db } from '../firebase';
@@ -26,6 +26,7 @@ function DraggableMemberRow({ user, onRemove }) {
         <button
           {...attributes}
           {...listeners}
+          style={{ touchAction: 'none' }}
           className="text-gray-200 hover:text-gray-400 cursor-grab active:cursor-grabbing text-xs select-none"
         >
           ⠿
@@ -51,7 +52,7 @@ function DraggablePlayerChip({ user }) {
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, touchAction: 'none' }}
       {...attributes}
       {...listeners}
       className={`flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg cursor-grab active:cursor-grabbing select-none transition-opacity ${isDragging ? 'opacity-40' : 'hover:border-gray-400'}`}
@@ -213,7 +214,12 @@ export default function TeamsPage() {
   const [saving, setSaving] = useState(false);
   const [activeId, setActiveId] = useState(null);
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 100, tolerance: 5 },
+    })
+  );
 
   useEffect(() => {
     return onSnapshot(doc(db, 'games', gameId), snap => {
@@ -387,7 +393,7 @@ export default function TeamsPage() {
       </div>
 
       {selected && (
-        <div className="w-96 border-l border-gray-200 bg-white -mr-8 -my-8 flex flex-col shadow-sm">
+        <div className="fixed inset-0 z-20 bg-white flex flex-col md:relative md:inset-auto md:z-auto md:w-96 md:border-l md:border-gray-200 md:-mr-8 md:-my-8 md:shadow-sm">
           <TeamForm
             team={selected === 'new' ? null : selected}
             onSave={handleSaveTeam}

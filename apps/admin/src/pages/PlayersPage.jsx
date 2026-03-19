@@ -40,7 +40,7 @@ export default function PlayersPage() {
             const team = user.teamId ? teamMap[user.teamId] : null;
             const game = team ? gameMap[team.gameId] : null;
             return (
-              <div key={user.id} className="flex items-center gap-4 px-4 py-3">
+              <div key={user.id} className="flex items-start sm:items-center gap-3 px-4 py-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-900">{user.name}</span>
@@ -51,9 +51,16 @@ export default function PlayersPage() {
                     )}
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">{user.email}</p>
+                  <p className="text-xs mt-0.5 sm:hidden">
+                    {team ? (
+                      <span className="text-gray-600">{team.name}{game && ` · ${game.name}`}</span>
+                    ) : (
+                      <span className="text-gray-300">Unassigned</span>
+                    )}
+                  </p>
                 </div>
 
-                <div className="text-xs text-right shrink-0">
+                <div className="text-xs text-right shrink-0 hidden sm:block">
                   {team ? (
                     <span className="text-gray-600">
                       {team.name}
@@ -68,7 +75,7 @@ export default function PlayersPage() {
                   onClick={() => toggleAdmin(user)}
                   className="text-xs text-gray-400 hover:text-gray-700 transition-colors shrink-0"
                 >
-                  {user.isAdmin ? 'Revoke admin' : 'Make admin'}
+                  {user.isAdmin ? 'Revoke' : 'Make admin'}
                 </button>
               </div>
             );

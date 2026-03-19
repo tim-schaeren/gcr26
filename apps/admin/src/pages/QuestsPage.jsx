@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
 import {
-  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
 import {
   SortableContext, verticalListSortingStrategy,
@@ -32,7 +32,8 @@ function QuestRow({ quest, index, isSelected, onClick, onToggle }) {
         {...attributes}
         {...listeners}
         onClick={e => e.stopPropagation()}
-        className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
+        className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing select-none"
       >
         ⠿
       </button>
@@ -62,7 +63,12 @@ export default function QuestsPage() {
   const [saving, setSaving] = useState(false);
   const isDirty = useRef(false);
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 100, tolerance: 5 },
+    })
+  );
 
   useEffect(() => {
     return onSnapshot(gameDoc, snap => {
@@ -171,7 +177,7 @@ export default function QuestsPage() {
       </div>
 
       {selected && (
-        <div className="w-96 border-l border-gray-200 bg-white -mr-8 -my-8 flex flex-col shadow-sm">
+        <div className="fixed inset-0 z-20 bg-white flex flex-col md:relative md:inset-auto md:z-auto md:w-96 md:border-l md:border-gray-200 md:-mr-8 md:-my-8 md:shadow-sm">
           <QuestForm
             quest={selected === 'new' ? null : selected}
             existingTitles={existingTitles}
