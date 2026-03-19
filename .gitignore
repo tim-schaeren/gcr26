@@ -1,9 +1,25 @@
+# Dependencies
 node_modules/
-.expo/
-dist/
-.DS_Store
-*.env
+**/node_modules/
+
+# Environment variables (never commit these)
+.env
 .env.local
-.env.*.local
-ios/
-android/
+**/.env
+**/.env.local
+
+# Expo
+**/.expo/
+**/expo-env.d.ts
+
+# Vite / Admin build
+apps/admin/dist/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# OS
+.DS_Store
+Thumbs.db

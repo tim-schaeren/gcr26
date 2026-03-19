@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuth()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Users: own doc is readable/writable by self; admins can read all
+    match /users/{uid} {
+      allow read:  if isAuth() && (request.auth.uid == uid || isAdmin());
+      allow write: if request.auth.uid == uid || isAdmin();
+    }
+
+    // Quests: authenticated users read; admins write
+    match /quests/{id} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Teams: authenticated users read; admins write
+    // (team members submitting answers will get write access when we build that feature)
+    match /teams/{id} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Shop items: authenticated users read; admins write
+    match /shopItems/{id} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Chat messages: any authenticated user can read and post
+    match /messages/{id} {
+      allow read, write: if isAuth();
+    }
+
+    // Broadcasts (admin push messages): authenticated users read; admins write
+    match /broadcasts/{id} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Game settings: authenticated users read; admins write
+    match /settings/{id} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Registrations: anyone can submit; only admins manage them
+    match /registrations/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}
