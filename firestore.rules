@@ -12,9 +12,12 @@ service cloud.firestore {
     }
 
     // Users: own doc is readable/writable by self; admins can read all
+    // create is allowed for any authenticated user so signup can write the initial doc
     match /users/{uid} {
-      allow read:  if isAuth() && (request.auth.uid == uid || isAdmin());
-      allow write: if request.auth.uid == uid || isAdmin();
+      allow read:   if isAuth() && (request.auth.uid == uid || isAdmin());
+      allow create: if isAuth() && request.auth.uid == uid;
+      allow update: if request.auth.uid == uid || isAdmin();
+      allow delete: if isAdmin();
     }
 
     // Quests: authenticated users read; admins write
