@@ -1,8 +1,200 @@
-export default function QuestsPage() {
+import { useState, useEffect, useRef } from 'react';
+import {
+  collection, doc, addDoc, updateDoc, deleteDoc,
+  onSnapshot, setDoc, getDoc,
+} from 'firebase/firestore';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext, verticalListSortingStrategy,
+  useSortable, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { db } from '../firebase';
+import QuestForm from '../components/QuestForm';
+
+function QuestRow({ quest, index, isSelected, onClick, onToggle }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: quest.id });
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Quests</h1>
-      <p className="text-gray-500">No quests yet. Quest management coming soon.</p>
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      onClick={() => onClick(quest)}
+      className={`flex items-center gap-3 bg-white border rounded-lg px-4 py-3 cursor-pointer transition-colors
+        ${isDragging ? 'shadow-lg opacity-75' : ''}
+        ${isSelected ? 'border-gray-900 ring-1 ring-gray-900' : 'border-gray-200 hover:border-gray-400'}`}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        onClick={e => e.stopPropagation()}
+        className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing"
+      >
+        ⠿
+      </button>
+      <span className="text-sm text-gray-400 w-6 text-center">{index + 1}</span>
+      <span className="flex-1 text-sm font-medium text-gray-900">{quest.title}</span>
+      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${quest.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+        {quest.isActive ? 'Active' : 'Inactive'}
+      </span>
+      <button
+        onClick={e => { e.stopPropagation(); onToggle(quest); }}
+        className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+      >
+        {quest.isActive ? 'Deactivate' : 'Activate'}
+      </button>
+    </div>
+  );
+}
+
+export default function QuestsPage() {
+  const { gameId } = useParams();
+  const navigate = useNavigate();
+  const gameDoc = doc(db, 'games', gameId);
+
+  const [game, setGame] = useState(null);
+  const [quests, setQuests] = useState({});
+  const [questOrder, setQuestOrder] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const isDirty = useRef(false);
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  useEffect(() => {
+    return onSnapshot(gameDoc, snap => {
+      if (snap.exists()) setGame({ id: snap.id, ...snap.data() });
+      setQuestOrder(snap.exists() ? (snap.data().questOrder ?? []) : []);
+    });
+  }, [gameId]);
+
+  useEffect(() => {
+    return onSnapshot(collection(db, 'games', gameId, 'quests'), snap => {
+      const map = {};
+      snap.forEach(d => { map[d.id] = { id: d.id, ...d.data() }; });
+      setQuests(map);
+    });
+  }, [gameId]);
+
+  const orderedQuests = questOrder
+    .map(id => quests[id])
+    .filter(Boolean)
+    .concat(Object.values(quests).filter(q => !questOrder.includes(q.id)));
+
+  const existingTitles = Object.values(quests).map(q => q.title);
+
+  function tryClose(callback) {
+    if (isDirty.current && !confirm('You have unsaved changes. Discard them?')) return;
+    isDirty.current = false;
+    callback?.();
+  }
+
+  function handleRowClick(quest) {
+    if (selected && selected !== 'new' && selected.id === quest.id) {
+      tryClose(() => setSelected(null));
+    } else {
+      tryClose(() => setSelected(quest));
+    }
+  }
+
+  async function handleDragEnd({ active, over }) {
+    if (!over || active.id === over.id) return;
+    const newOrder = arrayMove(questOrder, questOrder.indexOf(active.id), questOrder.indexOf(over.id));
+    setQuestOrder(newOrder);
+    await setDoc(gameDoc, { questOrder: newOrder }, { merge: true });
+  }
+
+  async function handleSave(data) {
+    setSaving(true);
+    try {
+      if (selected === 'new') {
+        const ref = await addDoc(collection(db, 'games', gameId, 'quests'), data);
+        await setDoc(gameDoc, { questOrder: [...questOrder, ref.id] }, { merge: true });
+      } else {
+        await updateDoc(doc(db, 'games', gameId, 'quests', selected.id), data);
+      }
+      isDirty.current = false;
+      setSelected(null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggle(quest) {
+    await updateDoc(doc(db, 'games', gameId, 'quests', quest.id), { isActive: !quest.isActive });
+  }
+
+  async function handleDelete() {
+    if (!selected || selected === 'new') return;
+    if (!confirm(`Delete "${selected.title}"? This cannot be undone.`)) return;
+    await deleteDoc(doc(db, 'games', gameId, 'quests', selected.id));
+    await setDoc(gameDoc, { questOrder: questOrder.filter(id => id !== selected.id) }, { merge: true });
+    isDirty.current = false;
+    setSelected(null);
+  }
+
+  return (
+    <div className="flex h-full gap-6">
+      <div className="flex-1 min-w-0">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 mb-1">
+          <button onClick={() => navigate('/games')} className="text-sm text-gray-400 hover:text-gray-700 transition-colors">
+            Games
+          </button>
+          <span className="text-gray-300">/</span>
+          <span className="text-sm text-gray-600">{game?.name ?? '…'}</span>
+        </div>
+
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Quests</h1>
+          <button
+            onClick={() => tryClose(() => setSelected('new'))}
+            className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+          >
+            + New Quest
+          </button>
+        </div>
+
+        {orderedQuests.length === 0 ? (
+          <p className="text-gray-400">No quests yet. Create the first one.</p>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={questOrder} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {orderedQuests.map((quest, i) => (
+                  <QuestRow
+                    key={quest.id}
+                    quest={quest}
+                    index={i}
+                    isSelected={selected && selected !== 'new' && selected.id === quest.id}
+                    onClick={handleRowClick}
+                    onToggle={handleToggle}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </div>
+
+      {selected && (
+        <div className="w-96 border-l border-gray-200 bg-white -mr-8 -my-8 flex flex-col shadow-sm">
+          <QuestForm
+            quest={selected === 'new' ? null : selected}
+            existingTitles={existingTitles}
+            cityCoordinates={game?.cityCoordinates}
+            onSave={handleSave}
+            onCancel={() => tryClose(() => setSelected(null))}
+            onDelete={handleDelete}
+            onDirtyChange={dirty => { isDirty.current = dirty; }}
+            saving={saving}
+          />
+        </div>
+      )}
     </div>
   );
 }

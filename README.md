@@ -141,13 +141,16 @@ firebase deploy --only firestore:rules
 
 See `packages/shared/src/types.ts` for the full data model. Collections:
 
-| Collection      | Description                                            |
-| --------------- | ------------------------------------------------------ |
-| `users`         | Firebase Auth users with game profile and push token   |
-| `teams`         | Race teams — score, current quest, inventory           |
-| `quests`        | The race challenges in order                           |
-| `shopItems`     | Items teams can buy with in-game currency              |
-| `messages`      | In-app chat (global and per-team)                      |
-| `broadcasts`    | Admin push notifications to all teams                  |
-| `settings`      | Global game settings (sign-up open, game active, etc.) |
-| `registrations` | Pre-game sign-up submissions                           |
+| Collection                    | Description                                                   |
+| ----------------------------- | ------------------------------------------------------------- |
+| `users`                       | Firebase Auth users with team assignment and push token       |
+| `games`                       | Race events — multiple can be active simultaneously           |
+| `games/{id}/quests`           | Quests scoped to a game; order stored as `questOrder` on game |
+| `teams`                       | Race teams — belong to a game, have many members              |
+| `shopItems`                   | Items teams can buy with in-game currency                     |
+| `messages`                    | In-app chat                                                   |
+| `broadcasts`                  | Admin push notifications to all teams                         |
+| `settings`                    | Global config (sign-up open, hotline number)                  |
+| `registrations`               | Pre-game sign-up submissions (public write)                   |
+
+User → Team → Game is the chain: a user belongs to one team, a team belongs to one game.

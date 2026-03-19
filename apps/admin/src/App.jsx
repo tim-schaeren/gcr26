@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/LoginPage';
 import Layout from './components/Layout';
+import GamesPage from './pages/GamesPage';
 import QuestsPage from './pages/QuestsPage';
 
 function ProtectedRoute({ children }) {
@@ -37,7 +38,7 @@ export default function App() {
       <Routes>
         <Route
           path="/login"
-          element={user ? <Navigate to="/quests" replace /> : <LoginPage />}
+          element={user ? <Navigate to="/games" replace /> : <LoginPage />}
         />
         <Route
           path="/"
@@ -47,8 +48,9 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/quests" replace />} />
-          <Route path="quests" element={<QuestsPage />} />
+          <Route index element={<Navigate to="/games" replace />} />
+          <Route path="games" element={<GamesPage />} />
+          <Route path="games/:gameId/quests" element={<QuestsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

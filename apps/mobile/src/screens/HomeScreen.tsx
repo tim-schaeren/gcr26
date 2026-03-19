@@ -1,17 +1,40 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { signOut } from 'firebase/auth';
-import { useAuth } from '../hooks/useAuth';
 import { auth } from '../firebase';
+import { useUser } from '../hooks/useUser';
 
 export default function HomeScreen() {
-  const { user } = useAuth();
+  const { profile, loading } = useUser();
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  // User has no team yet
+  if (!profile?.teamId) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>GCR</Text>
+        <Text style={styles.heading}>You're all set!</Text>
+        <Text style={styles.message}>
+          Your admins will assign you to a team soon.
+        </Text>
+        <TouchableOpacity style={styles.signOutButton} onPress={() => signOut(auth)}>
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Has a team — game screen placeholder
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>GCR 2026</Text>
-      <Text style={styles.subtitle}>Welcome, {user?.email}</Text>
-      <Text style={styles.placeholder}>The race hasn't started yet.</Text>
-
+      <Text style={styles.title}>GCR</Text>
+      <Text style={styles.heading}>Welcome, {profile?.name}</Text>
       <TouchableOpacity style={styles.signOutButton} onPress={() => signOut(auth)}>
         <Text style={styles.signOutText}>Sign Out</Text>
       </TouchableOpacity>
@@ -30,25 +53,28 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontWeight: '700',
-    letterSpacing: 2,
-    marginBottom: 8,
+    letterSpacing: 4,
+    marginBottom: 24,
   },
-  subtitle: {
+  heading: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#111',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  message: {
     fontSize: 16,
-    color: '#555',
-    marginBottom: 48,
-  },
-  placeholder: {
-    fontSize: 18,
-    color: '#aaa',
-    fontStyle: 'italic',
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 24,
     marginBottom: 64,
   },
   signOutButton: {
     padding: 12,
   },
   signOutText: {
-    color: '#888',
+    color: '#aaa',
     fontSize: 14,
   },
 });

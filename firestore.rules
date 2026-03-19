@@ -20,14 +20,18 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Quests: authenticated users read; admins write
-    match /quests/{id} {
+    // Games + nested quests: authenticated users read; admins write
+    match /games/{gameId} {
       allow read:  if isAuth();
       allow write: if isAdmin();
+
+      match /quests/{questId} {
+        allow read:  if isAuth();
+        allow write: if isAdmin();
+      }
     }
 
     // Teams: authenticated users read; admins write
-    // (team members submitting answers will get write access when we build that feature)
     match /teams/{id} {
       allow read:  if isAuth();
       allow write: if isAdmin();

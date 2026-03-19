@@ -3,7 +3,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 
 const navItems = [
-  { to: '/quests', label: 'Quests' },
+  { to: '/games', label: 'Games' },
 ];
 
 export default function Layout() {
@@ -43,8 +43,10 @@ export default function Layout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <Outlet />
+      <main className="flex-1 overflow-hidden flex">
+        <div className="flex-1 p-8 overflow-y-auto">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

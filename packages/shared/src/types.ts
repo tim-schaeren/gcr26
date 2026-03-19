@@ -15,38 +15,24 @@ export interface User {
 export interface Team {
   id: string;
   name: string;
+  gameId: string;
   memberIds: string[];
   score: number;
   currentQuestId: string | null;
   completedQuestIds: string[];
-  inventory: InventoryItem[];   // active items the team holds
-  activeCurse: ActiveCurse | null;
-  currency: number;
-  finishedAt: number | null;    // timestamp when team completed all quests
+  finishedAt: number | null;
 }
 
 // ─── Quests ───────────────────────────────────────────────────────────────────
 
-export type QuestType = 'location' | 'riddle' | 'photo' | 'trivia';
-
-export interface Hint {
-  text: string;
-  cost: number;   // currency cost to unlock
-}
-
 export interface Quest {
   id: string;
-  order: number;          // determines the sequence teams race through
-  type: QuestType;
   title: string;
   description: string;
-  answer: string;         // normalised lowercase for comparison
-  location: GeoPoint | null;    // for location-based quests
-  radiusMeters: number | null;  // proximity check radius
-  hints: Hint[];
-  mediaUrl: string | null;      // image or video clue
-  points: number;
-  isActive: boolean;      // admin can toggle off without deleting
+  location: GeoPoint;
+  answers: string[];      // trimmed; multiple valid answers allowed
+  hints: string[];
+  isActive: boolean;      // admin can hide without deleting
 }
 
 export interface GeoPoint {
@@ -101,11 +87,21 @@ export interface Broadcast {
   sentAt: number;
 }
 
+// ─── Games ────────────────────────────────────────────────────────────────────
+
+export interface Game {
+  id: string;
+  name: string;
+  startDateTime: number;    // Unix timestamp
+  city: string;
+  cityCoordinates: GeoPoint;
+  questOrder: string[];     // ordered list of quest IDs (subcollection)
+}
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export interface GameSettings {
   signUpOpen: boolean;
-  gameActive: boolean;
   hotlineNumber: string;
 }
 
