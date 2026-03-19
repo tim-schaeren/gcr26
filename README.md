@@ -114,21 +114,16 @@ git push origin main
 
 ### Mobile (iOS)
 
-Builds are done locally using EAS for credential management.
+Builds are done locally using EAS for credential management. A single command builds and submits to TestFlight:
 
 ```bash
 cd apps/mobile
-
-# Build
-eas build --platform ios --profile preview --local
-
-# Submit to TestFlight
-eas submit --platform ios --latest
+npm run ship
 ```
 
-The `preview` profile builds a standalone app distributed via TestFlight. Build numbers are auto-incremented.
+This sources `.env` so Firebase config is baked in, builds locally with EAS, and submits the resulting IPA to TestFlight. Build numbers are auto-incremented.
 
-After submitting, go to [App Store Connect → TestFlight](https://appstoreconnect.apple.com) to add testers.
+After submitting, Apple takes ~10 minutes to process. Then go to [App Store Connect → TestFlight](https://appstoreconnect.apple.com) to add testers.
 
 ---
 
