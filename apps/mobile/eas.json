@@ -20,6 +20,12 @@
     }
   },
   "submit": {
+    "preview": {
+      "ios": {
+        "appleId": "tim.schaeren@gmail.com",
+        "ascAppId": "6760836695"
+      }
+    },
     "production": {}
   }
 }
