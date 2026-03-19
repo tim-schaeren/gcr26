@@ -1,14 +1,19 @@
 import { useState, useEffect } from 'react';
 import { geocodeCity } from '../utils/geocode';
 
-const EMPTY = { name: '', startDateTime: '', city: '' };
+const EMPTY = { name: '', startDateTime: '', city: '', maxTeamSize: '' };
 
 function toFormState(game) {
   if (!game) return EMPTY;
   const dt = game.startDateTime
     ? new Date(game.startDateTime).toISOString().slice(0, 16)
     : '';
-  return { name: game.name, startDateTime: dt, city: game.city };
+  return {
+    name: game.name,
+    startDateTime: dt,
+    city: game.city,
+    maxTeamSize: game.maxTeamSize ?? '',
+  };
 }
 
 export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
@@ -47,12 +52,14 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
         setErrors(e => ({ ...e, city: 'Could not find this city. Check the spelling.' }));
         return;
       }
+      const parsed = parseInt(form.maxTeamSize);
       onSave({
         name: form.name.trim(),
         startDateTime: new Date(form.startDateTime).getTime(),
         city: form.city.trim(),
         cityCoordinates: coords,
         questOrder: game?.questOrder ?? [],
+        ...(Number.isFinite(parsed) && parsed > 0 ? { maxTeamSize: parsed } : { maxTeamSize: null }),
       });
     } finally {
       setGeocoding(false);
@@ -64,27 +71,12 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <div className="px-6 py-4 border-b border-gray-200">
         <h2 className="text-base font-semibold text-gray-900">
           {game ? 'Edit Game' : 'New Game'}
         </h2>
-        <div className="flex items-center gap-3">
-          {game && !confirming && (
-            <button
-              onClick={() => setConfirming(true)}
-              className="text-sm text-red-400 hover:text-red-600 transition-colors"
-            >
-              Delete
-            </button>
-          )}
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-700 transition-colors text-lg leading-none">
-            ✕
-          </button>
-        </div>
       </div>
 
-      {/* Body */}
       <div className="flex-1 overflow-y-auto px-6 py-5">
         {confirming ? (
           <div className="space-y-4">
@@ -105,21 +97,6 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
                 placeholder={game.name}
                 autoFocus
               />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setConfirming(false); setDeleteInput(''); }}
-                className="flex-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100 border border-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onDelete}
-                disabled={!deleteConfirmed}
-                className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Delete game
-              </button>
             </div>
           </div>
         ) : (
@@ -157,28 +134,68 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
               {errors.city && <p className="text-xs text-red-500 mt-1">{errors.city}</p>}
               <p className="text-xs text-gray-400 mt-1">Used as the default map location when adding quests.</p>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max team size</label>
+              <input
+                type="number"
+                min="1"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                value={form.maxTeamSize}
+                onChange={e => set('maxTeamSize', e.target.value)}
+                placeholder="No limit"
+              />
+              <p className="text-xs text-gray-400 mt-1">Leave blank for no limit.</p>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Footer */}
-      {!confirming && (
-        <div className="border-t border-gray-200 px-6 py-4 flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isBusy}
-            className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
-          >
-            {isBusy ? 'Saving…' : 'Save Game'}
-          </button>
-        </div>
-      )}
+      <div className="border-t border-gray-200 px-6 py-4 flex items-center">
+        {confirming ? (
+          <>
+            <button
+              onClick={() => { setConfirming(false); setDeleteInput(''); }}
+              className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={onDelete}
+              disabled={!deleteConfirmed}
+              className="ml-auto px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Delete game
+            </button>
+          </>
+        ) : (
+          <>
+            {game && (
+              <button
+                onClick={() => setConfirming(true)}
+                className="text-sm text-red-400 hover:text-red-600 transition-colors"
+              >
+                Delete
+              </button>
+            )}
+            <div className="ml-auto flex gap-2">
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isBusy}
+                className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              >
+                {isBusy ? 'Saving…' : 'Save Game'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import {
   collection, doc, addDoc, updateDoc, deleteDoc,
   onSnapshot, setDoc, getDoc,
 } from 'firebase/firestore';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
@@ -53,7 +53,6 @@ function QuestRow({ quest, index, isSelected, onClick, onToggle }) {
 
 export default function QuestsPage() {
   const { gameId } = useParams();
-  const navigate = useNavigate();
   const gameDoc = doc(db, 'games', gameId);
 
   const [game, setGame] = useState(null);
@@ -130,7 +129,6 @@ export default function QuestsPage() {
 
   async function handleDelete() {
     if (!selected || selected === 'new') return;
-    if (!confirm(`Delete "${selected.title}"? This cannot be undone.`)) return;
     await deleteDoc(doc(db, 'games', gameId, 'quests', selected.id));
     await setDoc(gameDoc, { questOrder: questOrder.filter(id => id !== selected.id) }, { merge: true });
     isDirty.current = false;
@@ -140,15 +138,6 @@ export default function QuestsPage() {
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 min-w-0">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 mb-1">
-          <button onClick={() => navigate('/games')} className="text-sm text-gray-400 hover:text-gray-700 transition-colors">
-            Games
-          </button>
-          <span className="text-gray-300">/</span>
-          <span className="text-sm text-gray-600">{game?.name ?? '…'}</span>
-        </div>
-
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Quests</h1>
           <button

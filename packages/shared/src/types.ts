@@ -96,6 +96,7 @@ export interface Game {
   city: string;
   cityCoordinates: GeoPoint;
   questOrder: string[];     // ordered list of quest IDs (subcollection)
+  maxTeamSize?: number;     // optional soft limit shown in admin UI
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────

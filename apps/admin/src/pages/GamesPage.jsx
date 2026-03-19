@@ -50,7 +50,6 @@ export default function GamesPage() {
 
   async function handleDelete() {
     if (!selected || selected === 'new') return;
-    if (!confirm(`Delete "${selected.name}"? This will also delete all its quests.`)) return;
     await deleteDoc(doc(db, 'games', selected.id));
     isDirty.current = false;
     setSelected(null);

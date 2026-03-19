@@ -12,8 +12,10 @@ Opens at `http://localhost:5173`. Sign in with a Firebase account that has `isAd
 
 ## Features
 
-- **Games** — create, edit, and delete race events; geocodes city to coordinates via Nominatim
+- **Game switcher** — select and manage games from the sidebar; last selected game is remembered across sessions
 - **Quests** — per-game quest management with drag-to-reorder (dnd-kit) and Leaflet map picker
+- **Teams** — create teams per game; assign players by dragging from the unassigned pool; drag between teams to reassign
+- **Players** — global user list with team/game status and admin toggle
 - **Delete protection** — destructive actions require typing the resource name to confirm
 
 ## Deployment
