@@ -71,10 +71,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Location trail: players write their own points; admins/players read
+    // Location trail: players write their own points; only admins read
     match /trail/{trailId} {
       allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
-      allow read:   if isAuth();
+      allow read:   if isAdmin();
     }
 
     // Registrations: anyone can submit; only admins manage them
