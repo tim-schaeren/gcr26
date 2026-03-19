@@ -2,6 +2,10 @@
   command = "npm ci && npm run build --workspace=apps/admin"
   publish = "apps/admin/dist"
 
+# Firebase client config is intentionally public — security is enforced by Firestore rules.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "VITE_FIREBASE_API_KEY,VITE_FIREBASE_APP_ID,VITE_FIREBASE_AUTH_DOMAIN,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_FIREBASE_PROJECT_ID,VITE_FIREBASE_STORAGE_BUCKET"
+
 # React Router needs all routes to fall back to index.html
 [[redirects]]
   from = "/*"
