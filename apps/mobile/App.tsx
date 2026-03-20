@@ -1,3 +1,4 @@
+import './src/tasks/locationTask';
 import RootNavigator from './src/navigation';
 
 export default function App() {

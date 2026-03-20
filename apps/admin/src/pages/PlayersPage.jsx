@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 
 export default function PlayersPage() {
@@ -19,6 +20,7 @@ export default function PlayersPage() {
     return () => unsubs.forEach(u => u());
   }, []);
 
+  const navigate = useNavigate();
   const teamMap = Object.fromEntries(teams.map(t => [t.id, t]));
   const gameMap = Object.fromEntries(games.map(g => [g.id, g]));
 
@@ -53,17 +55,28 @@ export default function PlayersPage() {
                   <p className="text-xs text-gray-400 mt-0.5">{user.email}</p>
                   <p className="text-xs mt-0.5 sm:hidden">
                     {team ? (
-                      <span className="text-gray-600">{team.name}{game && ` · ${game.name}`}</span>
+                      <button
+                        onClick={() => navigate(`/games/${team.gameId}/teams`, { state: { highlightTeamId: team.id } })}
+                        className="text-gray-600 hover:text-gray-900 hover:underline"
+                      >
+                        {team.name}
+                      </button>
                     ) : (
                       <span className="text-gray-300">Unassigned</span>
                     )}
+                    {game && <span className="text-gray-400"> · {game.name}</span>}
                   </p>
                 </div>
 
                 <div className="text-xs text-right shrink-0 hidden sm:block">
                   {team ? (
-                    <span className="text-gray-600">
-                      {team.name}
+                    <span>
+                      <button
+                        onClick={() => navigate(`/games/${team.gameId}/teams`, { state: { highlightTeamId: team.id } })}
+                        className="text-gray-600 hover:text-gray-900 hover:underline"
+                      >
+                        {team.name}
+                      </button>
                       {game && <span className="text-gray-400"> · {game.name}</span>}
                     </span>
                   ) : (

@@ -16,6 +16,7 @@ export interface User {
 export interface Team {
   id: string;
   name: string;
+  color: string;             // hex color chosen by admin, used on map
   gameId: string;
   memberIds: string[];
   score: number;

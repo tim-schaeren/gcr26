@@ -15,7 +15,10 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.gcr.app26",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Grand City Race tracks your location in the background so your team's trail stays up to date on the map.",
+        "NSLocationAlwaysUsageDescription": "Grand City Race tracks your location in the background so your team's trail stays up to date on the map.",
+        "NSLocationWhenInUseUsageDescription": "Grand City Race uses your location to unlock nearby quests and show your position on the map."
       }
     },
     "android": {
@@ -32,7 +35,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "isIosBackgroundLocationEnabled": true
+        }
+      ]
     ],
     "extra": {
       "eas": {

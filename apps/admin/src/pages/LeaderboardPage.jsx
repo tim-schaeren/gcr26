@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { useParams } from 'react-router-dom';
+import { collection, doc, query, where, onSnapshot } from 'firebase/firestore';
+import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 
 function medal(rank) {
@@ -10,14 +10,27 @@ function medal(rank) {
   return null;
 }
 
-function formatTime(ts) {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+function formatDuration(ms) {
+  if (ms <= 0) return '—';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+  return `${m}m ${String(s).padStart(2, '0')}s`;
 }
 
 export default function LeaderboardPage() {
   const { gameId } = useParams();
+  const navigate = useNavigate();
+  const [game, setGame] = useState(null);
   const [teams, setTeams] = useState([]);
   const [totalQuests, setTotalQuests] = useState(0);
+
+  useEffect(() => {
+    return onSnapshot(doc(db, 'games', gameId), snap => {
+      setGame(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+    });
+  }, [gameId]);
 
   useEffect(() => {
     return onSnapshot(
@@ -51,7 +64,11 @@ export default function LeaderboardPage() {
             const completed = team.completedQuestIds?.length ?? 0;
             const pct = totalQuests > 0 ? (completed / totalQuests) * 100 : 0;
             return (
-              <div key={team.id} className="bg-white border border-gray-200 rounded-lg px-5 py-4">
+              <div
+                key={team.id}
+                className="bg-white border border-gray-200 rounded-lg px-5 py-4 cursor-pointer hover:border-gray-300 transition-colors"
+                onClick={() => navigate(`/games/${gameId}/teams`, { state: { highlightTeamId: team.id } })}
+              >
                 <div className="flex items-center gap-4">
                   <span className="text-xl w-8 text-center shrink-0">
                     {medal(i) ?? <span className="text-sm font-semibold text-gray-400">#{i + 1}</span>}
@@ -61,9 +78,9 @@ export default function LeaderboardPage() {
                       <p className="text-sm font-semibold text-gray-900 truncate">{team.name}</p>
                       <p className="text-xs text-gray-500 shrink-0">
                         {completed} / {totalQuests} quests
-                        {team.finishedAt && (
+                        {team.finishedAt && game && (
                           <span className="ml-2 text-green-600 font-medium">
-                            ✓ {formatTime(team.finishedAt)}
+                            ✓ {formatDuration(team.finishedAt - game.startDateTime)}
                           </span>
                         )}
                       </p>

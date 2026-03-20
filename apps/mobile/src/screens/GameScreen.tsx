@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Animated,
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import { useUser } from '../hooks/useUser';
@@ -17,7 +18,10 @@ import {
   query, where, documentId,
 } from 'firebase/firestore';
 import * as Location from 'expo-location';
+import * as TaskManager from 'expo-task-manager';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db, auth } from '../firebase';
+import { TASK_NAME as LOCATION_TASK } from '../tasks/locationTask';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -185,6 +189,19 @@ function LocationDeniedView() {
   );
 }
 
+// ─── Celebration overlay ──────────────────────────────────────────────────────
+
+function CelebrationOverlay({ visible, anim }: { visible: boolean; anim: Animated.Value }) {
+  if (!visible) return null;
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
+  return (
+    <Animated.View style={[styles.celebrationOverlay, { opacity: anim }]}>
+      <Animated.Text style={[styles.celebrationEmoji, { transform: [{ scale }] }]}>🎉</Animated.Text>
+      <Text style={styles.celebrationText}>Well done!</Text>
+    </Animated.View>
+  );
+}
+
 // ─── Profile button + sheet ───────────────────────────────────────────────────
 
 function ProfileButton({ name, onPress }: { name: string; onPress: () => void }) {
@@ -229,6 +246,9 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 
   const lastWrittenRef = useRef<{ lat: number; lng: number; t: number } | null>(null);
   const lastTrailRef = useRef<{ lat: number; lng: number; t: number } | null>(null);
+
+  const [celebrating, setCelebrating] = useState(false);
+  const celebrateAnim = useRef(new Animated.Value(0)).current;
 
   const { profile } = useUser();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -275,14 +295,39 @@ export default function GameScreen({ teamId }: { teamId: string }) {
         setLocationDenied(true);
         return;
       }
+
+      // Persist IDs for background task
+      const uid = auth.currentUser?.uid ?? '';
+      if (team && game) {
+        await AsyncStorage.multiSet([
+          ['uid', uid],
+          ['teamId', team.id],
+          ['gameId', game.id],
+        ]);
+      }
+
+      // Request "always" background permission and start background task
+      const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+      if (bgStatus === 'granted') {
+        const running = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK);
+        if (!running) {
+          await Location.startLocationUpdatesAsync(LOCATION_TASK, {
+            accuracy: Location.Accuracy.Balanced,
+            distanceInterval: 50,
+            timeInterval: 60000,
+            showsBackgroundLocationIndicator: true,
+          });
+        }
+      }
+
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
         loc => {
           const { latitude: lat, longitude: lng } = loc.coords;
           setCoords({ lat, lng });
 
-          const uid = auth.currentUser?.uid;
-          if (!uid || !team || !game) return;
+          const currentUid = auth.currentUser?.uid;
+          if (!currentUid || !team || !game) return;
 
           const t = Date.now();
           const last = lastWrittenRef.current;
@@ -292,7 +337,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
           // Write lastLocation every 10 m or 30 s
           if (dist > 10 || elapsed > 30000) {
             lastWrittenRef.current = { lat, lng, t };
-            updateDoc(doc(db, 'users', uid), { lastLocation: { lat, lng, updatedAt: t } }).catch(() => {});
+            updateDoc(doc(db, 'users', currentUid), { lastLocation: { lat, lng, updatedAt: t } }).catch(() => {});
 
             // Write trail point every 50 m or 2 min
             const lastTrail = lastTrailRef.current;
@@ -301,7 +346,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
             if (trailDist > 50 || trailElapsed > 120000) {
               lastTrailRef.current = { lat, lng, t };
               addDoc(collection(db, 'trail'), {
-                userId: uid,
+                userId: currentUid,
                 teamId: team.id,
                 gameId: game.id,
                 lat,
@@ -367,18 +412,26 @@ export default function GameScreen({ teamId }: { teamId: string }) {
     }
 
     setSubmitting(true);
-    try {
-      const nextQuestId = game.questOrder[game.questOrder.indexOf(quest.id) + 1] ?? null;
-      const update: Record<string, unknown> = {
-        completedQuestIds: arrayUnion(quest.id),
-        currentQuestId: nextQuestId,
-      };
-      if (!nextQuestId) update.finishedAt = Date.now();
-      await updateDoc(doc(db, 'teams', team.id), update);
-      setAnswer('');
-    } finally {
-      setSubmitting(false);
-    }
+    setAnswer('');
+
+    // Show celebration, then advance quest
+    setCelebrating(true);
+    Animated.spring(celebrateAnim, { toValue: 1, useNativeDriver: true }).start();
+    setTimeout(async () => {
+      setCelebrating(false);
+      celebrateAnim.setValue(0);
+      try {
+        const nextQuestId = game.questOrder[game.questOrder.indexOf(quest.id) + 1] ?? null;
+        const update: Record<string, unknown> = {
+          completedQuestIds: arrayUnion(quest.id),
+          currentQuestId: nextQuestId,
+        };
+        if (!nextQuestId) update.finishedAt = Date.now();
+        await updateDoc(doc(db, 'teams', team.id), update);
+      } finally {
+        setSubmitting(false);
+      }
+    }, 2000);
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -434,6 +487,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
   return (
     <View style={{ flex: 1 }}>
       {renderContent()}
+      <CelebrationOverlay visible={celebrating} anim={celebrateAnim} />
       <ProfileButton name={userName} onPress={() => setProfileOpen(true)} />
       <ProfileSheet visible={profileOpen} name={userName} onClose={() => setProfileOpen(false)} />
     </View>
@@ -594,6 +648,23 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.75)',
     textAlign: 'center',
     lineHeight: 22,
+  },
+
+  // Celebration overlay
+  celebrationOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  celebrationEmoji: {
+    fontSize: 80,
+    marginBottom: 16,
+  },
+  celebrationText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#111',
   },
 
   // Profile button

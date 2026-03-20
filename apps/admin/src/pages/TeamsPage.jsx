@@ -3,7 +3,7 @@ import {
   collection, doc, addDoc, updateDoc, deleteDoc,
   onSnapshot, writeBatch, arrayUnion, arrayRemove, query, where,
 } from 'firebase/firestore';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
   useDroppable, useDraggable,
@@ -63,12 +63,13 @@ function DraggablePlayerChip({ user }) {
   );
 }
 
-function DroppableTeamCard({ team, members, maxTeamSize, onRemove, onEdit }) {
+function DroppableTeamCard({ team, members, maxTeamSize, onRemove, onEdit, onViewMap }) {
   const isFull = maxTeamSize && members.length >= maxTeamSize;
   const { setNodeRef, isOver } = useDroppable({ id: team.id });
 
   return (
     <div
+      id={`team-${team.id}`}
       ref={setNodeRef}
       className={`rounded-lg p-4 border-2 transition-colors ${
         isOver && isFull ? 'border-red-400 bg-white'
@@ -78,6 +79,9 @@ function DroppableTeamCard({ team, members, maxTeamSize, onRemove, onEdit }) {
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
+          {team.color && (
+            <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: team.color }} />
+          )}
           <span className="font-medium text-gray-900">{team.name}</span>
           {maxTeamSize && (
             <span className="text-xs font-medium text-gray-400">
@@ -85,12 +89,20 @@ function DroppableTeamCard({ team, members, maxTeamSize, onRemove, onEdit }) {
             </span>
           )}
         </div>
-        <button
-          onClick={() => onEdit(team)}
-          className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
-        >
-          Edit
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onViewMap(team)}
+            className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+          >
+            Map →
+          </button>
+          <button
+            onClick={() => onEdit(team)}
+            className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+          >
+            Edit
+          </button>
+        </div>
       </div>
 
       <div className="space-y-1 min-h-[2rem]">
@@ -111,8 +123,11 @@ function DroppableTeamCard({ team, members, maxTeamSize, onRemove, onEdit }) {
   );
 }
 
+const DEFAULT_COLORS = ['#e11d48','#2563eb','#16a34a','#d97706','#7c3aed','#0891b2','#be185d','#ea580c'];
+
 function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
   const [name, setName] = useState(team?.name ?? '');
+  const [color, setColor] = useState(team?.color ?? DEFAULT_COLORS[0]);
   const [confirming, setConfirming] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
 
@@ -145,15 +160,41 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
             </div>
           </div>
         ) : (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Team Alpha"
-              autoFocus
-            />
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="e.g. Team Alpha"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {DEFAULT_COLORS.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setColor(c)}
+                    className="w-7 h-7 rounded-full transition-transform hover:scale-110"
+                    style={{
+                      backgroundColor: c,
+                      outline: color === c ? `3px solid ${c}` : 'none',
+                      outlineOffset: '2px',
+                    }}
+                  />
+                ))}
+              </div>
+              <input
+                type="color"
+                className="w-8 h-8 rounded cursor-pointer border border-gray-300 p-0.5"
+                value={color}
+                onChange={e => setColor(e.target.value)}
+                title="Custom color"
+              />
+            </div>
           </div>
         )}
       </div>
@@ -193,7 +234,7 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
                 Cancel
               </button>
               <button
-                onClick={() => onSave({ name: name.trim() })}
+                onClick={() => onSave({ name: name.trim(), color })}
                 disabled={!name.trim() || saving}
                 className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50"
               >
@@ -209,6 +250,8 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
 
 export default function TeamsPage() {
   const { gameId } = useParams();
+  const navigate = useNavigate();
+  const { state } = useLocation();
   const [game, setGame] = useState(null);
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
@@ -241,6 +284,18 @@ export default function TeamsPage() {
       setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
   }, []);
+
+  // Scroll to + briefly highlight a team when arriving from leaderboard/players
+  useEffect(() => {
+    if (!state?.highlightTeamId || teams.length === 0) return;
+    const el = document.getElementById(`team-${state.highlightTeamId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'box-shadow 0.3s';
+      el.style.boxShadow = '0 0 0 3px #111';
+      setTimeout(() => { el.style.boxShadow = ''; }, 1500);
+    }
+  }, [state?.highlightTeamId, teams.length]);
 
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
   const teamIds = new Set(teams.map(t => t.id));
@@ -362,6 +417,7 @@ export default function TeamsPage() {
                         maxTeamSize={game?.maxTeamSize}
                         onRemove={handleRemove}
                         onEdit={setSelected}
+                        onViewMap={t => navigate(`/games/${gameId}/live-map`, { state: { focusTeamId: t.id } })}
                       />
                     );
                   })}
