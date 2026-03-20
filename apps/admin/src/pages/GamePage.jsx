@@ -30,34 +30,27 @@ function formatDuration(ms) {
 async function sendPushToPlayers(gameId, title, body) {
   try {
     const teamsSnap = await getDocs(query(collection(db, 'teams'), where('gameId', '==', gameId)));
-    console.log('[push] teams found:', teamsSnap.docs.length, teamsSnap.docs.map(d => ({ id: d.id, memberIds: d.data().memberIds })));
-
     const memberIds = [...new Set(teamsSnap.docs.flatMap(d => d.data().memberIds ?? []))];
-    console.log('[push] memberIds:', memberIds);
-    if (!memberIds.length) { console.warn('[push] no memberIds — aborting'); return; }
+    if (!memberIds.length) return;
 
     const tokens = [];
     for (let i = 0; i < memberIds.length; i += 10) {
       const batch = memberIds.slice(i, i + 10);
       const usersSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', batch)));
-      console.log('[push] user docs returned for batch', batch, ':', usersSnap.docs.map(d => ({ id: d.id, pushToken: d.data().pushToken })));
       usersSnap.docs.forEach(d => {
         const t = d.data().pushToken;
         if (t) tokens.push(t);
       });
     }
-    console.log('[push] tokens to send to:', tokens);
-    if (!tokens.length) { console.warn('[push] no tokens found — aborting'); return; }
+    if (!tokens.length) return;
 
-    const res = await fetch('https://exp.host/--/api/v2/push/send', {
+    await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(tokens.map(to => ({ to, title, body, sound: 'default' }))),
     });
-    const json = await res.json();
-    console.log('[push] Expo API response:', JSON.stringify(json));
   } catch (e) {
-    console.warn('[push] failed:', e);
+    console.warn('Push notification failed:', e);
   }
 }
 
