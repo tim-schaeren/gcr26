@@ -44,9 +44,9 @@ async function sendPushToPlayers(gameId, title, body) {
     }
     if (!tokens.length) return;
 
-    await fetch('https://exp.host/--/api/v2/push/send', {
+    await fetch('/api/send-push', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(tokens.map(to => ({ to, title, body, sound: 'default' }))),
     });
   } catch (e) {
