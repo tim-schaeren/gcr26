@@ -776,6 +776,8 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     color: '#111',
+    textAlign: 'center',
+    paddingHorizontal: 24,
     marginBottom: 8,
   },
   finishedPlacement: {
