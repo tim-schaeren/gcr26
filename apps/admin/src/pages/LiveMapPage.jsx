@@ -3,7 +3,7 @@ import { collection, doc, query, where, onSnapshot } from 'firebase/firestore';
 import { MapContainer, TileLayer, Marker, Circle, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 
 const TEAM_COLORS = [
@@ -32,6 +32,17 @@ const questIcon = L.divIcon({
   iconAnchor: [14, 14],
 });
 
+function FlyToQuest({ focusQuestId, quests }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!focusQuestId) return;
+    const quest = quests.find(q => q.id === focusQuestId);
+    if (!quest?.location?.lat) return;
+    map.flyTo([quest.location.lat, quest.location.lng], 18);
+  }, [focusQuestId, quests]);
+  return null;
+}
+
 function FlyToTeam({ focusTeamId, teams, gameUsers }) {
   const map = useMap();
   useEffect(() => {
@@ -50,7 +61,9 @@ function FlyToTeam({ focusTeamId, teams, gameUsers }) {
 export default function LiveMapPage() {
   const { gameId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const focusTeamId = location.state?.focusTeamId ?? null;
+  const focusQuestId = location.state?.focusQuestId ?? null;
 
   const [game, setGame] = useState(null);
   const [quests, setQuests] = useState([]);
@@ -139,6 +152,7 @@ export default function LiveMapPage() {
           />
 
           <FlyToTeam focusTeamId={focusTeamId} teams={teams} gameUsers={gameUsers} />
+          <FlyToQuest focusQuestId={focusQuestId} quests={quests} />
 
           {/* Quest markers + fence circles */}
           {quests.map(quest => {
@@ -148,8 +162,13 @@ export default function LiveMapPage() {
               <span key={quest.id}>
                 <Marker position={pos} icon={questIcon}>
                   <Popup>
-                    <strong>{quest.title}</strong>
-                    {quest.fenceRadius && <div className="text-xs text-gray-500 mt-1">Fence: {quest.fenceRadius} m</div>}
+                    <button
+                      onClick={() => navigate(`/games/${gameId}/quests`, { state: { highlightQuestId: quest.id } })}
+                      style={{ fontWeight: 600, color: '#4f46e5', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontSize: 'inherit' }}
+                    >
+                      {quest.title}
+                    </button>
+                    {quest.fenceRadius > 0 && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>Fence: {quest.fenceRadius} m</div>}
                   </Popup>
                 </Marker>
                 {quest.fenceRadius > 0 && (
@@ -179,13 +198,31 @@ export default function LiveMapPage() {
           {/* Individual member dots for current position */}
           {gameUsers.filter(u => u.lastLocation).map(u => {
             const color = teamColorMap[userTeamMap[u.id]] ?? '#999';
+            const team = teams.find(t => t.id === userTeamMap[u.id]);
             return (
               <Marker
                 key={u.id}
                 position={[u.lastLocation.lat, u.lastLocation.lng]}
                 icon={teamDotIcon(color)}
               >
-                <Popup>{u.name}</Popup>
+                <Popup>
+                  <div style={{ lineHeight: 1.6 }}>
+                    <button
+                      onClick={() => navigate('/players', { state: { highlightUserId: u.id } })}
+                      style={{ fontWeight: 600, color: '#111', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontSize: 'inherit', display: 'block' }}
+                    >
+                      {u.name}
+                    </button>
+                    {team && (
+                      <button
+                        onClick={() => navigate(`/games/${gameId}/teams`, { state: { highlightTeamId: team.id } })}
+                        style={{ color: '#4f46e5', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontSize: '0.8rem' }}
+                      >
+                        {team.name}
+                      </button>
+                    )}
+                  </div>
+                </Popup>
               </Marker>
             );
           })}

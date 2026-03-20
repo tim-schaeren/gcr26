@@ -229,10 +229,10 @@ export default function Layout() {
       {editingGame !== null && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/20"
+            className="fixed inset-0 z-[1001] bg-black/20"
             onClick={() => setEditingGame(null)}
           />
-          <div className="fixed right-0 inset-y-0 z-50 w-full md:w-96 bg-white shadow-xl flex flex-col">
+          <div className="fixed right-0 inset-y-0 z-[1002] w-full md:w-96 bg-white shadow-xl flex flex-col">
             <GameForm
               game={editingGame === 'new' ? null : editingGame}
               onSave={handleSaveGame}

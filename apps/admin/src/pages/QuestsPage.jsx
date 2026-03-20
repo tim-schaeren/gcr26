@@ -3,7 +3,7 @@ import {
   collection, doc, addDoc, updateDoc, deleteDoc,
   onSnapshot, setDoc, getDoc,
 } from 'firebase/firestore';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
@@ -15,12 +15,13 @@ import { CSS } from '@dnd-kit/utilities';
 import { db } from '../firebase';
 import QuestForm from '../components/QuestForm';
 
-function QuestRow({ quest, index, isSelected, onClick, onToggle }) {
+function QuestRow({ quest, index, isSelected, onClick, onToggle, onViewMap }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: quest.id });
 
   return (
     <div
+      id={`quest-row-${quest.id}`}
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       onClick={() => onClick(quest)}
@@ -48,12 +49,22 @@ function QuestRow({ quest, index, isSelected, onClick, onToggle }) {
       >
         {quest.isActive ? 'Deactivate' : 'Activate'}
       </button>
+      {quest.location?.lat && (
+        <button
+          onClick={e => { e.stopPropagation(); onViewMap(quest); }}
+          className="text-xs text-gray-400 hover:text-gray-700 transition-colors shrink-0"
+        >
+          Map →
+        </button>
+      )}
     </div>
   );
 }
 
 export default function QuestsPage() {
   const { gameId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const gameDoc = doc(db, 'games', gameId);
 
   const [game, setGame] = useState(null);
@@ -84,6 +95,16 @@ export default function QuestsPage() {
       setQuests(map);
     });
   }, [gameId]);
+
+  // Open quest from navigation state (e.g. clicked from live map)
+  useEffect(() => {
+    const id = location.state?.highlightQuestId;
+    if (!id || !quests[id]) return;
+    setSelected(quests[id]);
+    setTimeout(() => {
+      document.getElementById(`quest-row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }, [location.state?.highlightQuestId, quests]);
 
   const orderedQuests = questOrder
     .map(id => quests[id])
@@ -168,6 +189,7 @@ export default function QuestsPage() {
                     isSelected={selected && selected !== 'new' && selected.id === quest.id}
                     onClick={handleRowClick}
                     onToggle={handleToggle}
+                    onViewMap={q => navigate(`/games/${gameId}/live-map`, { state: { focusQuestId: q.id } })}
                   />
                 ))}
               </div>

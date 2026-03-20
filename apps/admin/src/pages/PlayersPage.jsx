@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, doc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../firebase';
 
 export default function PlayersPage() {
@@ -21,8 +21,18 @@ export default function PlayersPage() {
   }, []);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const highlightUserId = location.state?.highlightUserId ?? null;
+
   const teamMap = Object.fromEntries(teams.map(t => [t.id, t]));
   const gameMap = Object.fromEntries(games.map(g => [g.id, g]));
+
+  useEffect(() => {
+    if (!highlightUserId || !users.length) return;
+    setTimeout(() => {
+      document.getElementById(`player-row-${highlightUserId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }, [highlightUserId, users]);
 
   async function toggleAdmin(user) {
     await updateDoc(doc(db, 'users', user.id), { isAdmin: !user.isAdmin });
@@ -42,7 +52,11 @@ export default function PlayersPage() {
             const team = user.teamId ? teamMap[user.teamId] : null;
             const game = team ? gameMap[team.gameId] : null;
             return (
-              <div key={user.id} className="flex items-start sm:items-center gap-3 px-4 py-3">
+              <div
+                key={user.id}
+                id={`player-row-${user.id}`}
+                className={`flex items-start sm:items-center gap-3 px-4 py-3 transition-colors ${highlightUserId === user.id ? 'bg-indigo-50' : ''}`}
+              >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-900">{user.name}</span>
