@@ -15,12 +15,15 @@ service cloud.firestore {
     // create is allowed for any authenticated user so signup can write the initial doc
     match /users/{uid} {
       // Own doc, admin, or a teammate (same teamId, non-null)
+      // Note: isAdmin() uses get() which works for single-doc reads but not list queries;
+      // list queries (e.g. where documentId() in [...]) use the allow list rule below.
       allow read:   if isAuth() && (
                       request.auth.uid == uid
                       || isAdmin()
                       || (resource.data.teamId != null
                           && resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId)
                     );
+      allow list:   if isAdmin();
       allow create: if isAuth() && request.auth.uid == uid;
       allow update: if request.auth.uid == uid || isAdmin();
       allow delete: if isAdmin();
