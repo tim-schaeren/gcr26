@@ -102,6 +102,9 @@ export interface Game {
   questOrder: string[];     // ordered list of quest IDs (subcollection)
   maxTeamSize?: number;     // optional soft limit shown in admin UI
   maxTeamSpreadMeters: number | null; // null = unlimited; blocks answer submission if exceeded
+  pausedAt: number | null;  // timestamp when game was paused; null = not paused
+  totalPausedMs: number;    // accumulated pause duration in ms (updated on resume)
+  endedAt: number | null;   // timestamp when admin ended the game; null = not ended
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────

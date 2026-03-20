@@ -7,6 +7,7 @@ import TeamsPage from './pages/TeamsPage';
 import PlayersPage from './pages/PlayersPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import LiveMapPage from './pages/LiveMapPage';
+import GamePage from './pages/GamePage';
 
 function ProtectedRoute({ children }) {
   const { user, isAdmin, loading } = useAuth();
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="games/:gameId/teams" element={<TeamsPage />} />
           <Route path="games/:gameId/leaderboard" element={<LeaderboardPage />} />
           <Route path="games/:gameId/live-map" element={<LiveMapPage />} />
+          <Route path="games/:gameId/game" element={<GamePage />} />
           <Route path="players" element={<PlayersPage />} />
         </Route>
       </Routes>

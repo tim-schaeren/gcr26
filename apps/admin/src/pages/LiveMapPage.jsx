@@ -18,6 +18,31 @@ function teamColor(index) {
 
 const STALE_MS = 5 * 60 * 1000; // 5 minutes
 
+function distanceMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function teamQuestStatus(team, quests, memberUsers, questOrder) {
+  if (team.finishedAt) return null;
+  const questId = team.currentQuestId ?? questOrder?.[0] ?? null;
+  const quest = quests.find(q => q.id === questId);
+  if (!quest) return null;
+  const withLoc = memberUsers.filter(u => u.lastLocation);
+  if (!withLoc.length || !quest.location?.lat) return { label: quest.title, solving: false };
+  const lat = withLoc.reduce((s, u) => s + u.lastLocation.lat, 0) / withLoc.length;
+  const lng = withLoc.reduce((s, u) => s + u.lastLocation.lng, 0) / withLoc.length;
+  const solving = distanceMeters(lat, lng, quest.location.lat, quest.location.lng) <= (quest.fenceRadius ?? 50);
+  return { label: quest.title, solving };
+}
+
 function formatAge(updatedAt, now) {
   const ms = now - updatedAt;
   if (ms < 60000) return 'just now';
@@ -53,7 +78,7 @@ function FlyToQuest({ focusQuestId, quests }) {
   return null;
 }
 
-function FlyToTeam({ focusTeamId, teams, gameUsers }) {
+function FlyToTeam({ focusTeamId, teams, gameUsers, headerFlyTarget }) {
   const map = useMap();
   useEffect(() => {
     if (!focusTeamId) return;
@@ -65,6 +90,16 @@ function FlyToTeam({ focusTeamId, teams, gameUsers }) {
     const lng = members.reduce((s, u) => s + u.lastLocation.lng, 0) / members.length;
     map.flyTo([lat, lng], 16);
   }, [focusTeamId, teams, gameUsers]);
+  useEffect(() => {
+    if (!headerFlyTarget?.teamId) return;
+    const team = teams.find(t => t.id === headerFlyTarget.teamId);
+    if (!team) return;
+    const members = gameUsers.filter(u => team.memberIds?.includes(u.id) && u.lastLocation);
+    if (members.length === 0) return;
+    const lat = members.reduce((s, u) => s + u.lastLocation.lat, 0) / members.length;
+    const lng = members.reduce((s, u) => s + u.lastLocation.lng, 0) / members.length;
+    map.flyTo([lat, lng], 16);
+  }, [headerFlyTarget]);
   return null;
 }
 
@@ -81,6 +116,7 @@ export default function LiveMapPage() {
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
   const [trail, setTrail] = useState([]);
+  const [headerFlyTarget, setHeaderFlyTarget] = useState(null);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
@@ -146,16 +182,33 @@ export default function LiveMapPage() {
       {/* Header */}
       <div className="px-4 md:px-8 py-4 bg-white border-b border-gray-200 flex items-center gap-6 shrink-0">
         <h1 className="text-lg font-bold text-gray-900">Live Map</h1>
-        <div className="flex flex-wrap gap-3">
-          {teams.map((team, i) => (
-            <span key={team.id} className="flex items-center gap-1.5 text-xs text-gray-600">
-              <span
-                className="inline-block w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: team.color ?? teamColor(i) }}
-              />
-              {team.name}
-            </span>
-          ))}
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {teams.map((team, i) => {
+            const memberUsers = gameUsers.filter(u => team.memberIds?.includes(u.id));
+            const status = teamQuestStatus(team, quests, memberUsers, game?.questOrder);
+            return (
+              <button
+                key={team.id}
+                onClick={() => setHeaderFlyTarget({ teamId: team.id, seq: Date.now() })}
+                className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <span
+                  className="inline-block w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: team.color ?? teamColor(i) }}
+                />
+                <span className="font-medium">{team.name}</span>
+                {team.finishedAt && <span className="text-green-600">✓</span>}
+                {status && (
+                  <span className="text-gray-400">
+                    — <span className={status.solving ? 'text-green-600' : 'text-yellow-500'}>
+                      {status.solving ? 'Solving' : 'Looking'}
+                    </span>
+                    {' '}{status.label}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -167,7 +220,7 @@ export default function LiveMapPage() {
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           />
 
-          <FlyToTeam focusTeamId={focusTeamId} teams={teams} gameUsers={gameUsers} />
+          <FlyToTeam focusTeamId={focusTeamId} teams={teams} gameUsers={gameUsers} headerFlyTarget={headerFlyTarget} />
           <FlyToQuest focusQuestId={focusQuestId} quests={quests} />
 
           {/* Quest markers + fence circles */}

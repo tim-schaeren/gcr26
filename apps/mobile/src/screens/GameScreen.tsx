@@ -10,6 +10,7 @@ import {
   Platform,
   Modal,
   Animated,
+  ScrollView,
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import { useUser } from '../hooks/useUser';
@@ -29,6 +30,7 @@ interface Team {
   id: string;
   gameId: string;
   name: string;
+  memberIds: string[];
   currentQuestId: string | null;
   completedQuestIds: string[];
   finishedAt: number | null;
@@ -40,6 +42,9 @@ interface Game {
   startDateTime: number;
   questOrder: string[];
   maxTeamSpreadMeters: number | null;
+  pausedAt: number | null;
+  totalPausedMs: number;
+  endedAt: number | null;
 }
 
 interface Quest {
@@ -64,6 +69,25 @@ function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number):
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDuration(ms: number): string {
+  if (!ms || ms <= 0) return '—';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+  return `${m}m ${String(s).padStart(2, '0')}s`;
+}
+
+function ordinal(n: number): string {
+  if (n >= 11 && n <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
 }
 
 function formatCountdown(ms: number): string {
@@ -156,13 +180,111 @@ function QuestView({
   );
 }
 
-function FinishedView({ game }: { game: Game }) {
+function FinishedView({
+  game,
+  team,
+  allTeams,
+  onLeaderboard,
+}: {
+  game: Game;
+  team: Team;
+  allTeams: Team[];
+  onLeaderboard: () => void;
+}) {
+  const rank = allTeams.filter(t => t.finishedAt && t.finishedAt <= (team.finishedAt ?? 0)).length;
+  const duration = team.finishedAt
+    ? team.finishedAt - game.startDateTime - (game.totalPausedMs ?? 0)
+    : 0;
   return (
     <View style={styles.container}>
       <Text style={styles.finishedEmoji}>🏁</Text>
       <Text style={styles.finishedHeading}>You finished!</Text>
-      <Text style={styles.finishedSub}>{game.name}</Text>
+      <Text style={styles.finishedPlacement}>{ordinal(rank)} place</Text>
+      <Text style={styles.finishedSub}>{formatDuration(duration)}</Text>
+      <TouchableOpacity style={styles.leaderboardButton} onPress={onLeaderboard}>
+        <Text style={styles.leaderboardButtonText}>See leaderboard →</Text>
+      </TouchableOpacity>
     </View>
+  );
+}
+
+function PausedView() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.label}>GAME PAUSED</Text>
+      <Text style={styles.message}>The admins have paused the game.{'\n'}Sit tight!</Text>
+    </View>
+  );
+}
+
+function EndedView({ game }: { game: Game }) {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.finishedEmoji}>🏁</Text>
+      <Text style={styles.finishedHeading}>The admins have ended the game.</Text>
+      <Text style={styles.finishedSub}>Thanks for playing!</Text>
+    </View>
+  );
+}
+
+function LeaderboardModal({
+  visible,
+  onClose,
+  game,
+  allTeams,
+  currentTeamId,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  game: Game;
+  allTeams: Team[];
+  currentTeamId: string;
+}) {
+  const sorted = [...allTeams].sort((a, b) => {
+    if (a.finishedAt && b.finishedAt) return a.finishedAt - b.finishedAt;
+    if (a.finishedAt) return -1;
+    if (b.finishedAt) return 1;
+    return (b.completedQuestIds?.length ?? 0) - (a.completedQuestIds?.length ?? 0);
+  });
+  const totalQuests = game.questOrder.length;
+  const totalPausedMs = game.totalPausedMs ?? 0;
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={styles.lbHeader}>
+          <Text style={styles.lbTitle}>Leaderboard</Text>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Text style={styles.lbClose}>✕</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}>
+          {sorted.map((t, i) => {
+            const isCurrent = t.id === currentTeamId;
+            const completed = t.completedQuestIds?.length ?? 0;
+            const duration = t.finishedAt
+              ? t.finishedAt - game.startDateTime - totalPausedMs
+              : null;
+            const medalEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+            return (
+              <View key={t.id} style={[styles.lbRow, isCurrent && styles.lbRowCurrent]}>
+                <Text style={styles.lbRank}>{medalEmoji ?? `#${i + 1}`}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.lbTeamName, isCurrent && styles.lbTeamNameCurrent]}>
+                    {t.name}{isCurrent ? ' (you)' : ''}
+                  </Text>
+                  <Text style={styles.lbDetail}>
+                    {duration !== null
+                      ? `Finished · ${formatDuration(duration)}`
+                      : `${completed} / ${totalQuests} quests`}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+      </View>
+    </Modal>
   );
 }
 
@@ -250,6 +372,9 @@ export default function GameScreen({ teamId }: { teamId: string }) {
   const [celebrating, setCelebrating] = useState(false);
   const celebrateAnim = useRef(new Animated.Value(0)).current;
 
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+
   const { profile } = useUser();
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -273,6 +398,15 @@ export default function GameScreen({ teamId }: { teamId: string }) {
       setGame(snap.exists() ? ({ id: snap.id, ...snap.data() } as Game) : null);
     });
   }, [team?.gameId]);
+
+  // All teams for leaderboard + placement
+  useEffect(() => {
+    if (!game?.id) return;
+    return onSnapshot(
+      query(collection(db, 'teams'), where('gameId', '==', game.id)),
+      snap => setAllTeams(snap.docs.map(d => ({ id: d.id, ...d.data() } as Team))),
+    );
+  }, [game?.id]);
 
   // Current quest
   const currentQuestId = team?.currentQuestId ?? game?.questOrder?.[0] ?? null;
@@ -448,8 +582,17 @@ export default function GameScreen({ teamId }: { teamId: string }) {
       );
     }
 
+    if (game.endedAt) return <EndedView game={game} />;
+    if (game.pausedAt) return <PausedView />;
     if (now < game.startDateTime) return <WaitingView game={game} now={now} />;
-    if (team.finishedAt) return <FinishedView game={game} />;
+    if (team.finishedAt) return (
+      <FinishedView
+        game={game}
+        team={team}
+        allTeams={allTeams}
+        onLeaderboard={() => setLeaderboardOpen(true)}
+      />
+    );
     if (!quest) {
       return (
         <View style={styles.container}>
@@ -488,8 +631,20 @@ export default function GameScreen({ teamId }: { teamId: string }) {
     <View style={{ flex: 1 }}>
       {renderContent()}
       <CelebrationOverlay visible={celebrating} anim={celebrateAnim} />
+      <TouchableOpacity style={styles.lbIconButton} onPress={() => setLeaderboardOpen(true)}>
+        <Text style={styles.lbIconText}>≡</Text>
+      </TouchableOpacity>
       <ProfileButton name={userName} onPress={() => setProfileOpen(true)} />
       <ProfileSheet visible={profileOpen} name={userName} onClose={() => setProfileOpen(false)} />
+      {game && (
+        <LeaderboardModal
+          visible={leaderboardOpen}
+          onClose={() => setLeaderboardOpen(false)}
+          game={game}
+          allTeams={allTeams}
+          currentTeamId={teamId}
+        />
+      )}
     </View>
   );
 }
@@ -623,9 +778,28 @@ const styles = StyleSheet.create({
     color: '#111',
     marginBottom: 8,
   },
+  finishedPlacement: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 4,
+  },
   finishedSub: {
     fontSize: 16,
     color: '#aaa',
+    marginBottom: 32,
+  },
+  leaderboardButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#111',
+  },
+  leaderboardButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111',
   },
 
   // Spread overlay
@@ -665,6 +839,76 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     color: '#111',
+  },
+
+  // Leaderboard icon button (left of profile)
+  lbIconButton: {
+    position: 'absolute',
+    top: 52,
+    right: 60,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#111',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lbIconText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+
+  // Leaderboard modal
+  lbHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  lbTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111',
+  },
+  lbClose: {
+    fontSize: 18,
+    color: '#aaa',
+  },
+  lbRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  lbRowCurrent: {
+    backgroundColor: '#f8f8ff',
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+  },
+  lbRank: {
+    fontSize: 18,
+    width: 36,
+    textAlign: 'center',
+  },
+  lbTeamName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111',
+    marginBottom: 2,
+  },
+  lbTeamNameCurrent: {
+    color: '#4f46e5',
+  },
+  lbDetail: {
+    fontSize: 12,
+    color: '#888',
   },
 
   // Profile button
