@@ -16,10 +16,20 @@ function teamColor(index) {
   return TEAM_COLORS[index % TEAM_COLORS.length];
 }
 
-function teamDotIcon(color) {
+const STALE_MS = 5 * 60 * 1000; // 5 minutes
+
+function formatAge(updatedAt, now) {
+  const ms = now - updatedAt;
+  if (ms < 60000) return 'just now';
+  if (ms < 3600000) return `${Math.floor(ms / 60000)} min ago`;
+  return `${Math.floor(ms / 3600000)}h ago`;
+}
+
+function memberDotIcon(teamColor, isStale) {
+  const fill = isStale ? '#9ca3af' : teamColor;
   return L.divIcon({
     className: '',
-    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${fill};border:2.5px solid ${teamColor};box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });
@@ -65,11 +75,17 @@ export default function LiveMapPage() {
   const focusTeamId = location.state?.focusTeamId ?? null;
   const focusQuestId = location.state?.focusQuestId ?? null;
 
+  const [now, setNow] = useState(Date.now());
   const [game, setGame] = useState(null);
   const [quests, setQuests] = useState([]);
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
   const [trail, setTrail] = useState([]);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     return onSnapshot(doc(db, 'games', gameId), snap => {
@@ -199,11 +215,12 @@ export default function LiveMapPage() {
           {gameUsers.filter(u => u.lastLocation).map(u => {
             const color = teamColorMap[userTeamMap[u.id]] ?? '#999';
             const team = teams.find(t => t.id === userTeamMap[u.id]);
+            const isStale = !u.lastLocation.updatedAt || (now - u.lastLocation.updatedAt) > STALE_MS;
             return (
               <Marker
                 key={u.id}
                 position={[u.lastLocation.lat, u.lastLocation.lng]}
-                icon={teamDotIcon(color)}
+                icon={memberDotIcon(color, isStale)}
               >
                 <Popup>
                   <div style={{ lineHeight: 1.6 }}>
@@ -221,6 +238,9 @@ export default function LiveMapPage() {
                         {team.name}
                       </button>
                     )}
+                    <div style={{ fontSize: '0.75rem', color: isStale ? '#ef4444' : '#6b7280', marginTop: 2 }}>
+                      {u.lastLocation.updatedAt ? formatAge(u.lastLocation.updatedAt, now) : 'unknown'}
+                    </div>
                   </div>
                 </Popup>
               </Marker>
