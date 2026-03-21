@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Platform, Linking } from 'react-native';
 import { signOut } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import * as Notifications from 'expo-notifications';
@@ -7,6 +7,8 @@ import { auth, db } from '../firebase';
 import { useUser } from '../hooks/useUser';
 import { useAuth } from '../hooks/useAuth';
 import GameScreen from './GameScreen';
+
+const ADMIN_URL = 'https://gcr26-dev.netlify.app';
 
 export default function HomeScreen() {
   const { profile, loading } = useUser();
@@ -32,6 +34,22 @@ export default function HomeScreen() {
 
   if (profile?.teamId) {
     return <GameScreen teamId={profile.teamId} />;
+  }
+
+  if (profile?.isAdmin) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>GCR</Text>
+        <Text style={styles.heading}>Hey, Admin!</Text>
+        <Text style={styles.message}>Looking for the admin panel?</Text>
+        <TouchableOpacity style={styles.adminButton} onPress={() => Linking.openURL(ADMIN_URL)}>
+          <Text style={styles.adminButtonText}>Open Admin Panel →</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.signOutButton} onPress={() => signOut(auth)}>
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -75,6 +93,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 64,
+  },
+  adminButton: {
+    backgroundColor: '#111',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 48,
+  },
+  adminButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   signOutButton: {
     padding: 12,
