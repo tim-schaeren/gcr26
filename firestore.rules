@@ -25,7 +25,10 @@ service cloud.firestore {
                     );
       allow list:   if isAdmin();
       allow create: if isAuth() && request.auth.uid == uid;
-      allow update: if request.auth.uid == uid || isAdmin();
+      // Users may update their own doc but cannot promote themselves to admin
+      allow update: if isAdmin()
+                    || (request.auth.uid == uid
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']));
       allow delete: if isAdmin();
     }
 

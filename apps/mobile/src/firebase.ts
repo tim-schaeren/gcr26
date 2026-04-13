@@ -1,6 +1,17 @@
+declare global { var __emulatorConnected: boolean | undefined; }
+
+// Firebase 11 exports getReactNativePersistence under the 'react-native' package
+// condition, but TypeScript resolves @firebase/auth via the 'types' condition first
+// (browser types) and never sees it. Metro resolves it correctly at runtime.
+declare module 'firebase/auth' {
+  export function getReactNativePersistence(
+    storage: import('@react-native-async-storage/async-storage').AsyncStorageStatic
+  ): import('firebase/auth').Persistence;
+}
+
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { initializeAuth, connectAuthEmulator, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const config = {
@@ -18,3 +29,10 @@ export const db = getFirestore(app);
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage),
 });
+
+if (__DEV__ && !globalThis.__emulatorConnected) {
+  globalThis.__emulatorConnected = true;
+  const host = process.env.EXPO_PUBLIC_EMULATOR_HOST ?? 'localhost';
+  connectFirestoreEmulator(db, host, 8080);
+  connectAuthEmulator(auth, `http://${host}:9099`);
+}
