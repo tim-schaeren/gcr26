@@ -27,83 +27,9 @@ This is an npm workspaces monorepo. Run `npm install` from the root to install a
 
 ---
 
-## Prerequisites
+## Contributing
 
-- Node.js 18+
-- [Expo account](https://expo.dev) + EAS CLI: `npm install -g eas-cli`
-- [Firebase CLI](https://firebase.google.com/docs/cli): `npm install -g firebase-tools`
-- Xcode (for local iOS builds)
-- Apple Developer account
-
----
-
-## Environment variables
-
-### Mobile (`apps/mobile/.env`)
-
-```
-EXPO_PUBLIC_FIREBASE_API_KEY=
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
-EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-EXPO_PUBLIC_FIREBASE_APP_ID=
-```
-
-Copy from `.env.example` and fill in values from Firebase Console → Project Settings → Web app config.
-
-For EAS builds, these are also stored as environment variables in the Expo dashboard under the `preview` environment.
-
-`apps/mobile/.env` also needs Apple credentials for `npm run ship`:
-
-```
-APPLE_ID=your@apple.id
-ASC_APP_ID=           # numeric app ID from the App Store Connect URL
-```
-
-### Admin (`apps/admin/.env`)
-
-```
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-```
-
-Same Firebase project, different prefix (Vite uses `VITE_`, Expo uses `EXPO_PUBLIC_`).
-In production, these are set as environment variables in Netlify.
-
----
-
-## Development
-
-### Mobile
-
-```bash
-cd apps/mobile
-npx expo start --clear
-```
-
-Scan the QR code with Expo Go (must support SDK 54). The Metro bundler is configured to resolve React from the app's own `node_modules` to avoid duplicate React issues in the monorepo.
-
-### Admin
-
-```bash
-cd apps/admin
-npm run dev
-```
-
-Opens at `http://localhost:5173`. Sign in with a Firebase account that has `isAdmin: true` set in Firestore.
-
-#### Creating the first admin user
-
-1. Sign up via the mobile app or Firebase Console → Authentication
-2. In Firestore, create a document at `users/{uid}` with:
-   - `isAdmin: true`
-   - `email: "your@email.com"`
-   - `name: "Your Name"`
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, the local Firebase emulator workflow, and how to submit a PR.
 
 ---
 
@@ -112,12 +38,6 @@ Opens at `http://localhost:5173`. Sign in with a Firebase account that has `isAd
 ### Admin (Netlify)
 
 Deploys automatically on every push to `main`. Build config is in `netlify.toml`.
-
-To deploy manually:
-
-```bash
-git push origin main
-```
 
 ### Mobile (iOS)
 
@@ -143,6 +63,10 @@ Rules live in `firestore.rules`. Deploy with:
 ```bash
 firebase deploy --only firestore:rules
 ```
+
+### Admin user
+
+To grant admin access to a user in production, set `isAdmin: true` on their document in the `users` collection via the [Firebase Console](https://console.firebase.google.com/project/gcr26-d76cc/firestore/data/users).
 
 ### Data model
 
