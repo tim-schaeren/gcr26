@@ -1,4 +1,4 @@
-# Contributing to Grand City Race
+# Contributing to GCR26
 
 Thanks for helping out, I appreciate it! This is a monorepo with two apps: a React Native mobile app and a React/Vite admin console, backed by Firebase.
 
