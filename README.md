@@ -2,6 +2,8 @@
 
 A scavenger hunt / city race app you can play with your friends.
 
+Licensed under [GPL v3](LICENSE) — free to use, modify, and distribute, but derivatives must remain open source under the same license.
+
 ## Project structure
 
 ```
