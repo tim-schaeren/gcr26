@@ -88,3 +88,76 @@ Regular contributors don't need to build the app. Just use Expo Go for developme
 cd apps/mobile
 npm run ship
 ```
+
+## Contributing to the Wiki
+
+GitHub Wikis do not natively support pull requests. If you would like to contribute to the project's wiki, you can follow these steps to propose changes via your own fork.
+
+### Setup
+
+You will need to do the following one time only:
+
+1. Fork the `tim-schaeren/gcr26` repository under your namespace.
+2. Navigate to `https://github.com/YOUR_USERNAME/gcr26/wiki` in your browser.
+3. Hit **Create the first page**. You will get an error (that's ok!).
+4. Navigate to `https://github.com/YOUR_USERNAME/gcr26/wiki` again and you will see the wiki updated.
+5. Clone your wiki repository locally:
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/gcr26.wiki.git
+   cd gcr26.wiki
+   ```
+6. Add the upstream wiki remote:
+   ```bash
+   git remote add upstream https://github.com/tim-schaeren/gcr26.wiki.git
+   ```
+7. Fetch the latest master:
+   ```bash
+   git fetch upstream master
+   ```
+
+### Keeping your fork in sync
+
+```bash
+git checkout master
+git fetch upstream master
+git merge upstream/master
+git push origin master
+```
+
+### Submitting changes to your fork
+
+```bash
+git checkout master
+git add .
+git commit -m "single line sub 50 char description"
+git push origin master
+```
+
+### Submitting changes to the main repository
+
+When you're ready to submit, open an issue at https://github.com/tim-schaeren/gcr26/issues and provide the following:
+
+- A link to your fork's wiki repository.
+- A description of the changes you've made.
+
+## Core Contributors
+
+### Reviewing Changes
+
+As a core contributor you can review the changes done using:
+
+```bash
+git checkout -b contributor-master
+git pull https://github.com/CONTRIBUTOR_USERNAME/gcr26.wiki.git master
+```
+
+### Merging Changes
+
+As a core contributor you can merge the changes using:
+
+```bash
+git checkout master
+git merge --no-ff contributor-master
+git push origin master
+```
+
