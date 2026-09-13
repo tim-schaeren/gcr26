@@ -132,7 +132,7 @@ export default function GamePage() {
       // Reset all team progress
       const teamsSnap = await getDocs(query(collection(db, 'teams'), where('gameId', '==', gameId)));
       teamsSnap.docs.forEach(d => {
-        batch.update(d.ref, { completedQuestIds: [], currentQuestId: null, finishedAt: null, score: 0 });
+        batch.update(d.ref, { completedQuestIds: [], currentQuestId: null, finishedAt: null, questProgress: null, score: 0 });
       });
       await batch.commit();
     });

@@ -12,8 +12,12 @@ import {
   useSortable, arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { normalizeQuest } from '@gcr26/shared';
 import { db } from '../firebase';
 import QuestForm from '../components/QuestForm';
+import { TRIGGER_OPTIONS, TASK_OPTIONS } from '../utils/questOptions';
+
+const optionLabel = (options, value) => options.find(o => o.value === value)?.label ?? value;
 
 function QuestRow({ quest, index, isSelected, onClick, onToggle, onViewMap }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -40,6 +44,9 @@ function QuestRow({ quest, index, isSelected, onClick, onToggle, onViewMap }) {
       </button>
       <span className="text-sm text-gray-400 w-6 text-center">{index + 1}</span>
       <span className="flex-1 text-sm font-medium text-gray-900">{quest.title}</span>
+      <span className="hidden sm:inline text-xs text-gray-400 shrink-0">
+        {optionLabel(TRIGGER_OPTIONS, quest.trigger)} · {optionLabel(TASK_OPTIONS, quest.task)}
+      </span>
       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${quest.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
         {quest.isActive ? 'Active' : 'Inactive'}
       </span>
@@ -91,7 +98,7 @@ export default function QuestsPage() {
   useEffect(() => {
     return onSnapshot(collection(db, 'games', gameId, 'quests'), snap => {
       const map = {};
-      snap.forEach(d => { map[d.id] = { id: d.id, ...d.data() }; });
+      snap.forEach(d => { map[d.id] = normalizeQuest(d.id, d.data()); });
       setQuests(map);
     });
   }, [gameId]);
@@ -141,7 +148,8 @@ export default function QuestsPage() {
         const ref = await addDoc(collection(db, 'games', gameId, 'quests'), data);
         await setDoc(gameDoc, { questOrder: [...questOrder, ref.id] }, { merge: true });
       } else {
-        await updateDoc(doc(db, 'games', gameId, 'quests', selected.id), data);
+        // Replace rather than merge so fields from a previous trigger/task don't linger
+        await setDoc(doc(db, 'games', gameId, 'quests', selected.id), data);
       }
       isDirty.current = false;
       setSelected(null);

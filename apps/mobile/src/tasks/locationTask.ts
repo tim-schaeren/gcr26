@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { recordPosition } from './distanceTracker';
 
 export const TASK_NAME = 'gcr-background-location';
 
@@ -10,6 +11,10 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }: TaskManager.TaskManage
   if (error) return;
   const locations = data?.locations;
   if (!locations?.length) return;
+
+  for (const loc of locations) {
+    await recordPosition(loc.coords.latitude, loc.coords.longitude, loc.coords.accuracy);
+  }
 
   const [uid, teamId, gameId] = await AsyncStorage.multiGet(['uid', 'teamId', 'gameId'])
     .then(pairs => pairs.map(([, v]) => v));

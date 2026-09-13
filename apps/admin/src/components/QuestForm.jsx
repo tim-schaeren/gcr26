@@ -1,12 +1,20 @@
 import { useState, useEffect } from 'react';
+import { hasContent } from '@gcr26/shared';
 import LocationPicker from './LocationPicker';
+import ContentBlocksEditor from './ContentBlocksEditor';
+import { toEditorBlocks, toContentBlocks, blockErrors } from '../utils/contentBlocks';
+import { TRIGGER_OPTIONS, TASK_OPTIONS } from '../utils/questOptions';
 
 const EMPTY = {
   title: '',
-  description: '',
-  navigationHint: '',
+  trigger: 'location',
+  task: 'answer',
+  description: [{ type: 'text', text: '' }],
+  navigationHint: [{ type: 'text', text: '' }],
   fenceRadius: '50',
   location: { lat: '', lng: '' },
+  distanceMeters: '500',
+  durationMinutes: '15',
   answers: [''],
   hints: [''],
   isActive: true,
@@ -16,14 +24,37 @@ function toFormState(quest) {
   if (!quest) return EMPTY;
   return {
     title: quest.title,
-    description: quest.description,
-    navigationHint: quest.navigationHint ?? '',
+    trigger: quest.trigger,
+    task: quest.task,
+    description: quest.description.length ? toEditorBlocks(quest.description) : EMPTY.description,
+    navigationHint: quest.navigationHint.length ? toEditorBlocks(quest.navigationHint) : EMPTY.navigationHint,
     fenceRadius: String(quest.fenceRadius ?? 50),
     location: { lat: String(quest.location?.lat ?? ''), lng: String(quest.location?.lng ?? '') },
+    distanceMeters: String(quest.distanceMeters ?? 500),
+    durationMinutes: String(quest.durationSeconds != null ? quest.durationSeconds / 60 : 15),
     answers: quest.answers?.length ? quest.answers : [''],
     hints: quest.hints?.length ? quest.hints : [''],
     isActive: quest.isActive,
   };
+}
+
+function SegmentedControl({ options, value, onChange }) {
+  return (
+    <div>
+      <div className="inline-flex rounded-lg border border-gray-300 p-0.5 bg-gray-50">
+        {options.map(o => (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className={`px-3 py-1.5 text-sm rounded-md transition-colors ${value === o.value ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'}`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-gray-400 mt-1">{options.find(o => o.value === value)?.help}</p>
+    </div>
+  );
 }
 
 export default function QuestForm({ quest, existingTitles, cityCoordinates, onSave, onCancel, onDelete, onDirtyChange, saving }) {
@@ -71,37 +102,70 @@ export default function QuestForm({ quest, existingTitles, cityCoordinates, onSa
     else if (existingTitles?.includes(form.title.trim()) && form.title.trim() !== quest?.title) {
       e.title = 'A quest with this title already exists.';
     }
-    if (!form.description.trim()) e.description = 'Description is required.';
-    if (!form.navigationHint.trim()) e.navigationHint = 'Navigation hint is required.';
-    const radius = parseFloat(form.fenceRadius);
-    if (isNaN(radius) || radius <= 0) e.fenceRadius = 'Fence radius must be a positive number.';
-    const lat = parseFloat(form.location.lat);
-    const lng = parseFloat(form.location.lng);
-    if (isNaN(lat) || isNaN(lng) || !form.location.lat || !form.location.lng) {
-      e.location = 'A valid location is required.';
+    e.description = blockErrors(form.description)
+      ?? (hasContent(toContentBlocks(form.description)) ? undefined : 'Description is required.');
+
+    if (form.trigger === 'location') {
+      e.navigationHint = blockErrors(form.navigationHint)
+        ?? (hasContent(toContentBlocks(form.navigationHint)) ? undefined : 'Navigation hint is required.');
+      const radius = parseFloat(form.fenceRadius);
+      if (isNaN(radius) || radius <= 0) e.fenceRadius = 'Fence radius must be a positive number.';
+      const lat = parseFloat(form.location.lat);
+      const lng = parseFloat(form.location.lng);
+      if (isNaN(lat) || isNaN(lng) || !form.location.lat || !form.location.lng) {
+        e.location = 'A valid location is required.';
+      }
     }
-    const answers = form.answers.map(a => a.trim()).filter(Boolean);
-    if (answers.length === 0) e.answers = 'At least one answer is required.';
-    const hints = form.hints.map(h => h.trim()).filter(Boolean);
-    if (hints.length === 0) e.hints = 'At least one hint is required.';
+
+    if (form.trigger === 'distance') {
+      e.navigationHint = blockErrors(form.navigationHint) ?? undefined;
+      const meters = parseFloat(form.distanceMeters);
+      if (isNaN(meters) || meters <= 0) e.distanceMeters = 'Distance must be a positive number.';
+    }
+
+    if (form.task === 'answer') {
+      const answers = form.answers.map(a => a.trim()).filter(Boolean);
+      if (answers.length === 0) e.answers = 'At least one answer is required.';
+      const hints = form.hints.map(h => h.trim()).filter(Boolean);
+      if (hints.length === 0) e.hints = 'At least one hint is required.';
+    }
+
+    if (form.task === 'timer') {
+      const minutes = parseFloat(form.durationMinutes);
+      if (isNaN(minutes) || minutes <= 0) e.durationMinutes = 'Duration must be a positive number.';
+    }
+
+    Object.keys(e).forEach(k => e[k] === undefined && delete e[k]);
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
+  // Only fields relevant to the chosen trigger/task are saved (the quest doc is replaced on save)
   function handleSave() {
     if (!validate()) return;
-    const answers = form.answers.map(a => a.trim()).filter(Boolean);
-    const hints = form.hints.map(h => h.trim()).filter(Boolean);
-    onSave({
+    const data = {
       title: form.title.trim(),
-      description: form.description.trim(),
-      navigationHint: form.navigationHint.trim(),
-      fenceRadius: parseFloat(form.fenceRadius),
-      location: { lat: parseFloat(form.location.lat), lng: parseFloat(form.location.lng) },
-      answers,
-      hints,
+      trigger: form.trigger,
+      task: form.task,
+      description: toContentBlocks(form.description),
+      navigationHint: form.trigger === 'none' ? [] : toContentBlocks(form.navigationHint),
       isActive: form.isActive,
-    });
+    };
+    if (form.trigger === 'location') {
+      data.fenceRadius = parseFloat(form.fenceRadius);
+      data.location = { lat: parseFloat(form.location.lat), lng: parseFloat(form.location.lng) };
+    }
+    if (form.trigger === 'distance') {
+      data.distanceMeters = parseFloat(form.distanceMeters);
+    }
+    if (form.task === 'answer') {
+      data.answers = form.answers.map(a => a.trim()).filter(Boolean);
+      data.hints = form.hints.map(h => h.trim()).filter(Boolean);
+    }
+    if (form.task === 'timer') {
+      data.durationSeconds = Math.round(parseFloat(form.durationMinutes) * 60);
+    }
+    onSave(data);
   }
 
   const deleteConfirmed = deleteInput === quest?.title;
@@ -150,102 +214,163 @@ export default function QuestForm({ quest, existingTitles, cityCoordinates, onSa
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Trigger</label>
+              <SegmentedControl options={TRIGGER_OPTIONS} value={form.trigger} onChange={v => set('trigger', v)} />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Task</label>
+              <SegmentedControl options={TASK_OPTIONS} value={form.task} onChange={v => set('task', v)} />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none ${errors.description ? 'border-red-400' : 'border-gray-300'}`}
-                rows={4}
-                value={form.description}
-                onChange={e => set('description', e.target.value)}
-                placeholder="What must players do to complete this quest?"
+              <ContentBlocksEditor
+                blocks={form.description}
+                onChange={blocks => set('description', blocks)}
+                textPlaceholder={
+                  form.task === 'answer' ? 'What must players do to complete this quest?'
+                    : form.task === 'timer' ? 'Shown during the countdown (e.g. "Lunch break — enjoy!")'
+                    : 'Information for the players'
+                }
+                hasError={!!errors.description}
               />
               {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Navigation Hint</label>
-              <textarea
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none ${errors.navigationHint ? 'border-red-400' : 'border-gray-300'}`}
-                rows={2}
-                value={form.navigationHint}
-                onChange={e => set('navigationHint', e.target.value)}
-                placeholder="How do players find this quest? (e.g. 'Find the oldest tree in the city')"
-              />
-              {errors.navigationHint && <p className="text-xs text-red-500 mt-1">{errors.navigationHint}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fence Radius (meters)</label>
-              <input
-                type="number"
-                min="1"
-                className={`w-32 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.fenceRadius ? 'border-red-400' : 'border-gray-300'}`}
-                value={form.fenceRadius}
-                onChange={e => set('fenceRadius', e.target.value)}
-                placeholder="50"
-              />
-              {errors.fenceRadius && <p className="text-xs text-red-500 mt-1">{errors.fenceRadius}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-              <LocationPicker
-                value={form.location}
-                onChange={loc => set('location', loc)}
-                defaultCenter={cityCoordinates}
-                fenceRadius={parseFloat(form.fenceRadius) || 0}
-              />
-              {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valid Answers</label>
-              <div className="space-y-2">
-                {form.answers.map((answer, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <input
-                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.answers ? 'border-red-400' : 'border-gray-300'}`}
-                      value={answer}
-                      onChange={e => setArrayItem('answers', i, e.target.value)}
-                      placeholder={`Answer ${i + 1}`}
-                    />
-                    {form.answers.length > 1 && (
-                      <button onClick={() => removeArrayItem('answers', i)} className="text-gray-300 hover:text-red-400 transition-colors shrink-0">
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {errors.answers && <p className="text-xs text-red-500">{errors.answers}</p>}
-                <button onClick={() => addArrayItem('answers')} className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
-                  + Add answer
-                </button>
+            {form.trigger !== 'none' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Navigation Hint{form.trigger === 'distance' && <span className="font-normal text-gray-400"> (optional)</span>}
+                </label>
+                <ContentBlocksEditor
+                  blocks={form.navigationHint}
+                  onChange={blocks => set('navigationHint', blocks)}
+                  textPlaceholder={
+                    form.trigger === 'location'
+                      ? "How do players find this quest? (e.g. 'Find the oldest tree in the city')"
+                      : "Shown while walking (e.g. 'Head towards the lake')"
+                  }
+                  hasError={!!errors.navigationHint}
+                />
+                {errors.navigationHint && <p className="text-xs text-red-500 mt-1">{errors.navigationHint}</p>}
               </div>
-            </div>
+            )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Hints</label>
-              <div className="space-y-2">
-                {form.hints.map((hint, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <input
-                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.hints ? 'border-red-400' : 'border-gray-300'}`}
-                      value={hint}
-                      onChange={e => setArrayItem('hints', i, e.target.value)}
-                      placeholder={`Hint ${i + 1}`}
-                    />
-                    {form.hints.length > 1 && (
-                      <button onClick={() => removeArrayItem('hints', i)} className="text-gray-300 hover:text-red-400 transition-colors shrink-0">
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {errors.hints && <p className="text-xs text-red-500">{errors.hints}</p>}
-                <button onClick={() => addArrayItem('hints')} className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
-                  + Add hint
-                </button>
+            {form.trigger === 'location' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fence Radius (meters)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className={`w-32 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.fenceRadius ? 'border-red-400' : 'border-gray-300'}`}
+                    value={form.fenceRadius}
+                    onChange={e => set('fenceRadius', e.target.value)}
+                    placeholder="50"
+                  />
+                  {errors.fenceRadius && <p className="text-xs text-red-500 mt-1">{errors.fenceRadius}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                  <LocationPicker
+                    value={form.location}
+                    onChange={loc => set('location', loc)}
+                    defaultCenter={cityCoordinates}
+                    fenceRadius={parseFloat(form.fenceRadius) || 0}
+                  />
+                  {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
+                </div>
+              </>
+            )}
+
+            {form.trigger === 'distance' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Distance (meters)</label>
+                <input
+                  type="number"
+                  min="1"
+                  className={`w-32 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.distanceMeters ? 'border-red-400' : 'border-gray-300'}`}
+                  value={form.distanceMeters}
+                  onChange={e => set('distanceMeters', e.target.value)}
+                  placeholder="500"
+                />
+                <p className="text-xs text-gray-400 mt-1">Measured by GPS from when the team starts this quest.</p>
+                {errors.distanceMeters && <p className="text-xs text-red-500 mt-1">{errors.distanceMeters}</p>}
               </div>
-            </div>
+            )}
+
+            {form.task === 'timer' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                <input
+                  type="number"
+                  min="0.5"
+                  step="0.5"
+                  className={`w-32 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.durationMinutes ? 'border-red-400' : 'border-gray-300'}`}
+                  value={form.durationMinutes}
+                  onChange={e => set('durationMinutes', e.target.value)}
+                  placeholder="15"
+                />
+                <p className="text-xs text-gray-400 mt-1">Game pauses don't count toward the timer.</p>
+                {errors.durationMinutes && <p className="text-xs text-red-500 mt-1">{errors.durationMinutes}</p>}
+              </div>
+            )}
+
+            {form.task === 'answer' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Valid Answers</label>
+                  <div className="space-y-2">
+                    {form.answers.map((answer, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input
+                          className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.answers ? 'border-red-400' : 'border-gray-300'}`}
+                          value={answer}
+                          onChange={e => setArrayItem('answers', i, e.target.value)}
+                          placeholder={`Answer ${i + 1}`}
+                        />
+                        {form.answers.length > 1 && (
+                          <button onClick={() => removeArrayItem('answers', i)} className="text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {errors.answers && <p className="text-xs text-red-500">{errors.answers}</p>}
+                    <button onClick={() => addArrayItem('answers')} className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+                      + Add answer
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hints</label>
+                  <div className="space-y-2">
+                    {form.hints.map((hint, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input
+                          className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.hints ? 'border-red-400' : 'border-gray-300'}`}
+                          value={hint}
+                          onChange={e => setArrayItem('hints', i, e.target.value)}
+                          placeholder={`Hint ${i + 1}`}
+                        />
+                        {form.hints.length > 1 && (
+                          <button onClick={() => removeArrayItem('hints', i)} className="text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {errors.hints && <p className="text-xs text-red-500">{errors.hints}</p>}
+                    <button onClick={() => addArrayItem('hints')} className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+                      + Add hint
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="flex items-center gap-3">
               <button

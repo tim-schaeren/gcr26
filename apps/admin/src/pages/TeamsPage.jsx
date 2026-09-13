@@ -366,6 +366,7 @@ export default function TeamsPage() {
           currentQuestId: null,
           completedQuestIds: [],
           finishedAt: null,
+          questProgress: null,
         });
       } else {
         await updateDoc(doc(db, 'teams', selected.id), data);

@@ -23,20 +23,50 @@ export interface Team {
   currentQuestId: string | null;
   completedQuestIds: string[];
   finishedAt: number | null;
+  questProgress: QuestProgress | null;
+}
+
+// Shared progress on the current quest, so every team member sees the same state
+export interface QuestProgress {
+  questId: string;              // progress is ignored if this doesn't match the current quest
+  unlockedAt: number | null;    // when the trigger was first satisfied
+  pausedMsAtUnlock: number;     // game.totalPausedMs at unlock; later pauses don't count toward timers
+  distanceMeters: number;       // distance trigger: furthest distance reported by any member
 }
 
 // ─── Quests ───────────────────────────────────────────────────────────────────
 
+export type ContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image'; url: string; caption?: string }
+  | { type: 'youtube'; videoId: string };
+
+export type QuestTrigger =
+  | 'location'  // unlocks inside the geofence
+  | 'distance'  // unlocks after the team has moved a set distance
+  | 'none';     // unlocked immediately
+
+export type QuestTask =
+  | 'answer'    // type a valid answer
+  | 'timer'     // wait for a countdown (e.g. mandatory break)
+  | 'continue'; // read and tap continue (info)
+
+// Fields not relevant to the chosen trigger/task are omitted from the document.
+// Legacy quests have no trigger/task and plain-string content — see normalizeQuest().
 export interface Quest {
   id: string;
   title: string;
-  description: string;
-  navigationHint: string; // shown to players outside the fence to guide them to the location
-  fenceRadius: number;    // meters; player must be within this radius to see the quest
-  location: GeoPoint;
-  answers: string[];      // trimmed; multiple valid answers allowed
-  hints: string[];
-  isActive: boolean;      // admin can hide without deleting
+  trigger: QuestTrigger;
+  task: QuestTask;
+  description: ContentBlock[];
+  navigationHint: ContentBlock[]; // location/distance: shown before the quest unlocks
+  fenceRadius?: number;           // location: meters; player must be within this radius
+  location?: GeoPoint;            // location
+  distanceMeters?: number;        // distance: meters to travel after the quest starts
+  answers?: string[];             // answer: trimmed; multiple valid answers allowed
+  hints?: string[];               // answer
+  durationSeconds?: number;       // timer
+  isActive: boolean;              // admin can hide without deleting
 }
 
 export interface GeoPoint {

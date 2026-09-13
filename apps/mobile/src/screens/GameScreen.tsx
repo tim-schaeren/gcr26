@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import {
   View,
   Text,
@@ -21,8 +21,12 @@ import {
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { normalizeQuest, type Quest, type QuestProgress } from '@gcr26/shared';
 import { db, auth } from '../firebase';
 import { TASK_NAME as LOCATION_TASK } from '../tasks/locationTask';
+import { startTracking, stopTracking, recordPosition } from '../tasks/distanceTracker';
+import { distanceMeters } from '../utils/geo';
+import ContentBlocks from '../components/ContentBlocks';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +38,7 @@ interface Team {
   currentQuestId: string | null;
   completedQuestIds: string[];
   finishedAt: number | null;
+  questProgress?: QuestProgress | null;
 }
 
 interface Game {
@@ -47,29 +52,10 @@ interface Game {
   endedAt: number | null;
 }
 
-interface Quest {
-  id: string;
-  title: string;
-  description: string;
-  navigationHint: string;
-  fenceRadius: number;
-  location: { lat: number; lng: number };
-  answers: string[];
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+// Distance progress is pushed to the team doc at most once per this many meters
+const DISTANCE_SYNC_STEP_METERS = 20;
 
 function formatDuration(ms: number): string {
   if (!ms || ms <= 0) return '—';
@@ -112,15 +98,117 @@ function WaitingView({ game, now }: { game: Game; now: number }) {
   );
 }
 
+function ScrollContainer({ children }: { children: ReactNode }) {
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#fff' }}
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
 function NavigationView({ quest, distance }: { quest: Quest; distance: number | null }) {
   return (
-    <View style={styles.container}>
+    <ScrollContainer>
       <Text style={styles.label}>FIND YOUR NEXT QUEST</Text>
-      <Text style={styles.navigationHint}>{quest.navigationHint}</Text>
+      <ContentBlocks blocks={quest.navigationHint} textStyle={styles.navigationHint} />
       {distance !== null && (
         <Text style={styles.distance}>{Math.round(distance)} m away</Text>
       )}
-    </View>
+    </ScrollContainer>
+  );
+}
+
+function DistanceView({ quest, meters }: { quest: Quest; meters: number }) {
+  const target = quest.distanceMeters ?? 0;
+  const fraction = target > 0 ? Math.min(meters / target, 1) : 1;
+  return (
+    <ScrollContainer>
+      <Text style={styles.label}>KEEP MOVING</Text>
+      {quest.navigationHint.length > 0 && (
+        <ContentBlocks blocks={quest.navigationHint} textStyle={styles.navigationHint} />
+      )}
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${fraction * 100}%` }]} />
+      </View>
+      <Text style={styles.distance}>
+        {Math.round(Math.min(meters, target))} / {Math.round(target)} m
+      </Text>
+    </ScrollContainer>
+  );
+}
+
+function QuestHeader({ quest, questNumber, totalQuests }: { quest: Quest; questNumber: number; totalQuests: number }) {
+  return (
+    <>
+      <Text style={styles.questNumber}>
+        Quest {questNumber} of {totalQuests}
+      </Text>
+      <Text style={styles.questTitle}>{quest.title}</Text>
+      <ContentBlocks blocks={quest.description} textStyle={styles.questDescription} />
+    </>
+  );
+}
+
+function ContinueButton({ disabled, label, onPress }: { disabled: boolean; label: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      style={[styles.continueButton, disabled && styles.submitButtonDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+    >
+      <Text style={styles.continueButtonText}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function TimerView({
+  quest,
+  questNumber,
+  totalQuests,
+  remainingMs,
+  submitting,
+  onContinue,
+}: {
+  quest: Quest;
+  questNumber: number;
+  totalQuests: number;
+  remainingMs: number;
+  submitting: boolean;
+  onContinue: () => void;
+}) {
+  const done = remainingMs <= 0;
+  return (
+    <ScrollContainer>
+      <QuestHeader quest={quest} questNumber={questNumber} totalQuests={totalQuests} />
+      <Text style={styles.countdownLabel}>{done ? 'time is up' : 'continue in'}</Text>
+      <Text style={[styles.countdown, styles.timerCountdown]}>{formatCountdown(remainingMs)}</Text>
+      <ContinueButton disabled={!done || submitting} label="Continue →" onPress={onContinue} />
+    </ScrollContainer>
+  );
+}
+
+function InfoView({
+  quest,
+  questNumber,
+  totalQuests,
+  submitting,
+  onContinue,
+}: {
+  quest: Quest;
+  questNumber: number;
+  totalQuests: number;
+  submitting: boolean;
+  onContinue: () => void;
+}) {
+  return (
+    <ScrollContainer>
+      <QuestHeader quest={quest} questNumber={questNumber} totalQuests={totalQuests} />
+      <ContinueButton disabled={submitting} label="Continue →" onPress={onContinue} />
+    </ScrollContainer>
   );
 }
 
@@ -145,37 +233,35 @@ function QuestView({
 }) {
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <Text style={styles.questNumber}>
-        Quest {questNumber} of {totalQuests}
-      </Text>
-      <Text style={styles.questTitle}>{quest.title}</Text>
-      <Text style={styles.questDescription}>{quest.description}</Text>
+      <ScrollContainer>
+        <QuestHeader quest={quest} questNumber={questNumber} totalQuests={totalQuests} />
 
-      <View style={styles.answerRow}>
-        <TextInput
-          style={[styles.answerInput, wrong && styles.answerInputWrong]}
-          value={answer}
-          onChangeText={setAnswer}
-          placeholder="Your answer…"
-          placeholderTextColor="#bbb"
-          autoCorrect={false}
-          autoCapitalize="none"
-          returnKeyType="done"
-          onSubmitEditing={onSubmit}
-        />
-        <TouchableOpacity
-          style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-          onPress={onSubmit}
-          disabled={submitting}
-        >
-          <Text style={styles.submitButtonText}>→</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.answerRow}>
+          <TextInput
+            style={[styles.answerInput, wrong && styles.answerInputWrong]}
+            value={answer}
+            onChangeText={setAnswer}
+            placeholder="Your answer…"
+            placeholderTextColor="#bbb"
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="done"
+            onSubmitEditing={onSubmit}
+          />
+          <TouchableOpacity
+            style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+            onPress={onSubmit}
+            disabled={submitting}
+          >
+            <Text style={styles.submitButtonText}>→</Text>
+          </TouchableOpacity>
+        </View>
 
-      {wrong && <Text style={styles.wrongText}>That's not right — try again.</Text>}
+        {wrong && <Text style={styles.wrongText}>That's not right — try again.</Text>}
+      </ScrollContainer>
     </KeyboardAvoidingView>
   );
 }
@@ -358,7 +444,8 @@ export default function GameScreen({ teamId }: { teamId: string }) {
   const [team, setTeam] = useState<Team | null>(null);
   const [game, setGame] = useState<Game | null>(null);
   const [quest, setQuest] = useState<Quest | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number; accuracy: number | null } | null>(null);
+  const [localMeters, setLocalMeters] = useState(0);
   const [locationDenied, setLocationDenied] = useState(false);
   const [memberLocations, setMemberLocations] = useState<Record<string, { lat: number; lng: number } | null>>({});
   const [answer, setAnswer] = useState('');
@@ -416,7 +503,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
       return;
     }
     return onSnapshot(doc(db, 'games', game.id, 'quests', currentQuestId), snap => {
-      setQuest(snap.exists() ? ({ id: snap.id, ...snap.data() } as Quest) : null);
+      setQuest(snap.exists() ? normalizeQuest(snap.id, snap.data()) : null);
     });
   }, [game?.id, currentQuestId]);
 
@@ -457,8 +544,8 @@ export default function GameScreen({ teamId }: { teamId: string }) {
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
         loc => {
-          const { latitude: lat, longitude: lng } = loc.coords;
-          setCoords({ lat, lng });
+          const { latitude: lat, longitude: lng, accuracy } = loc.coords;
+          setCoords({ lat, lng, accuracy });
 
           const currentUid = auth.currentUser?.uid;
           if (!currentUid || !team || !game) return;
@@ -535,10 +622,109 @@ export default function GameScreen({ teamId }: { teamId: string }) {
     return false;
   }, [memberLocations, game?.maxTeamSpreadMeters]);
 
+  // ── Quest trigger / progress ──────────────────────────────────────────────
+
+  const progress = quest && team?.questProgress?.questId === quest.id ? team.questProgress : null;
+  const gameRunning =
+    !!game && !!team && !game.endedAt && !game.pausedAt && !team.finishedAt && now >= game.startDateTime;
+
+  const distanceToQuest =
+    coords != null && quest?.location
+      ? distanceMeters(coords.lat, coords.lng, quest.location.lat, quest.location.lng)
+      : null;
+  const insideFence = distanceToQuest !== null && distanceToQuest <= (quest?.fenceRadius ?? 50);
+  const teamMeters = progress?.distanceMeters ?? 0;
+  const walkedMeters = Math.max(localMeters, teamMeters);
+
+  let unlocked = false;
+  if (quest?.trigger === 'none') unlocked = true;
+  // Answer quests need the team at the location; timers and info stay open once reached
+  if (quest?.trigger === 'location') unlocked = insideFence || (quest.task !== 'answer' && !!progress?.unlockedAt);
+  if (quest?.trigger === 'distance') unlocked = !!progress?.unlockedAt || walkedMeters >= (quest.distanceMeters ?? 0);
+
+  const trackingDistance = gameRunning && quest?.trigger === 'distance' && !progress?.unlockedAt;
+
+  // Plain writes from the local snapshot (not transactions) so progress still queues while offline.
+  // Concurrent writes from teammates only differ by seconds/meters, so last-write-wins is fine.
+  function updateQuestProgress(questId: string, patch: { distanceMeters?: number; unlock?: boolean }) {
+    if (!team || !game) return Promise.resolve();
+    const existing = team.questProgress?.questId === questId ? team.questProgress : null;
+    const next: QuestProgress = {
+      questId,
+      unlockedAt: existing?.unlockedAt ?? null,
+      pausedMsAtUnlock: existing?.pausedMsAtUnlock ?? 0,
+      distanceMeters: Math.max(existing?.distanceMeters ?? 0, Math.round(patch.distanceMeters ?? 0)),
+    };
+    if (patch.unlock && !next.unlockedAt) {
+      next.unlockedAt = Date.now();
+      next.pausedMsAtUnlock = game.totalPausedMs ?? 0;
+    }
+    return updateDoc(doc(db, 'teams', team.id), { questProgress: next });
+  }
+
+  // Record when timer/info quests unlock so the countdown is shared and survives leaving the fence
+  const unlockPendingRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!quest || !gameRunning || !unlocked || progress?.unlockedAt) return;
+    if (quest.task === 'answer' || quest.trigger === 'distance') return;
+    if (unlockPendingRef.current === quest.id) return;
+    unlockPendingRef.current = quest.id;
+    updateQuestProgress(quest.id, { unlock: true }).catch(() => { unlockPendingRef.current = null; });
+  }, [quest?.id, gameRunning, unlocked, progress?.unlockedAt]);
+
+  // Start/stop the persistent distance tracker (also fed by the background location task)
+  useEffect(() => {
+    if (!quest) return;
+    if (trackingDistance) {
+      startTracking(quest.id, teamMeters).then(s => setLocalMeters(s.meters)).catch(() => {});
+    } else {
+      stopTracking().catch(() => {});
+      setLocalMeters(0);
+    }
+  }, [quest?.id, trackingDistance]);
+
+  useEffect(() => {
+    if (!coords || !trackingDistance || !quest) return;
+    const questId = quest.id;
+    recordPosition(coords.lat, coords.lng, coords.accuracy)
+      .then(s => { if (s?.questId === questId) setLocalMeters(s.meters); })
+      .catch(() => {});
+  }, [coords, trackingDistance, quest?.id]);
+
+  // Share distance progress with the team, and unlock once the target is reached.
+  // The local snapshot reflects the write immediately, which stops this from re-firing.
+  useEffect(() => {
+    if (!trackingDistance || !quest) return;
+    const reached = localMeters >= (quest.distanceMeters ?? 0);
+    if (!reached && localMeters - teamMeters < DISTANCE_SYNC_STEP_METERS) return;
+    updateQuestProgress(quest.id, { distanceMeters: localMeters, unlock: reached }).catch(() => {});
+  }, [localMeters, teamMeters, trackingDistance, quest?.id]);
+
+  function completeQuest(completed: Quest) {
+    if (!team || !game) return Promise.resolve();
+    const nextQuestId = game.questOrder[game.questOrder.indexOf(completed.id) + 1] ?? null;
+    const update: Record<string, unknown> = {
+      completedQuestIds: arrayUnion(completed.id),
+      currentQuestId: nextQuestId,
+      questProgress: null,
+    };
+    if (!nextQuestId) update.finishedAt = Date.now();
+    return updateDoc(doc(db, 'teams', team.id), update);
+  }
+
+  function continueQuest() {
+    if (!quest || submitting) return;
+    setSubmitting(true);
+    completeQuest(quest).catch(() => {});
+    // Brief lockout so a double tap can't also complete the next quest. Not tied to the
+    // write acknowledgement, which never arrives while offline.
+    setTimeout(() => setSubmitting(false), 1000);
+  }
+
   async function submitAnswer() {
     if (!quest || !team || !game || submitting || !answer.trim() || spreadTooLarge) return;
     const normalized = answer.trim().toLowerCase();
-    const correct = quest.answers.some(a => a.trim().toLowerCase() === normalized);
+    const correct = (quest.answers ?? []).some(a => a.trim().toLowerCase() === normalized);
     if (!correct) {
       setWrong(true);
       setTimeout(() => setWrong(false), 2000);
@@ -555,13 +741,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
       setCelebrating(false);
       celebrateAnim.setValue(0);
       try {
-        const nextQuestId = game.questOrder[game.questOrder.indexOf(quest.id) + 1] ?? null;
-        const update: Record<string, unknown> = {
-          completedQuestIds: arrayUnion(quest.id),
-          currentQuestId: nextQuestId,
-        };
-        if (!nextQuestId) update.finishedAt = Date.now();
-        await updateDoc(doc(db, 'teams', team.id), update);
+        await completeQuest(quest);
       } finally {
         setSubmitting(false);
       }
@@ -601,21 +781,49 @@ export default function GameScreen({ teamId }: { teamId: string }) {
       );
     }
 
-    const distance =
-      coords != null
-        ? distanceMeters(coords.lat, coords.lng, quest.location.lat, quest.location.lng)
-        : null;
-    const insideFence = distance !== null && distance <= (quest.fenceRadius ?? 50);
     const questNumber = game.questOrder.indexOf(quest.id) + 1;
+    const totalQuests = game.questOrder.length;
 
-    if (!insideFence) return <NavigationView quest={quest} distance={distance} />;
+    if (!unlocked) {
+      if (quest.trigger === 'distance') return <DistanceView quest={quest} meters={walkedMeters} />;
+      return <NavigationView quest={quest} distance={distanceToQuest} />;
+    }
+
+    if (quest.task === 'timer') {
+      // Until the unlock write lands, show the full duration
+      const elapsed = progress?.unlockedAt
+        ? now - progress.unlockedAt - ((game.totalPausedMs ?? 0) - progress.pausedMsAtUnlock)
+        : 0;
+      return (
+        <TimerView
+          quest={quest}
+          questNumber={questNumber}
+          totalQuests={totalQuests}
+          remainingMs={(quest.durationSeconds ?? 0) * 1000 - elapsed}
+          submitting={submitting || !progress?.unlockedAt}
+          onContinue={continueQuest}
+        />
+      );
+    }
+
+    if (quest.task === 'continue') {
+      return (
+        <InfoView
+          quest={quest}
+          questNumber={questNumber}
+          totalQuests={totalQuests}
+          submitting={submitting}
+          onContinue={continueQuest}
+        />
+      );
+    }
 
     return (
       <View style={{ flex: 1 }}>
         <QuestView
           quest={quest}
           questNumber={questNumber}
-          totalQuests={game.questOrder.length}
+          totalQuests={totalQuests}
           answer={answer}
           setAnswer={setAnswer}
           wrong={wrong}
@@ -659,6 +867,14 @@ const styles = StyleSheet.create({
     padding: 32,
     backgroundColor: '#fff',
   },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingTop: 100, // clear the floating header buttons
+    paddingBottom: 48,
+  },
 
   // Waiting
   label: {
@@ -696,11 +912,25 @@ const styles = StyleSheet.create({
     color: '#111',
     textAlign: 'center',
     lineHeight: 32,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   distance: {
     fontSize: 14,
     color: '#aaa',
+  },
+  progressTrack: {
+    width: '100%',
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#f0f0f0',
+    overflow: 'hidden',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: '#111',
   },
 
   // Quest
@@ -723,12 +953,13 @@ const styles = StyleSheet.create({
     color: '#555',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 40,
+    marginBottom: 16,
   },
   answerRow: {
     flexDirection: 'row',
     width: '100%',
     gap: 8,
+    marginTop: 24,
   },
   answerInput: {
     flex: 1,
@@ -759,6 +990,21 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#fff',
     fontSize: 20,
+    fontWeight: '600',
+  },
+  timerCountdown: {
+    marginBottom: 32,
+  },
+  continueButton: {
+    marginTop: 24,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#111',
+  },
+  continueButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
   wrongText: {
