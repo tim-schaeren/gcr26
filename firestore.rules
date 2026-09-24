@@ -6,20 +6,40 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function myUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    // Reading a field that isn't there is an error in rules, and documents written
+    // by older app versions may lack isAdmin or teamId — so every lookup defaults.
+    function myUserData() {
+      return get(myUserPath()).data;
+    }
+
     // Platform admin: may run every game and manage players
     function isAdmin() {
       return isAuth()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+        && exists(myUserPath())
+        && myUserData().get('isAdmin', false) == true;
     }
 
     // Hosts are listed on the game they run. A game without hostIds can only be
     // run by platform admins, which keeps games created before hosting existed safe.
     function gameHosts(gameId) {
-      return get(/databases/$(database)/documents/games/$(gameId)).data.get('hostIds', []);
+      return exists(/databases/$(database)/documents/games/$(gameId))
+        ? get(/databases/$(database)/documents/games/$(gameId)).data.get('hostIds', [])
+        : [];
     }
 
     function myTeamId() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId;
+      return isAuth() && exists(myUserPath()) ? myUserData().get('teamId', null) : null;
+    }
+
+    // A gameplay entry a player may write for their own team
+    function isOwnGameplayEntry() {
+      return isAuth()
+        && request.resource.data.teamId == myTeamId()
+        && request.resource.data.type in ['quest_solved', 'team_finished', 'hint_revealed'];
     }
 
     function canManageGame(gameId) {
@@ -34,9 +54,9 @@ service cloud.firestore {
       // list queries (e.g. where documentId() in [...]) use the allow list rule below.
       allow read:   if isAuth() && (
                       request.auth.uid == uid
+                      || (resource.data.get('teamId', null) != null
+                          && resource.data.get('teamId', null) == myTeamId())
                       || isAdmin()
-                      || (resource.data.teamId != null
-                          && resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId)
                     );
       allow list:   if isAdmin();
       allow create: if isAuth() && request.auth.uid == uid;
@@ -61,13 +81,21 @@ service cloud.firestore {
 
       // Chat: one thread per team. A team sees only its own thread; hosts see all.
       match /messages/{messageId} {
-        allow read: if isAuth() && (canManageGame(gameId) || resource.data.teamId == myTeamId());
-        allow create: if canManageGame(gameId) || (
+        allow read: if isAuth() && (resource.data.teamId == myTeamId() || canManageGame(gameId));
+        allow create: if (
                         isAuth()
                         && request.resource.data.teamId == myTeamId()
                         && request.resource.data.authorId == request.auth.uid
                         && request.resource.data.fromHost == false
-                      );
+                      ) || canManageGame(gameId);
+        allow update, delete: if canManageGame(gameId);
+      }
+
+      // Wrong answers: teams write their own, only hosts read them. Teams must not
+      // see what other teams have tried.
+      match /attempts/{attemptId} {
+        allow read: if canManageGame(gameId);
+        allow create: if isAuth() && request.resource.data.teamId == myTeamId();
         allow update, delete: if canManageGame(gameId);
       }
 
@@ -77,15 +105,17 @@ service cloud.firestore {
       match /activity/{entryId} {
         allow read: if isAuth() && (
                       resource.data.visibility == 'public'
+                      || resource.data.teamId == myTeamId()
                       || canManageGame(gameId)
-                      || resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId
                     );
-        allow create: if canManageGame(gameId) || (
-                        isAuth()
-                        && request.resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId
-                        && request.resource.data.type in ['quest_solved', 'team_finished', 'hint_revealed']
-                      );
-        allow update, delete: if canManageGame(gameId);
+        // Entry ids are derived from the quest, so two teammates acting at the same
+        // moment — or any retried write — land on the same document. That has to be
+        // an allowed overwrite: these entries travel in the same batch as the team's
+        // progress, and refusing one would stop the team from advancing.
+        allow create: if isOwnGameplayEntry() || canManageGame(gameId);
+        allow update: if (isOwnGameplayEntry() && resource.data.teamId == myTeamId())
+                      || canManageGame(gameId);
+        allow delete: if canManageGame(gameId);
       }
     }
 
@@ -95,12 +125,15 @@ service cloud.firestore {
       allow read:   if isAuth();
       allow create: if canManageGame(request.resource.data.gameId);
       allow delete: if canManageGame(resource.data.gameId);
-      allow update: if canManageGame(resource.data.gameId)
-        || (isAuth()
-            && request.auth.uid in resource.data.memberIds
-            && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt', 'questProgress',
-                           'coins', 'hintsRevealed', 'teamChatReadAt']));
+      // The team-member clause comes first so a player's own writes are decided
+      // without any document lookups at all
+      allow update: if (isAuth()
+                        && request.auth.uid in resource.data.memberIds
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt',
+                                       'questProgress', 'coins', 'hintsRevealed',
+                                       'teamChatReadAt']))
+                    || canManageGame(resource.data.gameId);
 
       // Coin ledger: a record of admin adjustments; players may read their own team's history
       match /coinLedger/{entryId} {
