@@ -6,9 +6,20 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Platform admin: may run every game and manage players
     function isAdmin() {
       return isAuth()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Hosts are listed on the game they run. A game without hostIds can only be
+    // run by platform admins, which keeps games created before hosting existed safe.
+    function gameHosts(gameId) {
+      return get(/databases/$(database)/documents/games/$(gameId)).data.get('hostIds', []);
+    }
+
+    function canManageGame(gameId) {
+      return isAdmin() || (isAuth() && request.auth.uid in gameHosts(gameId));
     }
 
     // Users: own doc is readable/writable by self; admins can read all
@@ -34,12 +45,14 @@ service cloud.firestore {
 
     // Games + nested quests: authenticated users read; admins write
     match /games/{gameId} {
-      allow read:  if isAuth();
-      allow write: if isAdmin();
+      allow read:   if isAuth();
+      // Whoever creates a game must list themselves as a host
+      allow create: if isAdmin() || (isAuth() && request.auth.uid in request.resource.data.hostIds);
+      allow update, delete: if canManageGame(gameId);
 
       match /quests/{questId} {
         allow read:  if isAuth();
-        allow write: if isAdmin();
+        allow write: if canManageGame(gameId);
       }
 
       // Activity feed: 'public' entries are readable by everyone in the game,
@@ -48,15 +61,15 @@ service cloud.firestore {
       match /activity/{entryId} {
         allow read: if isAuth() && (
                       resource.data.visibility == 'public'
-                      || isAdmin()
+                      || canManageGame(gameId)
                       || resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId
                     );
-        allow create: if isAdmin() || (
+        allow create: if canManageGame(gameId) || (
                         isAuth()
                         && request.resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId
                         && request.resource.data.type in ['quest_solved', 'team_finished', 'hint_revealed']
                       );
-        allow update, delete: if isAdmin();
+        allow update, delete: if canManageGame(gameId);
       }
     }
 
@@ -64,17 +77,19 @@ service cloud.firestore {
     // Team members may update only the quest progress fields
     match /teams/{id} {
       allow read:   if isAuth();
-      allow write:  if isAdmin();
-      allow update: if isAuth()
-        && request.auth.uid in resource.data.memberIds
-        && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt', 'questProgress',
-                       'coins', 'hintsRevealed']);
+      allow create: if canManageGame(request.resource.data.gameId);
+      allow delete: if canManageGame(resource.data.gameId);
+      allow update: if canManageGame(resource.data.gameId)
+        || (isAuth()
+            && request.auth.uid in resource.data.memberIds
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt', 'questProgress',
+                           'coins', 'hintsRevealed']));
 
       // Coin ledger: a record of admin adjustments; players may read their own team's history
       match /coinLedger/{entryId} {
         allow read:  if isAuth();
-        allow write: if isAdmin();
+        allow write: if canManageGame(get(/databases/$(database)/documents/teams/$(id)).data.gameId);
       }
     }
 
@@ -104,7 +119,7 @@ service cloud.firestore {
     // Location trail: players write their own points; only admins read
     match /trail/{trailId} {
       allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
-      allow read:   if isAdmin();
+      allow read:   if canManageGame(resource.data.gameId);
     }
 
     // Registrations: anyone can submit; only admins manage them

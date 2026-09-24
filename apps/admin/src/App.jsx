@@ -11,7 +11,7 @@ import LiveMapPage from './pages/LiveMapPage';
 import GamePage from './pages/GamePage';
 
 function ProtectedRoute({ children }) {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, isHost, loading } = useAuth();
 
   if (loading) {
     return (
@@ -22,10 +22,11 @@ function ProtectedRoute({ children }) {
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (!isAdmin) {
+  // Platform admins run everything; hosts get in for the games they run
+  if (!isAdmin && !isHost) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500">
-        Your account doesn't have admin access.
+        Your account doesn't host any games.
       </div>
     );
   }

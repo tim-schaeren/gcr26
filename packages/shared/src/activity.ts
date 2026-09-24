@@ -12,7 +12,11 @@ export type ActivityType =
   | 'game_paused'
   | 'game_resumed'
   | 'game_ended'
-  | 'admin_note';
+  | 'admin_note'
+  | 'admin_marked_solved'
+  | 'admin_moved'
+  | 'admin_finished'
+  | 'admin_unfinished';
 
 export type ActivityVisibility = 'public' | 'team';
 
@@ -51,6 +55,10 @@ const ICONS: Record<ActivityType, string> = {
   game_resumed: '▶️',
   game_ended: '🏁',
   admin_note: '📣',
+  admin_marked_solved: '🛠️',
+  admin_moved: '🛠️',
+  admin_finished: '🛠️',
+  admin_unfinished: '🛠️',
 };
 
 function ordinal(n: number): string {
@@ -102,6 +110,14 @@ export function formatActivity(entry: ActivityEntry, viewerTeamId?: string | nul
       return { icon, text: 'The admins ended the game' };
     case 'admin_note':
       return { icon, text: entry.text ?? '' };
+    case 'admin_marked_solved':
+      return { icon, text: `Admins marked ${quest} solved for ${mine ? 'you' : team}` };
+    case 'admin_moved':
+      return { icon, text: `Admins moved ${mine ? 'you' : team} to ${quest}` };
+    case 'admin_finished':
+      return { icon, text: `Admins marked ${mine ? 'your race' : `${team}'s race`} as finished` };
+    case 'admin_unfinished':
+      return { icon, text: `Admins reopened ${mine ? 'your race' : `${team}'s race`}` };
     default:
       return { icon, text: '' };
   }

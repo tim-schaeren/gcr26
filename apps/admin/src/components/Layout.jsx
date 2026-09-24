@@ -5,9 +5,11 @@ import {
   collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { useAuth } from '../hooks/useAuth';
 import GameForm from './GameForm';
 
 export default function Layout() {
+  const { user, isAdmin } = useAuth();
   const [games, setGames] = useState([]);
   const [persistedGameId, setPersistedGameId] = useState(
     () => localStorage.getItem('lastGameId')
@@ -28,13 +30,17 @@ export default function Layout() {
   const activeGameId = gameId ?? persistedGameId;
   const currentGame = games.find(g => g.id === activeGameId);
 
+  // Admins see every game; hosts see only the games they run
   useEffect(() => {
+    if (!user) return;
     return onSnapshot(collection(db, 'games'), snap => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(g => isAdmin || (g.hostIds ?? []).includes(user.uid));
       list.sort((a, b) => a.startDateTime - b.startDateTime);
       setGames(list);
     });
-  }, []);
+  }, [user?.uid, isAdmin]);
 
   useEffect(() => {
     if (hasAutoSelected.current || gameId || games.length === 0) return;
@@ -78,7 +84,8 @@ export default function Layout() {
     setSaving(true);
     try {
       if (editingGame === 'new') {
-        const ref = await addDoc(collection(db, 'games'), data);
+        // Whoever creates a game hosts it
+        const ref = await addDoc(collection(db, 'games'), { ...data, hostIds: [user.uid] });
         navigate(`/games/${ref.id}/quests`);
       } else {
         await updateDoc(doc(db, 'games', editingGame.id), data);
@@ -166,7 +173,7 @@ export default function Layout() {
             <div className="pt-2 mt-2 border-t border-gray-100" />
           </>
         )}
-        <NavLink to="/players" className={navClass}>Players</NavLink>
+        {isAdmin && <NavLink to="/players" className={navClass}>Players</NavLink>}
       </nav>
 
       <div className="px-3 py-4 border-t border-gray-100">

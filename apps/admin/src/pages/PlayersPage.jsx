@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react';
 import { collection, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../firebase';
+import { useAuth } from '../hooks/useAuth';
 
 export default function PlayersPage() {
+  const { isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [teams, setTeams] = useState([]);
   const [games, setGames] = useState([]);
 
+  // The player list spans every game, so it stays with platform admins
   useEffect(() => {
+    if (!isAdmin) return;
     const unsubs = [
       onSnapshot(collection(db, 'users'), snap =>
         setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
@@ -18,7 +22,7 @@ export default function PlayersPage() {
         setGames(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
     ];
     return () => unsubs.forEach(u => u());
-  }, []);
+  }, [isAdmin]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,6 +43,15 @@ export default function PlayersPage() {
   }
 
   const sorted = [...users].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+
+  if (!isAdmin) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Players</h1>
+        <p className="text-gray-400">The player list is available to platform admins only.</p>
+      </div>
+    );
+  }
 
   return (
     <div>

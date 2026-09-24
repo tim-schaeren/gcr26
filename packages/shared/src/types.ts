@@ -142,6 +142,7 @@ export interface Game {
   city: string;
   cityCoordinates: GeoPoint;
   questOrder: string[];     // ordered list of quest IDs (subcollection)
+  hostIds?: string[];       // users who may run this game; platform admins can run every game
   maxTeamSize?: number;     // optional soft limit shown in admin UI
   maxTeamSpreadMeters: number | null; // null = unlimited; blocks answer submission if exceeded
   startingCoins?: number;   // coins each team begins with (default 0)

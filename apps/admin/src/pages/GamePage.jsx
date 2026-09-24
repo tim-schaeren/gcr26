@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import {
   doc, collection, query, where,
-  updateDoc, getDocs, onSnapshot, writeBatch, documentId,
+  updateDoc, getDocs, onSnapshot, writeBatch,
 } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
 import { gameEconomy } from '@gcr26/shared';
 import { db } from '../firebase';
 import { sendPushToPlayers } from '../utils/push';
 import { logActivity, clearActivity } from '../utils/activity';
+import { useAuth } from '../hooks/useAuth';
+import HostsPanel from '../components/HostsPanel';
 
 function getStatus(game) {
   if (!game) return null;
@@ -41,6 +43,7 @@ const STATUS_LABELS = {
 };
 
 export default function GamePage() {
+  const { user, isAdmin } = useAuth();
   const { gameId } = useParams();
   const [game, setGame] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -154,6 +157,8 @@ export default function GamePage() {
           <p className="text-xs text-red-500">Ended at {formatDateTime(game.endedAt)}</p>
         )}
       </div>
+
+      <HostsPanel gameId={gameId} game={game} isAdmin={isAdmin} currentUserId={user?.uid} />
 
       {/* Controls */}
       <div className="space-y-3">

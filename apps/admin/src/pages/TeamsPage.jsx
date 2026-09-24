@@ -8,9 +8,10 @@ import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
   useDroppable, useDraggable,
 } from '@dnd-kit/core';
-import { gameEconomy, teamCoins } from '@gcr26/shared';
+import { gameEconomy, teamCoins, normalizeQuest } from '@gcr26/shared';
 import { db, auth } from '../firebase';
 import CoinAdjustModal from '../components/CoinAdjustModal';
+import TeamProgressModal from '../components/TeamProgressModal';
 import { logActivity } from '../utils/activity';
 
 function DraggableMemberRow({ user, onRemove }) {
@@ -66,7 +67,7 @@ function DraggablePlayerChip({ user }) {
   );
 }
 
-function DroppableTeamCard({ team, members, maxTeamSize, coins, onRemove, onEdit, onViewMap, onAdjustCoins }) {
+function DroppableTeamCard({ team, members, maxTeamSize, coins, onRemove, onEdit, onViewMap, onAdjustCoins, onProgress }) {
   const isFull = maxTeamSize && members.length >= maxTeamSize;
   const { setNodeRef, isOver } = useDroppable({ id: team.id });
 
@@ -99,6 +100,12 @@ function DroppableTeamCard({ team, members, maxTeamSize, coins, onRemove, onEdit
             className="text-xs text-gray-500 hover:text-gray-900 transition-colors"
           >
             🪙 {coins}
+          </button>
+          <button
+            onClick={() => onProgress(team)}
+            className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+          >
+            Progress
           </button>
           <button
             onClick={() => onViewMap(team)}
@@ -269,6 +276,8 @@ export default function TeamsPage() {
   const [saving, setSaving] = useState(false);
   const [activeId, setActiveId] = useState(null);
   const [adjusting, setAdjusting] = useState(null);
+  const [progressTeamId, setProgressTeamId] = useState(null);
+  const [quests, setQuests] = useState({});
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -288,6 +297,15 @@ export default function TeamsPage() {
       query(collection(db, 'teams'), where('gameId', '==', gameId)),
       snap => setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     );
+  }, [gameId]);
+
+  // Quests, for the per-team progress controls
+  useEffect(() => {
+    return onSnapshot(collection(db, 'games', gameId, 'quests'), snap => {
+      const map = {};
+      snap.forEach(d => { map[d.id] = normalizeQuest(d.id, d.data()); });
+      setQuests(map);
+    });
   }, [gameId]);
 
   useEffect(() => {
@@ -366,6 +384,45 @@ export default function TeamsPage() {
   }
 
   const economy = gameEconomy(game);
+  const progressTeam = teams.find(t => t.id === progressTeamId) ?? null;
+
+  // Applies a live fix to one team and tells that team what happened
+  async function handleProgressAction(action) {
+    const team = progressTeam;
+    if (!team) return;
+    const questOrder = game?.questOrder ?? [];
+    const teamRef = doc(db, 'teams', team.id);
+    const entry = { visibility: 'team', teamId: team.id, teamName: team.name };
+
+    if (action.type === 'solve') {
+      const nextQuestId = questOrder[questOrder.indexOf(action.questId) + 1] ?? null;
+      const update = {
+        completedQuestIds: arrayUnion(action.questId),
+        currentQuestId: nextQuestId,
+        questProgress: null,
+        // Paid as if solved, so a broken quest doesn't leave the team poorer
+        coins: teamCoins(team, economy) + economy.coinsPerQuest,
+      };
+      if (!nextQuestId) update.finishedAt = Date.now();
+      await updateDoc(teamRef, update);
+      await logActivity(gameId, { ...entry, type: 'admin_marked_solved', questTitle: action.questTitle });
+    }
+
+    if (action.type === 'move') {
+      await updateDoc(teamRef, { currentQuestId: action.questId, questProgress: null, finishedAt: null });
+      await logActivity(gameId, { ...entry, type: 'admin_moved', questTitle: action.questTitle });
+    }
+
+    if (action.type === 'finish') {
+      await updateDoc(teamRef, { finishedAt: Date.now(), questProgress: null });
+      await logActivity(gameId, { ...entry, type: 'admin_finished' });
+    }
+
+    if (action.type === 'unfinish') {
+      await updateDoc(teamRef, { finishedAt: null });
+      await logActivity(gameId, { ...entry, type: 'admin_unfinished' });
+    }
+  }
 
   // Writes the new balance and a ledger entry explaining the change
   async function handleAdjustCoins(delta, reason, balanceAfter) {
@@ -457,6 +514,7 @@ export default function TeamsPage() {
                         onRemove={handleRemove}
                         onEdit={setSelected}
                         onAdjustCoins={setAdjusting}
+                        onProgress={t => setProgressTeamId(t.id)}
                         onViewMap={t => navigate(`/games/${gameId}/live-map`, { state: { focusTeamId: t.id } })}
                       />
                     );
@@ -492,6 +550,16 @@ export default function TeamsPage() {
           </DragOverlay>
         </DndContext>
       </div>
+
+      {progressTeam && (
+        <TeamProgressModal
+          team={progressTeam}
+          game={game}
+          quests={quests}
+          onApply={handleProgressAction}
+          onClose={() => setProgressTeamId(null)}
+        />
+      )}
 
       {adjusting && (
         <CoinAdjustModal
