@@ -7,6 +7,7 @@ export type ActivityType =
   | 'quest_solved'
   | 'team_finished'
   | 'hint_revealed'
+  | 'item_bought'
   | 'coins_adjusted'
   | 'game_started'
   | 'game_paused'
@@ -31,6 +32,7 @@ export interface ActivityEntry {
   questNumber?: number;
   placement?: number;         // team_finished
   amount?: number;            // coins spent or granted (negative = deducted)
+  itemName?: string;          // item_bought
   reason?: string;            // admin adjustment reason
   text?: string;              // admin note
 }
@@ -43,7 +45,12 @@ export const hintRevealedId = (teamId: string, questId: string, index: number) =
   `${teamId}_hint_${questId}_${index}`;
 
 // Types a player's device is allowed to write (mirrored in firestore.rules)
-export const PLAYER_WRITABLE_TYPES: ActivityType[] = ['quest_solved', 'team_finished', 'hint_revealed'];
+export const PLAYER_WRITABLE_TYPES: ActivityType[] = [
+  'quest_solved',
+  'team_finished',
+  'hint_revealed',
+  'item_bought',
+];
 
 // Entries a host caused. They are tagged with the team they concern, but the team
 // didn't do them — so they still count as news for that team.
@@ -66,6 +73,7 @@ const ICONS: Record<ActivityType, string> = {
   quest_solved: '✅',
   team_finished: '🏆',
   hint_revealed: '💡',
+  item_bought: '🧭',
   coins_adjusted: '🪙',
   game_started: '🚩',
   game_paused: '⏸️',
@@ -111,6 +119,8 @@ export function formatActivity(entry: ActivityEntry, viewerTeamId?: string | nul
       };
     case 'hint_revealed':
       return { icon, text: `${team} revealed a hint on ${quest} for ${entry.amount ?? 0} coins` };
+    case 'item_bought':
+      return { icon, text: `${team} bought ${entry.itemName ?? 'an item'} for ${entry.amount ?? 0} coins` };
     case 'coins_adjusted': {
       const amount = entry.amount ?? 0;
       const who = mine ? 'you' : team;

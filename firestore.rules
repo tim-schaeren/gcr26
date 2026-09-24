@@ -39,7 +39,7 @@ service cloud.firestore {
     function isOwnGameplayEntry() {
       return isAuth()
         && request.resource.data.teamId == myTeamId()
-        && request.resource.data.type in ['quest_solved', 'team_finished', 'hint_revealed'];
+        && request.resource.data.type in ['quest_solved', 'team_finished', 'hint_revealed', 'item_bought'];
     }
 
     function canManageGame(gameId) {
@@ -132,7 +132,7 @@ service cloud.firestore {
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt',
                                        'questProgress', 'coins', 'hintsRevealed',
-                                       'teamChatReadAt']))
+                                       'teamChatReadAt', 'activeCompassUntil']))
                     || canManageGame(resource.data.gameId);
 
       // Coin ledger: a record of admin adjustments; players may read their own team's history

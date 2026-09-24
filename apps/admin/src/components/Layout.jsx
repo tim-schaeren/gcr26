@@ -97,7 +97,7 @@ export default function Layout() {
   }, [location.pathname]);
 
   function switchGame(game) {
-    const gameSections = ['game', 'quests', 'teams', 'leaderboard', 'live-map', 'activity', 'chat'];
+    const gameSections = ['game', 'quests', 'teams', 'items', 'leaderboard', 'live-map', 'activity', 'chat'];
     const target = gameSections.includes(section) ? section : 'quests';
     navigate(`/games/${game.id}/${target}`);
   }
@@ -189,6 +189,7 @@ export default function Layout() {
             <NavLink to={`/games/${activeGameId}/game`} className={navClass}>Game</NavLink>
             <NavLink to={`/games/${activeGameId}/quests`} className={navClass}>Quests</NavLink>
             <NavLink to={`/games/${activeGameId}/teams`} className={navClass}>Teams</NavLink>
+            <NavLink to={`/games/${activeGameId}/items`} className={navClass}>Items</NavLink>
             <NavLink to={`/games/${activeGameId}/leaderboard`} className={navClass}>Leaderboard</NavLink>
             <NavLink to={`/games/${activeGameId}/live-map`} className={navClass}>Live Map</NavLink>
             <NavLink to={`/games/${activeGameId}/activity`} className={navClass}>Activity</NavLink>

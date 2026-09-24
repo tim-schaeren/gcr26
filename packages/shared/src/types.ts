@@ -25,6 +25,7 @@ export interface Team {
   finishedAt: number | null;
   questProgress: QuestProgress | null;
   coins?: number;                            // team purse; absent means the game's startingCoins
+  activeCompassUntil?: number;               // timestamp the bought compass runs out
   hintsRevealed?: Record<string, number>;    // questId -> how many hints the team has paid for
 }
 
@@ -157,6 +158,7 @@ export interface Game {
   questOrder: string[];     // ordered list of quest IDs (subcollection)
   hostIds?: string[];       // users who may run this game; platform admins can run every game
   hotlineNumber?: string;   // phone number teams can call when something goes wrong
+  shop?: Record<string, { enabled?: boolean; price?: number; durationMinutes?: number }>;
   maxTeamSize?: number;     // optional soft limit shown in admin UI
   maxTeamSpreadMeters: number | null; // null = unlimited; blocks answer submission if exceeded
   startingCoins?: number;   // coins each team begins with (default 0)

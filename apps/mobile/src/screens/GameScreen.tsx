@@ -37,6 +37,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
 	normalizeQuest,
 	gameEconomy,
+	shopConfig,
+	compassMsLeft as compassMsLeftFor,
 	teamCoins,
 	hintsRevealedFor,
 	formatActivity,
@@ -57,8 +59,9 @@ import {
 	stopTracking,
 	recordPosition,
 } from '../tasks/distanceTracker';
-import { distanceMeters } from '../utils/geo';
+import { distanceMeters, bearingDegrees } from '../utils/geo';
 import ContentBlocks from '../components/ContentBlocks';
+import ShopSheet from '../components/ShopSheet';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -157,12 +160,51 @@ function ScrollContainer({ children }: { children: ReactNode }) {
 	);
 }
 
+function CompassArrow({
+	bearing,
+	heading,
+	distance,
+	msLeft,
+}: {
+	bearing: number;
+	heading: number | null;
+	distance: number | null;
+	msLeft: number;
+}) {
+	// With a device heading the arrow points the real way; without one it still
+	// shows the bearing, just relative to north
+	const rotation = heading === null ? bearing : bearing - heading;
+	const total = Math.ceil(msLeft / 1000);
+	const left = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+	return (
+		<View style={styles.compassWrap}>
+			<View style={styles.compassDial}>
+				<Text style={[styles.compassArrow, { transform: [{ rotate: `${rotation}deg` }] }]}>
+					↑
+				</Text>
+			</View>
+			{distance !== null && (
+				<Text style={styles.compassDistance}>{Math.round(distance)} m away</Text>
+			)}
+			<Text style={styles.compassMeta}>
+				{heading === null ? 'from north · ' : ''}compass {left}
+			</Text>
+		</View>
+	);
+}
+
 function NavigationView({
 	quest,
 	distance,
+	bearing,
+	heading,
+	compassMsLeft,
 }: {
 	quest: Quest;
 	distance: number | null;
+	bearing: number | null;
+	heading: number | null;
+	compassMsLeft: number;
 }) {
 	return (
 		<ScrollContainer>
@@ -171,8 +213,13 @@ function NavigationView({
 				blocks={quest.navigationHint}
 				textStyle={styles.navigationHint}
 			/>
-			{distance !== null && (
-				<Text style={styles.distance}>{Math.round(distance)} m away</Text>
+			{compassMsLeft > 0 && bearing !== null && (
+				<CompassArrow
+					bearing={bearing}
+					heading={heading}
+					distance={distance}
+					msLeft={compassMsLeft}
+				/>
 			)}
 		</ScrollContainer>
 	);
@@ -976,6 +1023,9 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	const [chatSeenAt, setChatSeenAt] = useState(0);
 	const [draft, setDraft] = useState('');
 	const [sendingMessage, setSendingMessage] = useState(false);
+	const [shopOpen, setShopOpen] = useState(false);
+	const [buyingItem, setBuyingItem] = useState(false);
+	const [heading, setHeading] = useState<number | null>(null);
 
 	const { profile } = useUser();
 	const [profileOpen, setProfileOpen] = useState(false);
@@ -1426,7 +1476,58 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	}, [localMeters, teamMeters, trackingDistance, quest?.id]);
 
 	const economy = gameEconomy(game);
+	const shop = shopConfig(game);
 	const coins = teamCoins(team, economy);
+	const compassLeft = compassMsLeftFor(team, now);
+
+	// The magnetometer only runs while a compass is active, to spare the battery
+	useEffect(() => {
+		if (compassLeft <= 0) {
+			setHeading(null);
+			return;
+		}
+		let sub: Location.LocationSubscription | null = null;
+		let cancelled = false;
+		Location.watchHeadingAsync(h => setHeading(h.trueHeading >= 0 ? h.trueHeading : h.magHeading))
+			.then(s => {
+				if (cancelled) s.remove();
+				else sub = s;
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+			sub?.remove();
+		};
+	}, [compassLeft > 0]);
+
+	function buyCompass() {
+		if (!team || !game || buyingItem) return;
+		if (coins < shop.compass.price || compassLeft > 0) return;
+		setBuyingItem(true);
+		const until = Date.now() + shop.compass.durationMinutes * 60000;
+		const batch = writeBatch(db);
+		batch.update(doc(db, 'teams', team.id), {
+			coins: coins - shop.compass.price,
+			activeCompassUntil: until,
+		});
+		// Private to the team, like hints: rivals shouldn't see what you're buying
+		batch.set(
+			doc(db, 'games', game.id, 'activity', `${team.id}_compass_${until}`),
+			{
+				type: 'item_bought',
+				at: Date.now(),
+				visibility: 'team',
+				teamId: team.id,
+				teamName: team.name,
+				itemName: 'a compass',
+				amount: shop.compass.price,
+			},
+		);
+		batch
+			.commit()
+			.catch(() => {})
+			.finally(() => setBuyingItem(false));
+	}
 	const hintsRevealed = quest ? hintsRevealedFor(team, quest.id) : 0;
 
 	// Absolute balances rather than increments: two teammates writing at once land on the
@@ -1612,7 +1713,19 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		if (!unlocked) {
 			if (quest.trigger === 'distance')
 				return <DistanceView quest={quest} meters={walkedMeters} />;
-			return <NavigationView quest={quest} distance={distanceToQuest} />;
+			return (
+				<NavigationView
+					quest={quest}
+					distance={distanceToQuest}
+					bearing={
+						coords && quest.location
+							? bearingDegrees(coords.lat, coords.lng, quest.location.lat, quest.location.lng)
+							: null
+					}
+					heading={heading}
+					compassMsLeft={compassLeft}
+				/>
+			);
 		}
 
 		if (quest.task === 'timer') {
@@ -1672,9 +1785,15 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			{renderContent()}
 			<CelebrationOverlay visible={celebrating} anim={celebrateAnim} />
 			{team && !game?.endedAt && (
-				<View style={styles.coinPill}>
-					<Text style={styles.coinPillText}>🪙 {coins}</Text>
-				</View>
+				<TouchableOpacity
+					style={styles.coinPill}
+					onPress={() => setShopOpen(true)}
+				>
+					<Text style={styles.coinPillText}>
+						🪙 {coins}
+						{compassLeft > 0 ? ' 🧭' : ''}
+					</Text>
+				</TouchableOpacity>
 			)}
 			<TouchableOpacity
 				style={styles.lbIconButton}
@@ -1684,6 +1803,16 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 				{hasUnreadActivity && <View style={styles.unreadDot} />}
 			</TouchableOpacity>
 			<ProfileButton name={userName} onPress={() => setProfileOpen(true)} />
+			<ShopSheet
+				visible={shopOpen}
+				onClose={() => setShopOpen(false)}
+				shop={shop}
+				coins={coins}
+				compassMsLeft={compassLeft}
+				compassUseful={quest?.trigger === 'location' && !!quest?.location}
+				onBuyCompass={buyCompass}
+				buying={buyingItem}
+			/>
 			<ProfileSheet
 				visible={profileOpen}
 				name={userName}
@@ -1990,6 +2119,38 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		fontWeight: '600',
 		color: '#111',
+	},
+
+	// Compass
+	compassWrap: {
+		alignItems: 'center',
+		marginBottom: 16,
+	},
+	compassDial: {
+		width: 92,
+		height: 92,
+		borderRadius: 46,
+		borderWidth: 2,
+		borderColor: '#111',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	compassArrow: {
+		fontSize: 44,
+		lineHeight: 50,
+		color: '#111',
+	},
+	compassDistance: {
+		fontSize: 15,
+		fontWeight: '600',
+		color: '#111',
+		marginTop: 10,
+	},
+	compassMeta: {
+		fontSize: 12,
+		color: '#9ca3af',
+		marginTop: 8,
+		fontVariant: ['tabular-nums'],
 	},
 
 	// Coin balance pill

@@ -8,6 +8,7 @@ import PlayersPage from './pages/PlayersPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ActivityPage from './pages/ActivityPage';
 import ChatPage from './pages/ChatPage';
+import ItemsPage from './pages/ItemsPage';
 import LiveMapPage from './pages/LiveMapPage';
 import GamePage from './pages/GamePage';
 
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="games" element={<Navigate to="/players" replace />} />
           <Route path="games/:gameId/quests" element={<QuestsPage />} />
           <Route path="games/:gameId/teams" element={<TeamsPage />} />
+          <Route path="games/:gameId/items" element={<ItemsPage />} />
           <Route path="games/:gameId/leaderboard" element={<LeaderboardPage />} />
           <Route path="games/:gameId/activity" element={<ActivityPage />} />
           <Route path="games/:gameId/chat" element={<ChatPage />} />

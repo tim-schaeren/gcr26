@@ -140,6 +140,16 @@ await expect('reveals a hint', true, () => {
   });
   return batch.commit();
 });
+await expect('buys a compass: coins, timer and a private entry', true, () => {
+  const batch = writeBatch(db);
+  const until = Date.now() + 5 * 60000;
+  batch.update(doc(db, 'teams', TEAM_A), { coins: 5, activeCompassUntil: until });
+  batch.set(doc(db, 'games', GAME, 'activity', `${TEAM_A}_compass_${until}`), {
+    type: 'item_bought', at: Date.now(), visibility: 'team', teamId: TEAM_A,
+    teamName: 'Team A', itemName: 'a compass', amount: 25,
+  });
+  return batch.commit();
+});
 await expect('records a wrong answer', true, () => addDoc(attempts, { questId: QUEST, teamId: TEAM_A, teamName: 'Team A', text: 'seven', at: Date.now() }));
 await expect('sends a chat message', true, () => addDoc(messages, { teamId: TEAM_A, authorId: people.playerA.uid, authorName: 'A', fromHost: false, text: 'hi', sentAt: Date.now() }));
 await expect('marks the chat thread read', true, () => updateDoc(doc(db, 'teams', TEAM_A), { teamChatReadAt: Date.now() }));
