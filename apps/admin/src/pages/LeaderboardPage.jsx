@@ -57,6 +57,7 @@ export default function LeaderboardPage() {
   const [teams, setTeams] = useState([]);
   const [questMap, setQuestMap] = useState({});
   const [users, setUsers] = useState([]);
+  const [attempts, setAttempts] = useState([]);
 
   useEffect(() => {
     return onSnapshot(doc(db, 'games', gameId), snap => {
@@ -69,6 +70,11 @@ export default function LeaderboardPage() {
       query(collection(db, 'teams'), where('gameId', '==', gameId)),
       snap => setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
     );
+  }, [gameId]);
+
+  useEffect(() => {
+    return onSnapshot(collection(db, 'games', gameId, 'attempts'), snap =>
+      setAttempts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
   }, [gameId]);
 
   useEffect(() => {
@@ -88,6 +94,14 @@ export default function LeaderboardPage() {
   const totalQuests = game?.questOrder?.length ?? 0;
   const totalPausedMs = game?.totalPausedMs ?? 0;
   const economy = gameEconomy(game);
+
+  // A team is "stuck" when it keeps getting turned away on the quest it's on now
+  const STUCK_THRESHOLD = 3;
+  function wrongTriesOnCurrentQuest(team) {
+    const questId = team.currentQuestId ?? game?.questOrder?.[0] ?? null;
+    if (!questId || team.finishedAt) return 0;
+    return attempts.filter(a => a.teamId === team.id && a.questId === questId).length;
+  }
 
   const sorted = [...teams].sort((a, b) => {
     if (a.finishedAt && b.finishedAt) return a.finishedAt - b.finishedAt;
@@ -110,6 +124,7 @@ export default function LeaderboardPage() {
             const memberUsers = users.filter(u => team.memberIds?.includes(u.id));
             const status = teamQuestStatus(team, questMap, memberUsers, game?.questOrder);
             const hintsUsed = Object.values(team.hintsRevealed ?? {}).reduce((sum, n) => sum + n, 0);
+            const wrongTries = wrongTriesOnCurrentQuest(team);
 
             return (
               <div
@@ -137,6 +152,11 @@ export default function LeaderboardPage() {
                         )}
                       </p>
                     </div>
+                    {wrongTries >= STUCK_THRESHOLD && (
+                      <p className="text-xs text-yellow-600 mb-1">
+                        Stuck · {wrongTries} wrong answers on this quest
+                      </p>
+                    )}
                     {status && (
                       <p className="text-xs text-gray-400 mb-2 truncate">
                         <span

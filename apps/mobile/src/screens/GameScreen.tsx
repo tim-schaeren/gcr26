@@ -1541,6 +1541,14 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		if (!correct) {
 			setWrong(true);
 			setTimeout(() => setWrong(false), 2000);
+			// Recorded for the hosts, who can widen the answer list mid-race
+			addDoc(collection(db, 'games', game.id, 'attempts'), {
+				questId: quest.id,
+				teamId: team.id,
+				teamName: team.name,
+				text: answer.trim(),
+				at: Date.now(),
+			}).catch(() => {});
 			return;
 		}
 

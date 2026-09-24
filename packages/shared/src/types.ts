@@ -86,6 +86,19 @@ export interface GeoPoint {
   lng: number;
 }
 
+// ─── Answer Attempts ──────────────────────────────────────────────────────────
+
+// Rejected answers, stored in games/{gameId}/attempts so hosts can spot a quest
+// whose answer list is too strict, and teams that are stuck. Hosts only.
+export interface AnswerAttempt {
+  id: string;
+  questId: string;
+  teamId: string;
+  teamName: string;
+  text: string;      // what the team actually typed, trimmed
+  at: number;
+}
+
 // ─── Items / Shop ─────────────────────────────────────────────────────────────
 
 export type ItemType = 'compass' | 'curse' | 'immunity' | 'robbery';

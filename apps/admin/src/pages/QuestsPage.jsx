@@ -80,6 +80,7 @@ export default function QuestsPage() {
   const [quests, setQuests] = useState({});
   const [questOrder, setQuestOrder] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [attempts, setAttempts] = useState([]);
   const [saving, setSaving] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -105,6 +106,12 @@ export default function QuestsPage() {
       snap.forEach(d => { map[d.id] = normalizeQuest(d.id, d.data()); });
       setQuests(map);
     });
+  }, [gameId]);
+
+  // Rejected answers, for tuning a quest whose answer list is too strict
+  useEffect(() => {
+    return onSnapshot(collection(db, 'games', gameId, 'attempts'), snap =>
+      setAttempts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
   }, [gameId]);
 
   // Open quest from navigation state (e.g. clicked from live map)
@@ -279,6 +286,7 @@ export default function QuestsPage() {
           <QuestForm
             quest={selected === 'new' ? null : selected}
             existingTitles={existingTitles}
+            attempts={selected === 'new' ? [] : attempts.filter(a => a.questId === selected.id)}
             cityCoordinates={game?.cityCoordinates}
             onSave={handleSave}
             onCancel={() => tryClose(() => setSelected(null))}

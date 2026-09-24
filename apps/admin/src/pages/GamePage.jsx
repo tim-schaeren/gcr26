@@ -7,7 +7,7 @@ import { useParams } from 'react-router-dom';
 import { gameEconomy } from '@gcr26/shared';
 import { db } from '../firebase';
 import { sendPushToPlayers } from '../utils/push';
-import { logActivity, clearActivity } from '../utils/activity';
+import { logActivity, clearActivity, clearAttempts } from '../utils/activity';
 import { useAuth } from '../hooks/useAuth';
 import HostsPanel from '../components/HostsPanel';
 
@@ -123,6 +123,7 @@ export default function GamePage() {
       await batch.commit();
       // The old board describes progress that no longer exists; the game is back at the start
       await clearActivity(gameId);
+      await clearAttempts(gameId);
       await logActivity(gameId, { type: 'game_started' });
     });
     setShowResetConfirm(false);
