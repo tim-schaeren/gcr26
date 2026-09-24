@@ -126,8 +126,6 @@ export default function QuestForm({ quest, existingTitles, cityCoordinates, onSa
     if (form.task === 'answer') {
       const answers = form.answers.map(a => a.trim()).filter(Boolean);
       if (answers.length === 0) e.answers = 'At least one answer is required.';
-      const hints = form.hints.map(h => h.trim()).filter(Boolean);
-      if (hints.length === 0) e.hints = 'At least one hint is required.';
     }
 
     if (form.task === 'timer') {
@@ -346,7 +344,9 @@ export default function QuestForm({ quest, existingTitles, cityCoordinates, onSa
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hints</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Hints <span className="font-normal text-gray-400">(optional)</span>
+                  </label>
                   <div className="space-y-2">
                     {form.hints.map((hint, i) => (
                       <div key={i} className="flex gap-2 items-center">

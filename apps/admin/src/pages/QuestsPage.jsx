@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
-  onSnapshot, setDoc, getDoc,
+  onSnapshot, setDoc, getDoc, writeBatch,
 } from 'firebase/firestore';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -12,10 +12,12 @@ import {
   useSortable, arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { normalizeQuest } from '@gcr26/shared';
+import { normalizeQuest, buildQuestExport, MAX_QUESTS_PER_GAME } from '@gcr26/shared';
 import { db } from '../firebase';
 import QuestForm from '../components/QuestForm';
+import QuestImportModal from '../components/QuestImportModal';
 import { TRIGGER_OPTIONS, TASK_OPTIONS } from '../utils/questOptions';
+import { downloadJson, slugify } from '../utils/download';
 
 const optionLabel = (options, value) => options.find(o => o.value === value)?.label ?? value;
 
@@ -79,6 +81,8 @@ export default function QuestsPage() {
   const [questOrder, setQuestOrder] = useState([]);
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
   const isDirty = useRef(false);
 
   const sensors = useSensors(
@@ -119,6 +123,34 @@ export default function QuestsPage() {
     .concat(Object.values(quests).filter(q => !questOrder.includes(q.id)));
 
   const existingTitles = Object.values(quests).map(q => q.title);
+  const atQuestLimit = orderedQuests.length >= MAX_QUESTS_PER_GAME;
+  // A running game: imported quests arrive inactive so they don't lengthen the race
+  const isLive = !!game && !game.endedAt && Date.now() >= game.startDateTime;
+
+  function handleExport() {
+    const date = new Date().toISOString().slice(0, 10);
+    downloadJson(`quests-${slugify(game?.name)}-${date}.json`, buildQuestExport(game ?? {}, orderedQuests));
+  }
+
+  // Creates new quest documents only; existing quests and their ids are left untouched,
+  // so team progress (currentQuestId / completedQuestIds) cannot break.
+  async function handleImport(questsToImport) {
+    setImporting(true);
+    try {
+      const batch = writeBatch(db);
+      const newIds = [];
+      for (const data of questsToImport) {
+        const ref = doc(collection(db, 'games', gameId, 'quests'));
+        batch.set(ref, isLive ? { ...data, isActive: false } : data);
+        newIds.push(ref.id);
+      }
+      batch.set(gameDoc, { questOrder: [...questOrder, ...newIds] }, { merge: true });
+      await batch.commit();
+      setImportOpen(false);
+    } finally {
+      setImporting(false);
+    }
+  }
 
   function tryClose(callback) {
     if (isDirty.current && !confirm('You have unsaved changes. Discard them?')) return;
@@ -175,13 +207,38 @@ export default function QuestsPage() {
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Quests</h1>
-          <button
-            onClick={() => tryClose(() => setSelected('new'))}
-            className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
-          >
-            + New Quest
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              disabled={!orderedQuests.length}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Export
+            </button>
+            <button
+              onClick={() => tryClose(() => setImportOpen(true))}
+              disabled={atQuestLimit}
+              title={atQuestLimit ? `A game may hold at most ${MAX_QUESTS_PER_GAME} quests.` : undefined}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Import
+            </button>
+            <button
+              onClick={() => tryClose(() => setSelected('new'))}
+              disabled={atQuestLimit}
+              title={atQuestLimit ? `A game may hold at most ${MAX_QUESTS_PER_GAME} quests.` : undefined}
+              className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              + New Quest
+            </button>
+          </div>
         </div>
+
+        {atQuestLimit && (
+          <p className="text-xs text-yellow-600 mb-4">
+            This game has reached the limit of {MAX_QUESTS_PER_GAME} quests. Delete one to add another.
+          </p>
+        )}
 
         {orderedQuests.length === 0 ? (
           <p className="text-gray-400">No quests yet. Create the first one.</p>
@@ -205,6 +262,17 @@ export default function QuestsPage() {
           </DndContext>
         )}
       </div>
+
+      {importOpen && (
+        <QuestImportModal
+          existingTitles={existingTitles}
+          existingCount={orderedQuests.length}
+          isLive={isLive}
+          onImport={handleImport}
+          onClose={() => setImportOpen(false)}
+          importing={importing}
+        />
+      )}
 
       {selected && (
         <div className="fixed inset-0 z-20 bg-white flex flex-col md:relative md:inset-auto md:z-auto md:w-96 md:border-l md:border-gray-200 md:-mr-8 md:-my-8 md:shadow-sm">
