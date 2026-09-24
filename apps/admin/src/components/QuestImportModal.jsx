@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { parseQuestExport, MAX_QUESTS_PER_GAME } from '@gcr26/shared';
+import { parseQuestExport, uniqueQuestTitle, MAX_QUESTS_PER_GAME } from '@gcr26/shared';
 import { TRIGGER_OPTIONS, TASK_OPTIONS } from '../utils/questOptions';
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
@@ -23,19 +23,19 @@ export default function QuestImportModal({ existingTitles, existingCount, isLive
   const [entries, setEntries] = useState([]);
   const [skipped, setSkipped] = useState(() => new Set());
 
-  // Titles already in the game, plus titles repeated earlier in the file
-  const duplicateFlags = useMemo(() => {
-    const seen = new Set((existingTitles ?? []).map(t => t.trim().toLowerCase()));
-    return entries.map(entry => {
-      if (!entry.data) return false;
-      const key = entry.data.title.toLowerCase();
-      const duplicate = seen.has(key);
-      seen.add(key);
-      return duplicate;
+  // Quests to be written, with duplicate titles renamed. Titles already in the game
+  // and titles taken by earlier quests in this import both count as duplicates.
+  const prepared = useMemo(() => {
+    const taken = [...(existingTitles ?? [])];
+    return entries.map((entry, i) => {
+      if (!entry.data || skipped.has(i)) return null;
+      const title = uniqueQuestTitle(entry.data.title, taken);
+      taken.push(title);
+      return { data: { ...entry.data, title }, renamed: title !== entry.data.title };
     });
-  }, [entries, existingTitles]);
+  }, [entries, skipped, existingTitles]);
 
-  const importable = entries.map((e, i) => (e.data && !skipped.has(i) ? e.data : null)).filter(Boolean);
+  const importable = prepared.filter(Boolean).map(p => p.data);
   const failedCount = entries.filter(e => !e.data).length;
   const overCap = existingCount + importable.length > MAX_QUESTS_PER_GAME;
 
@@ -121,8 +121,10 @@ export default function QuestImportModal({ existingTitles, existingCount, isLive
                       <div className="min-w-0 flex-1">
                         <p className={`text-sm font-medium ${ok ? 'text-gray-900' : 'text-red-700'}`}>{entry.label}</p>
                         {ok && <p className="text-xs text-gray-400 mt-0.5">{summary(entry.data)}</p>}
-                        {duplicateFlags[i] && (
-                          <p className="text-xs text-yellow-600 mt-0.5">A quest with this title already exists.</p>
+                        {prepared[i]?.renamed && (
+                          <p className="text-xs text-yellow-600 mt-0.5">
+                            A quest with this title already exists. It will be imported as “{prepared[i].data.title}”.
+                          </p>
                         )}
                         {entry.errors.map((e, j) => (
                           <p key={j} className="text-xs text-red-600 mt-0.5">{e}</p>

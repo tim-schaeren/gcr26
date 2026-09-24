@@ -28,6 +28,22 @@ export const HOW_TO_EDIT = [
   `A game may hold at most ${MAX_QUESTS_PER_GAME} quests.`,
 ];
 
+// Imported quests keep their content but get a distinct title, so a duplicate
+// never has to be resolved by hand and no existing quest is touched.
+export const COPY_SUFFIX = '_copy';
+
+// Returns `title` when free, otherwise "title_copy", "title_copy2", … (compared case-insensitively)
+export function uniqueQuestTitle(title: string, taken: Iterable<string>): string {
+  const used = new Set([...taken].map(t => t.trim().toLowerCase()));
+  if (!used.has(title.trim().toLowerCase())) return title;
+  const base = `${title}${COPY_SUFFIX}`;
+  if (!used.has(base.toLowerCase())) return base;
+  for (let n = 2; ; n++) {
+    const candidate = `${base}${n}`;
+    if (!used.has(candidate.toLowerCase())) return candidate;
+  }
+}
+
 export interface QuestExportFile {
   format: string;
   version: number;
