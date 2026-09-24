@@ -592,18 +592,24 @@ export default function GameScreen({ teamId }: { teamId: string }) {
         ]);
       }
 
-      // Request "always" background permission and start background task
-      const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
-      if (bgStatus === 'granted') {
-        const running = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK);
-        if (!running) {
-          await Location.startLocationUpdatesAsync(LOCATION_TASK, {
-            accuracy: Location.Accuracy.Balanced,
-            distanceInterval: 50,
-            timeInterval: 60000,
-            showsBackgroundLocationIndicator: true,
-          });
+      // Request "always" background permission and start background task.
+      // Background location isn't available in every host app (Expo Go throws
+      // ERR_LOCATION_INFO_PLIST), so failing here must not stop foreground tracking below.
+      try {
+        const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+        if (bgStatus === 'granted') {
+          const running = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK);
+          if (!running) {
+            await Location.startLocationUpdatesAsync(LOCATION_TASK, {
+              accuracy: Location.Accuracy.Balanced,
+              distanceInterval: 50,
+              timeInterval: 60000,
+              showsBackgroundLocationIndicator: true,
+            });
+          }
         }
+      } catch {
+        // Foreground tracking still works; the team trail just won't update in the background
       }
 
       sub = await Location.watchPositionAsync(
@@ -1143,7 +1149,11 @@ const styles = StyleSheet.create({
 
   // Spread overlay
   spreadOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1165,7 +1175,11 @@ const styles = StyleSheet.create({
 
   // Celebration overlay
   celebrationOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(255,255,255,0.92)',
     justifyContent: 'center',
     alignItems: 'center',
