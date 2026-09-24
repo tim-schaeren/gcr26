@@ -112,14 +112,14 @@ export interface ActiveCurse {
 
 // ─── Chat Messages ────────────────────────────────────────────────────────────
 
-export type MessageChannel = 'global' | 'team';
-
-export interface Message {
+// Lives in games/{gameId}/messages. One thread per team: that team and the
+// game's hosts. Teams never see each other's threads.
+export interface ChatMessage {
   id: string;
-  channel: MessageChannel;
-  teamId: string | null;    // null for global
+  teamId: string;
   authorId: string;
   authorName: string;
+  fromHost: boolean;
   text: string;
   sentAt: number;
 }
@@ -143,6 +143,7 @@ export interface Game {
   cityCoordinates: GeoPoint;
   questOrder: string[];     // ordered list of quest IDs (subcollection)
   hostIds?: string[];       // users who may run this game; platform admins can run every game
+  hotlineNumber?: string;   // phone number teams can call when something goes wrong
   maxTeamSize?: number;     // optional soft limit shown in admin UI
   maxTeamSpreadMeters: number | null; // null = unlimited; blocks answer submission if exceeded
   startingCoins?: number;   // coins each team begins with (default 0)
@@ -157,7 +158,6 @@ export interface Game {
 
 export interface GameSettings {
   signUpOpen: boolean;
-  hotlineNumber: string;
 }
 
 // ─── Event Registration ───────────────────────────────────────────────────────

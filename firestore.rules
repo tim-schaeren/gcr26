@@ -18,6 +18,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/games/$(gameId)).data.get('hostIds', []);
     }
 
+    function myTeamId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId;
+    }
+
     function canManageGame(gameId) {
       return isAdmin() || (isAuth() && request.auth.uid in gameHosts(gameId));
     }
@@ -55,6 +59,18 @@ service cloud.firestore {
         allow write: if canManageGame(gameId);
       }
 
+      // Chat: one thread per team. A team sees only its own thread; hosts see all.
+      match /messages/{messageId} {
+        allow read: if isAuth() && (canManageGame(gameId) || resource.data.teamId == myTeamId());
+        allow create: if canManageGame(gameId) || (
+                        isAuth()
+                        && request.resource.data.teamId == myTeamId()
+                        && request.resource.data.authorId == request.auth.uid
+                        && request.resource.data.fromHost == false
+                      );
+        allow update, delete: if canManageGame(gameId);
+      }
+
       // Activity feed: 'public' entries are readable by everyone in the game,
       // 'team' entries only by that team and admins. Players may only write
       // their own team's gameplay entries, and nobody but an admin may edit one.
@@ -84,7 +100,7 @@ service cloud.firestore {
             && request.auth.uid in resource.data.memberIds
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt', 'questProgress',
-                           'coins', 'hintsRevealed']));
+                           'coins', 'hintsRevealed', 'teamChatReadAt']));
 
       // Coin ledger: a record of admin adjustments; players may read their own team's history
       match /coinLedger/{entryId} {
@@ -97,11 +113,6 @@ service cloud.firestore {
     match /shopItems/{id} {
       allow read:  if isAuth();
       allow write: if isAdmin();
-    }
-
-    // Chat messages: any authenticated user can read and post
-    match /messages/{id} {
-      allow read, write: if isAuth();
     }
 
     // Broadcasts (admin push messages): authenticated users read; admins write

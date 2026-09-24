@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useMatch, useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot,
+  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -15,6 +15,7 @@ export default function Layout() {
     () => localStorage.getItem('lastGameId')
   );
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingGame, setEditingGame] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -41,6 +42,27 @@ export default function Layout() {
       setGames(list);
     });
   }, [user?.uid, isAdmin]);
+
+  // Unread team messages across the active game, for the sidebar badge
+  useEffect(() => {
+    if (!activeGameId) return setChatUnread(0);
+    let teams = [];
+    let messages = [];
+    const recount = () => {
+      const readBy = Object.fromEntries(teams.map(t => [t.id, t.hostChatReadAt ?? 0]));
+      setChatUnread(messages.filter(m => !m.fromHost && m.sentAt > (readBy[m.teamId] ?? 0)).length);
+    };
+    const unsubTeams = onSnapshot(
+      query(collection(db, 'teams'), where('gameId', '==', activeGameId)),
+      snap => { teams = snap.docs.map(d => ({ id: d.id, ...d.data() })); recount(); },
+    );
+    const unsubMessages = onSnapshot(
+      query(collection(db, 'games', activeGameId, 'messages'), orderBy('sentAt', 'asc')),
+      snap => { messages = snap.docs.map(d => d.data()); recount(); },
+      () => setChatUnread(0),
+    );
+    return () => { unsubTeams(); unsubMessages(); };
+  }, [activeGameId]);
 
   useEffect(() => {
     if (hasAutoSelected.current || gameId || games.length === 0) return;
@@ -75,7 +97,7 @@ export default function Layout() {
   }, [location.pathname]);
 
   function switchGame(game) {
-    const gameSections = ['game', 'quests', 'teams', 'leaderboard', 'live-map', 'activity'];
+    const gameSections = ['game', 'quests', 'teams', 'leaderboard', 'live-map', 'activity', 'chat'];
     const target = gameSections.includes(section) ? section : 'quests';
     navigate(`/games/${game.id}/${target}`);
   }
@@ -170,6 +192,14 @@ export default function Layout() {
             <NavLink to={`/games/${activeGameId}/leaderboard`} className={navClass}>Leaderboard</NavLink>
             <NavLink to={`/games/${activeGameId}/live-map`} className={navClass}>Live Map</NavLink>
             <NavLink to={`/games/${activeGameId}/activity`} className={navClass}>Activity</NavLink>
+            <NavLink to={`/games/${activeGameId}/chat`} className={navClass}>
+              <span className="flex items-center gap-2">
+                Chat
+                {chatUnread > 0 && (
+                  <span className="text-xs font-semibold text-white bg-red-500 rounded-full px-1.5 py-0.5">{chatUnread}</span>
+                )}
+              </span>
+            </NavLink>
             <div className="pt-2 mt-2 border-t border-gray-100" />
           </>
         )}

@@ -1,5 +1,38 @@
-import { collection, documentId, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, documentId, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
+
+async function tokensForMembers(memberIds) {
+  const tokens = [];
+  for (let i = 0; i < memberIds.length; i += 10) {
+    const batch = memberIds.slice(i, i + 10);
+    const usersSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', batch)));
+    usersSnap.docs.forEach(d => {
+      const t = d.data().pushToken;
+      if (t) tokens.push(t);
+    });
+  }
+  return tokens;
+}
+
+async function sendToTokens(tokens, title, body) {
+  if (!tokens.length) return;
+  await fetch('/api/send-push', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(tokens.map(to => ({ to, title, body, sound: 'default' }))),
+  });
+}
+
+// Players walk around with the phone pocketed, so a host's reply needs a nudge
+export async function sendPushToTeam(teamId, title, body) {
+  try {
+    const teamSnap = await getDoc(doc(db, 'teams', teamId));
+    const memberIds = teamSnap.exists() ? teamSnap.data().memberIds ?? [] : [];
+    await sendToTokens(await tokensForMembers(memberIds), title, body);
+  } catch {
+    // Push is best-effort; the message itself is already saved
+  }
+}
 
 // Sends an Expo push to every player in a game, via the Netlify function
 export async function sendPushToPlayers(gameId, title, body) {

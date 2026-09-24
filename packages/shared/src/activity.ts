@@ -45,6 +45,23 @@ export const hintRevealedId = (teamId: string, questId: string, index: number) =
 // Types a player's device is allowed to write (mirrored in firestore.rules)
 export const PLAYER_WRITABLE_TYPES: ActivityType[] = ['quest_solved', 'team_finished', 'hint_revealed'];
 
+// Entries a host caused. They are tagged with the team they concern, but the team
+// didn't do them — so they still count as news for that team.
+const HOST_INITIATED_TYPES: ActivityType[] = [
+  'coins_adjusted',
+  'admin_marked_solved',
+  'admin_moved',
+  'admin_finished',
+  'admin_unfinished',
+  'admin_note',
+];
+
+// Is this entry news to the given team? Their own actions are not; everything
+// else is, including game-wide events and anything a host did to them.
+export function isNewsFor(entry: ActivityEntry, teamId: string | null | undefined): boolean {
+  return entry.teamId !== teamId || HOST_INITIATED_TYPES.includes(entry.type);
+}
+
 const ICONS: Record<ActivityType, string> = {
   quest_solved: '✅',
   team_finished: '🏆',

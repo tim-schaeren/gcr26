@@ -7,6 +7,7 @@ import TeamsPage from './pages/TeamsPage';
 import PlayersPage from './pages/PlayersPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ActivityPage from './pages/ActivityPage';
+import ChatPage from './pages/ChatPage';
 import LiveMapPage from './pages/LiveMapPage';
 import GamePage from './pages/GamePage';
 
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="games/:gameId/teams" element={<TeamsPage />} />
           <Route path="games/:gameId/leaderboard" element={<LeaderboardPage />} />
           <Route path="games/:gameId/activity" element={<ActivityPage />} />
+          <Route path="games/:gameId/chat" element={<ChatPage />} />
           <Route path="games/:gameId/live-map" element={<LiveMapPage />} />
           <Route path="games/:gameId/game" element={<GamePage />} />
           <Route path="players" element={<PlayersPage />} />
