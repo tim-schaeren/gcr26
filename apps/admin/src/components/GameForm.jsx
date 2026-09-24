@@ -1,19 +1,29 @@
 import { useState, useEffect } from 'react';
+import { DEFAULT_ECONOMY, gameEconomy } from '@gcr26/shared';
 import { geocodeCity } from '../utils/geocode';
 
-const EMPTY = { name: '', startDateTime: '', city: '', maxTeamSize: '', maxTeamSpreadMeters: '' };
+const EMPTY = {
+  name: '', startDateTime: '', city: '', maxTeamSize: '', maxTeamSpreadMeters: '',
+  startingCoins: String(DEFAULT_ECONOMY.startingCoins),
+  coinsPerQuest: String(DEFAULT_ECONOMY.coinsPerQuest),
+  hintCost: String(DEFAULT_ECONOMY.hintCost),
+};
 
 function toFormState(game) {
   if (!game) return EMPTY;
   const dt = game.startDateTime
     ? new Date(game.startDateTime).toISOString().slice(0, 16)
     : '';
+  const economy = gameEconomy(game);
   return {
     name: game.name,
     startDateTime: dt,
     city: game.city,
     maxTeamSize: game.maxTeamSize ?? '',
     maxTeamSpreadMeters: game.maxTeamSpreadMeters ?? '',
+    startingCoins: String(economy.startingCoins),
+    coinsPerQuest: String(economy.coinsPerQuest),
+    hintCost: String(economy.hintCost),
   };
 }
 
@@ -40,6 +50,10 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
     if (!form.name.trim()) e.name = 'Name is required.';
     if (!form.startDateTime) e.startDateTime = 'Start date and time are required.';
     if (!form.city.trim()) e.city = 'City is required.';
+    for (const [field, label] of [['startingCoins', 'Starting coins'], ['coinsPerQuest', 'Coins per quest'], ['hintCost', 'Hint cost']]) {
+      const value = parseInt(form[field]);
+      if (!Number.isFinite(value) || value < 0) e[field] = `${label} must be 0 or more.`;
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -63,6 +77,9 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
         questOrder: game?.questOrder ?? [],
         maxTeamSize: Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : null,
         maxTeamSpreadMeters: Number.isFinite(parsedSpread) && parsedSpread > 0 ? parsedSpread : null,
+        startingCoins: parseInt(form.startingCoins),
+        coinsPerQuest: parseInt(form.coinsPerQuest),
+        hintCost: parseInt(form.hintCost),
       });
     } finally {
       setGeocoding(false);
@@ -162,6 +179,32 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
                 placeholder="No limit"
               />
               <p className="text-xs text-gray-400 mt-1">Max distance between team members. Leave blank for no limit.</p>
+            </div>
+
+            <div className="border-t border-gray-200 pt-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Coins</h3>
+              <p className="text-xs text-gray-400 mb-3">Teams spend coins to reveal hints.</p>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  ['startingCoins', 'Starting'],
+                  ['coinsPerQuest', 'Per quest'],
+                  ['hintCost', 'Per hint'],
+                ].map(([field, label]) => (
+                  <div key={field}>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors[field] ? 'border-red-400' : 'border-gray-300'}`}
+                      value={form[field]}
+                      onChange={e => set(field, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+              {['startingCoins', 'coinsPerQuest', 'hintCost'].map(f => errors[f] && (
+                <p key={f} className="text-xs text-red-500 mt-1">{errors[f]}</p>
+              ))}
             </div>
           </div>
         )}

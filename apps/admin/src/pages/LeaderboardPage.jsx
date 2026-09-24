@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, doc, query, where, onSnapshot } from 'firebase/firestore';
 import { useParams, useNavigate } from 'react-router-dom';
+import { gameEconomy, teamCoins } from '@gcr26/shared';
 import { db } from '../firebase';
 
 function medal(rank) {
@@ -86,6 +87,7 @@ export default function LeaderboardPage() {
 
   const totalQuests = game?.questOrder?.length ?? 0;
   const totalPausedMs = game?.totalPausedMs ?? 0;
+  const economy = gameEconomy(game);
 
   const sorted = [...teams].sort((a, b) => {
     if (a.finishedAt && b.finishedAt) return a.finishedAt - b.finishedAt;
@@ -107,6 +109,7 @@ export default function LeaderboardPage() {
             const pct = totalQuests > 0 ? (completed / totalQuests) * 100 : 0;
             const memberUsers = users.filter(u => team.memberIds?.includes(u.id));
             const status = teamQuestStatus(team, questMap, memberUsers, game?.questOrder);
+            const hintsUsed = Object.values(team.hintsRevealed ?? {}).reduce((sum, n) => sum + n, 0);
 
             return (
               <div
@@ -122,6 +125,10 @@ export default function LeaderboardPage() {
                     <div className="flex items-baseline justify-between gap-2 mb-1">
                       <p className="text-sm font-semibold text-gray-900 truncate">{team.name}</p>
                       <p className="text-xs text-gray-500 shrink-0">
+                        <span className="text-gray-400 mr-2" title="Coins · hints revealed">
+                          🪙 {teamCoins(team, economy)}
+                          {hintsUsed > 0 && ` · 💡 ${hintsUsed}`}
+                        </span>
                         {completed} / {totalQuests} quests
                         {team.finishedAt && game && (
                           <span className="ml-2 text-green-600 font-medium">

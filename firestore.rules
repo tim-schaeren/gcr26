@@ -51,7 +51,14 @@ service cloud.firestore {
       allow update: if isAuth()
         && request.auth.uid in resource.data.memberIds
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt', 'questProgress']);
+             .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt', 'questProgress',
+                       'coins', 'hintsRevealed']);
+
+      // Coin ledger: a record of admin adjustments; players may read their own team's history
+      match /coinLedger/{entryId} {
+        allow read:  if isAuth();
+        allow write: if isAdmin();
+      }
     }
 
     // Shop items: authenticated users read; admins write

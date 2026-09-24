@@ -8,7 +8,9 @@ import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
   useDroppable, useDraggable,
 } from '@dnd-kit/core';
-import { db } from '../firebase';
+import { gameEconomy, teamCoins } from '@gcr26/shared';
+import { db, auth } from '../firebase';
+import CoinAdjustModal from '../components/CoinAdjustModal';
 
 function DraggableMemberRow({ user, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: user.id });
@@ -63,7 +65,7 @@ function DraggablePlayerChip({ user }) {
   );
 }
 
-function DroppableTeamCard({ team, members, maxTeamSize, onRemove, onEdit, onViewMap }) {
+function DroppableTeamCard({ team, members, maxTeamSize, coins, onRemove, onEdit, onViewMap, onAdjustCoins }) {
   const isFull = maxTeamSize && members.length >= maxTeamSize;
   const { setNodeRef, isOver } = useDroppable({ id: team.id });
 
@@ -90,6 +92,13 @@ function DroppableTeamCard({ team, members, maxTeamSize, onRemove, onEdit, onVie
           )}
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => onAdjustCoins(team)}
+            title="Adjust coins"
+            className="text-xs text-gray-500 hover:text-gray-900 transition-colors"
+          >
+            🪙 {coins}
+          </button>
           <button
             onClick={() => onViewMap(team)}
             className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
@@ -258,6 +267,7 @@ export default function TeamsPage() {
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
   const [activeId, setActiveId] = useState(null);
+  const [adjusting, setAdjusting] = useState(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -354,6 +364,22 @@ export default function TeamsPage() {
     await batch.commit();
   }
 
+  const economy = gameEconomy(game);
+
+  // Writes the new balance and a ledger entry explaining the change
+  async function handleAdjustCoins(delta, reason, balanceAfter) {
+    const team = adjusting;
+    await updateDoc(doc(db, 'teams', team.id), { coins: balanceAfter });
+    await addDoc(collection(db, 'teams', team.id, 'coinLedger'), {
+      delta,
+      reason,
+      balanceAfter,
+      byName: auth.currentUser?.email ?? 'admin',
+      at: Date.now(),
+    });
+    setAdjusting(null);
+  }
+
   async function handleSaveTeam(data) {
     setSaving(true);
     try {
@@ -363,6 +389,7 @@ export default function TeamsPage() {
           gameId,
           memberIds: [],
           score: 0,
+          coins: gameEconomy(game).startingCoins,
           currentQuestId: null,
           completedQuestIds: [],
           finishedAt: null,
@@ -416,8 +443,10 @@ export default function TeamsPage() {
                         team={team}
                         members={members}
                         maxTeamSize={game?.maxTeamSize}
+                        coins={teamCoins(team, economy)}
                         onRemove={handleRemove}
                         onEdit={setSelected}
+                        onAdjustCoins={setAdjusting}
                         onViewMap={t => navigate(`/games/${gameId}/live-map`, { state: { focusTeamId: t.id } })}
                       />
                     );
@@ -453,6 +482,15 @@ export default function TeamsPage() {
           </DragOverlay>
         </DndContext>
       </div>
+
+      {adjusting && (
+        <CoinAdjustModal
+          teamName={adjusting.name}
+          balance={teamCoins(adjusting, economy)}
+          onSave={handleAdjustCoins}
+          onClose={() => setAdjusting(null)}
+        />
+      )}
 
       {selected && (
         <div className="fixed inset-0 z-20 bg-white flex flex-col md:relative md:inset-auto md:z-auto md:w-96 md:border-l md:border-gray-200 md:-mr-8 md:-my-8 md:shadow-sm">

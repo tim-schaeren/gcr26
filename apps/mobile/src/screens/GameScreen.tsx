@@ -21,7 +21,10 @@ import {
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { normalizeQuest, type Quest, type QuestProgress } from '@gcr26/shared';
+import {
+  normalizeQuest, gameEconomy, teamCoins, hintsRevealedFor,
+  type Quest, type QuestProgress,
+} from '@gcr26/shared';
 import { db, auth } from '../firebase';
 import { TASK_NAME as LOCATION_TASK } from '../tasks/locationTask';
 import { startTracking, stopTracking, recordPosition } from '../tasks/distanceTracker';
@@ -39,6 +42,8 @@ interface Team {
   completedQuestIds: string[];
   finishedAt: number | null;
   questProgress?: QuestProgress | null;
+  coins?: number;
+  hintsRevealed?: Record<string, number>;
 }
 
 interface Game {
@@ -50,6 +55,9 @@ interface Game {
   pausedAt: number | null;
   totalPausedMs: number;
   endedAt: number | null;
+  startingCoins?: number;
+  coinsPerQuest?: number;
+  hintCost?: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -212,6 +220,47 @@ function InfoView({
   );
 }
 
+function HintSection({
+  hints,
+  revealed,
+  cost,
+  coins,
+  onReveal,
+}: {
+  hints: string[];
+  revealed: number;
+  cost: number;
+  coins: number;
+  onReveal: () => void;
+}) {
+  if (!hints.length) return null;
+  const allRevealed = revealed >= hints.length;
+  const affordable = coins >= cost;
+  return (
+    <View style={styles.hintSection}>
+      {hints.slice(0, revealed).map((hint, i) => (
+        <View key={i} style={styles.hintCard}>
+          <Text style={styles.hintLabel}>HINT {i + 1}</Text>
+          <Text style={styles.hintText}>{hint}</Text>
+        </View>
+      ))}
+      {!allRevealed && (
+        <TouchableOpacity
+          style={[styles.hintButton, !affordable && styles.submitButtonDisabled]}
+          onPress={onReveal}
+          disabled={!affordable}
+        >
+          <Text style={styles.hintButtonText}>
+            {affordable
+              ? `Reveal ${revealed > 0 ? 'another ' : 'a '}hint — ${cost} 🪙`
+              : `Not enough coins (${cost} 🪙 needed)`}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 function QuestView({
   quest,
   questNumber,
@@ -221,6 +270,10 @@ function QuestView({
   wrong,
   submitting,
   onSubmit,
+  hintsRevealed,
+  hintCost,
+  coins,
+  onRevealHint,
 }: {
   quest: Quest;
   questNumber: number;
@@ -230,6 +283,10 @@ function QuestView({
   wrong: boolean;
   submitting: boolean;
   onSubmit: () => void;
+  hintsRevealed: number;
+  hintCost: number;
+  coins: number;
+  onRevealHint: () => void;
 }) {
   return (
     <KeyboardAvoidingView
@@ -261,6 +318,14 @@ function QuestView({
         </View>
 
         {wrong && <Text style={styles.wrongText}>That's not right — try again.</Text>}
+
+        <HintSection
+          hints={quest.hints ?? []}
+          revealed={hintsRevealed}
+          cost={hintCost}
+          coins={coins}
+          onReveal={onRevealHint}
+        />
       </ScrollContainer>
     </KeyboardAvoidingView>
   );
@@ -700,6 +765,22 @@ export default function GameScreen({ teamId }: { teamId: string }) {
     updateQuestProgress(quest.id, { distanceMeters: localMeters, unlock: reached }).catch(() => {});
   }, [localMeters, teamMeters, trackingDistance, quest?.id]);
 
+  const economy = gameEconomy(game);
+  const coins = teamCoins(team, economy);
+  const hintsRevealed = quest ? hintsRevealedFor(team, quest.id) : 0;
+
+  // Absolute balances rather than increments: two teammates writing at once land on the
+  // same number instead of paying twice, and it still works offline.
+  function revealHint() {
+    if (!team || !quest) return;
+    const hints = quest.hints ?? [];
+    if (hintsRevealed >= hints.length || coins < economy.hintCost) return;
+    updateDoc(doc(db, 'teams', team.id), {
+      coins: coins - economy.hintCost,
+      hintsRevealed: { ...(team.hintsRevealed ?? {}), [quest.id]: hintsRevealed + 1 },
+    }).catch(() => {});
+  }
+
   function completeQuest(completed: Quest) {
     if (!team || !game) return Promise.resolve();
     const nextQuestId = game.questOrder[game.questOrder.indexOf(completed.id) + 1] ?? null;
@@ -707,6 +788,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
       completedQuestIds: arrayUnion(completed.id),
       currentQuestId: nextQuestId,
       questProgress: null,
+      coins: coins + economy.coinsPerQuest,
     };
     if (!nextQuestId) update.finishedAt = Date.now();
     return updateDoc(doc(db, 'teams', team.id), update);
@@ -829,6 +911,10 @@ export default function GameScreen({ teamId }: { teamId: string }) {
           wrong={wrong}
           submitting={submitting}
           onSubmit={submitAnswer}
+          hintsRevealed={hintsRevealed}
+          hintCost={economy.hintCost}
+          coins={coins}
+          onRevealHint={revealHint}
         />
         {spreadTooLarge && <SpreadOverlay />}
       </View>
@@ -839,6 +925,11 @@ export default function GameScreen({ teamId }: { teamId: string }) {
     <View style={{ flex: 1 }}>
       {renderContent()}
       <CelebrationOverlay visible={celebrating} anim={celebrateAnim} />
+      {team && !game?.endedAt && (
+        <View style={styles.coinPill}>
+          <Text style={styles.coinPillText}>🪙 {coins}</Text>
+        </View>
+      )}
       <TouchableOpacity style={styles.lbIconButton} onPress={() => setLeaderboardOpen(true)}>
         <Text style={styles.lbIconText}>≡</Text>
       </TouchableOpacity>
@@ -1085,6 +1176,61 @@ const styles = StyleSheet.create({
   },
   celebrationText: {
     fontSize: 32,
+    fontWeight: '700',
+    color: '#111',
+  },
+
+  // Hints
+  hintSection: {
+    width: '100%',
+    marginTop: 28,
+  },
+  hintCard: {
+    width: '100%',
+    backgroundColor: '#fffbeb',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+  },
+  hintLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 2,
+    color: '#b45309',
+    marginBottom: 4,
+  },
+  hintText: {
+    fontSize: 15,
+    color: '#92400e',
+    lineHeight: 21,
+  },
+  hintButton: {
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#111',
+  },
+  hintButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111',
+  },
+
+  // Coin balance pill
+  coinPill: {
+    position: 'absolute',
+    top: 52,
+    left: 16,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+  },
+  coinPillText: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#111',
   },

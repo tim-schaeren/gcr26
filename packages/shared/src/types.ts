@@ -24,6 +24,18 @@ export interface Team {
   completedQuestIds: string[];
   finishedAt: number | null;
   questProgress: QuestProgress | null;
+  coins?: number;                            // team purse; absent means the game's startingCoins
+  hintsRevealed?: Record<string, number>;    // questId -> how many hints the team has paid for
+}
+
+// Admin adjustments to a balance, stored under teams/{teamId}/coinLedger
+export interface CoinLedgerEntry {
+  id: string;
+  delta: number;
+  reason: string;
+  balanceAfter: number;
+  byName: string;
+  at: number;
 }
 
 // Shared progress on the current quest, so every team member sees the same state
@@ -132,6 +144,9 @@ export interface Game {
   questOrder: string[];     // ordered list of quest IDs (subcollection)
   maxTeamSize?: number;     // optional soft limit shown in admin UI
   maxTeamSpreadMeters: number | null; // null = unlimited; blocks answer submission if exceeded
+  startingCoins?: number;   // coins each team begins with (default 0)
+  coinsPerQuest?: number;   // coins paid for each solved quest (default 10)
+  hintCost?: number;        // flat price of revealing one hint (default 10)
   pausedAt: number | null;  // timestamp when game was paused; null = not paused
   totalPausedMs: number;    // accumulated pause duration in ms (updated on resume)
   endedAt: number | null;   // timestamp when admin ended the game; null = not ended
