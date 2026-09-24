@@ -50,9 +50,14 @@ cd apps/mobile
 npm run ship
 ```
 
-This sources `.env` so Firebase config is baked in, builds locally with EAS, and submits the resulting IPA to TestFlight. Build numbers are auto-incremented.
+This sources `.env` so Firebase config is baked in, builds locally with EAS, and uploads the resulting IPA straight to App Store Connect with Xcode's `altool`. Build numbers are auto-incremented. Uploading directly avoids the EAS Submit queue, which can be slow on the free tier.
 
-After submitting, Apple takes ~10 minutes to process. Then go to [App Store Connect → TestFlight](https://appstoreconnect.apple.com) to add testers.
+Upload needs one of these in `apps/mobile/.env`:
+
+- **App Store Connect API key** (preferred — no 2FA, doesn't expire): generate a key with the App Manager role under App Store Connect → Users and Access → Integrations → Keys, save the downloaded `.p8` as `~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8`, then set `ASC_KEY_ID` and `ASC_ISSUER_ID`.
+- **App-specific password**: create one at [appleid.apple.com](https://appleid.apple.com) → Sign-In and Security, then set `APPLE_APP_SPECIFIC_PASSWORD` (with `APPLE_ID`).
+
+After uploading, Apple takes ~10 minutes to process. Then go to [App Store Connect → TestFlight](https://appstoreconnect.apple.com) to add testers.
 
 ---
 
