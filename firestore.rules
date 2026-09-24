@@ -41,6 +41,23 @@ service cloud.firestore {
         allow read:  if isAuth();
         allow write: if isAdmin();
       }
+
+      // Activity feed: 'public' entries are readable by everyone in the game,
+      // 'team' entries only by that team and admins. Players may only write
+      // their own team's gameplay entries, and nobody but an admin may edit one.
+      match /activity/{entryId} {
+        allow read: if isAuth() && (
+                      resource.data.visibility == 'public'
+                      || isAdmin()
+                      || resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId
+                    );
+        allow create: if isAdmin() || (
+                        isAuth()
+                        && request.resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId
+                        && request.resource.data.type in ['quest_solved', 'team_finished', 'hint_revealed']
+                      );
+        allow update, delete: if isAdmin();
+      }
     }
 
     // Teams: authenticated users read; admins write

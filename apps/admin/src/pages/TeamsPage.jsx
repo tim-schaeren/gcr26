@@ -11,6 +11,7 @@ import {
 import { gameEconomy, teamCoins } from '@gcr26/shared';
 import { db, auth } from '../firebase';
 import CoinAdjustModal from '../components/CoinAdjustModal';
+import { logActivity } from '../utils/activity';
 
 function DraggableMemberRow({ user, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: user.id });
@@ -376,6 +377,15 @@ export default function TeamsPage() {
       balanceAfter,
       byName: auth.currentUser?.email ?? 'admin',
       at: Date.now(),
+    });
+    // Only the team itself (and admins) sees what it was given or charged
+    await logActivity(gameId, {
+      type: 'coins_adjusted',
+      visibility: 'team',
+      teamId: team.id,
+      teamName: team.name,
+      amount: delta,
+      reason,
     });
     setAdjusting(null);
   }

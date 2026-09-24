@@ -16,14 +16,15 @@ import { signOut } from 'firebase/auth';
 import { useUser } from '../hooks/useUser';
 import {
   doc, collection, onSnapshot, updateDoc, addDoc, arrayUnion,
-  query, where, documentId,
+  query, where, documentId, writeBatch, orderBy, limit,
 } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   normalizeQuest, gameEconomy, teamCoins, hintsRevealedFor,
-  type Quest, type QuestProgress,
+  formatActivity, formatActivityTime, questSolvedId, teamFinishedId, hintRevealedId,
+  type Quest, type QuestProgress, type ActivityEntry,
 } from '@gcr26/shared';
 import { db, auth } from '../firebase';
 import { TASK_NAME as LOCATION_TASK } from '../tasks/locationTask';
@@ -378,18 +379,62 @@ function EndedView({ game }: { game: Game }) {
   );
 }
 
+function ActivityList({
+  entries,
+  viewerTeamId,
+  highlightSince,
+}: {
+  entries: ActivityEntry[];
+  viewerTeamId: string;
+  highlightSince: number;
+}) {
+  if (!entries.length) {
+    return <Text style={[styles.message, { marginTop: 32 }]}>Nothing has happened yet.</Text>;
+  }
+  return (
+    <>
+      {entries.map(entry => {
+        const { icon, text } = formatActivity(entry, viewerTeamId);
+        // A team's own actions are never "news" to them
+        const isNew = entry.teamId !== viewerTeamId && entry.at > highlightSince;
+        return (
+          <View key={entry.id} style={[styles.activityRow, isNew && styles.activityRowNew]}>
+            <Text style={styles.activityIcon}>{icon}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.activityText}>{text}</Text>
+              {entry.visibility === 'team' && (
+                <Text style={styles.activityPrivate}>🔒 Only your team can see this</Text>
+              )}
+            </View>
+            {isNew && <View style={styles.newDot} />}
+            <Text style={styles.activityTime}>{formatActivityTime(entry.at)}</Text>
+          </View>
+        );
+      })}
+    </>
+  );
+}
+
 function LeaderboardModal({
   visible,
   onClose,
   game,
   allTeams,
   currentTeamId,
+  activity,
+  tab,
+  onTabChange,
+  highlightSince,
 }: {
   visible: boolean;
   onClose: () => void;
   game: Game;
   allTeams: Team[];
   currentTeamId: string;
+  activity: ActivityEntry[];
+  tab: 'leaderboard' | 'activity';
+  onTabChange: (tab: 'leaderboard' | 'activity') => void;
+  highlightSince: number;
 }) {
   const sorted = [...allTeams].sort((a, b) => {
     if (a.finishedAt && b.finishedAt) return a.finishedAt - b.finishedAt;
@@ -404,13 +449,24 @@ function LeaderboardModal({
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
         <View style={styles.lbHeader}>
-          <Text style={styles.lbTitle}>Leaderboard</Text>
+          <View style={styles.tabRow}>
+            {(['activity', 'leaderboard'] as const).map(name => (
+              <TouchableOpacity key={name} onPress={() => onTabChange(name)}>
+                <Text style={[styles.tabLabel, tab === name && styles.tabLabelActive]}>
+                  {name === 'activity' ? 'Activity' : 'Leaderboard'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={styles.lbClose}>✕</Text>
           </TouchableOpacity>
         </View>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}>
-          {sorted.map((t, i) => {
+          {tab === 'activity' && (
+            <ActivityList entries={activity} viewerTeamId={currentTeamId} highlightSince={highlightSince} />
+          )}
+          {tab === 'leaderboard' && sorted.map((t, i) => {
             const isCurrent = t.id === currentTeamId;
             const completed = t.completedQuestIds?.length ?? 0;
             const duration = t.finishedAt
@@ -526,6 +582,11 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [sheetTab, setSheetTab] = useState<'leaderboard' | 'activity'>('activity');
+  const [highlightSince, setHighlightSince] = useState(0);
+  const [publicActivity, setPublicActivity] = useState<ActivityEntry[]>([]);
+  const [teamActivity, setTeamActivity] = useState<ActivityEntry[]>([]);
+  const [activitySeenAt, setActivitySeenAt] = useState(0);
 
   const { profile } = useUser();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -559,6 +620,74 @@ export default function GameScreen({ teamId }: { teamId: string }) {
       snap => setAllTeams(snap.docs.map(d => ({ id: d.id, ...d.data() } as Team))),
     );
   }, [game?.id]);
+
+  // The board. Rules only allow a player to read public entries and their own
+  // team's, so it takes two subscriptions rather than one unfiltered query.
+  useEffect(() => {
+    if (!game?.id) return;
+    return onSnapshot(
+      query(
+        collection(db, 'games', game.id, 'activity'),
+        where('visibility', '==', 'public'),
+        orderBy('at', 'desc'),
+        limit(100),
+      ),
+      snap => setPublicActivity(snap.docs.map(d => ({ id: d.id, ...d.data() } as ActivityEntry))),
+      () => {},
+    );
+  }, [game?.id]);
+
+  useEffect(() => {
+    if (!game?.id || !team?.id) return;
+    return onSnapshot(
+      query(
+        collection(db, 'games', game.id, 'activity'),
+        where('teamId', '==', team.id),
+        orderBy('at', 'desc'),
+        limit(100),
+      ),
+      snap => setTeamActivity(snap.docs.map(d => ({ id: d.id, ...d.data() } as ActivityEntry))),
+      () => {},
+    );
+  }, [game?.id, team?.id]);
+
+  const activity = useMemo(() => {
+    const byId = new Map<string, ActivityEntry>();
+    [...publicActivity, ...teamActivity].forEach(e => byId.set(e.id, e));
+    return [...byId.values()].sort((a, b) => b.at - a.at).slice(0, 100);
+  }, [publicActivity, teamActivity]);
+
+  // Remember what has been read, so the badge survives a restart
+  useEffect(() => {
+    if (!game?.id) return;
+    AsyncStorage.getItem(`activitySeen:${game.id}`)
+      .then(v => setActivitySeenAt(v ? Number(v) : 0))
+      .catch(() => {});
+  }, [game?.id]);
+
+  // Only other teams' actions and game-wide events count as news
+  const newestFromOthers = useMemo(() => {
+    const others = activity.filter(e => e.teamId !== team?.id);
+    return others.length ? others[0].at : 0;
+  }, [activity, team?.id]);
+
+  const hasUnreadActivity = newestFromOthers > activitySeenAt;
+
+  function openSheet(tab: 'leaderboard' | 'activity') {
+    // Freeze what counts as new for this viewing, so rows stay marked while being read
+    setHighlightSince(activitySeenAt);
+    setSheetTab(tab);
+    setLeaderboardOpen(true);
+  }
+
+  // Mark the board as read while it is actually open, including entries that
+  // arrive while the player is looking at it
+  useEffect(() => {
+    if (!leaderboardOpen || sheetTab !== 'activity' || !game?.id) return;
+    if (newestFromOthers <= activitySeenAt) return;
+    setActivitySeenAt(newestFromOthers);
+    AsyncStorage.setItem(`activitySeen:${game.id}`, String(newestFromOthers)).catch(() => {});
+  }, [leaderboardOpen, sheetTab, newestFromOthers, activitySeenAt, game?.id]);
 
   // Current quest
   const currentQuestId = team?.currentQuestId ?? game?.questOrder?.[0] ?? null;
@@ -778,13 +907,25 @@ export default function GameScreen({ teamId }: { teamId: string }) {
   // Absolute balances rather than increments: two teammates writing at once land on the
   // same number instead of paying twice, and it still works offline.
   function revealHint() {
-    if (!team || !quest) return;
+    if (!team || !game || !quest) return;
     const hints = quest.hints ?? [];
     if (hintsRevealed >= hints.length || coins < economy.hintCost) return;
-    updateDoc(doc(db, 'teams', team.id), {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'teams', team.id), {
       coins: coins - economy.hintCost,
       hintsRevealed: { ...(team.hintsRevealed ?? {}), [quest.id]: hintsRevealed + 1 },
-    }).catch(() => {});
+    });
+    // Only this team sees what it spends money on
+    batch.set(doc(db, 'games', game.id, 'activity', hintRevealedId(team.id, quest.id, hintsRevealed + 1)), {
+      type: 'hint_revealed',
+      at: Date.now(),
+      visibility: 'team',
+      teamId: team.id,
+      teamName: team.name,
+      questTitle: quest.title,
+      amount: economy.hintCost,
+    });
+    batch.commit().catch(() => {});
   }
 
   function completeQuest(completed: Quest) {
@@ -797,7 +938,31 @@ export default function GameScreen({ teamId }: { teamId: string }) {
       coins: coins + economy.coinsPerQuest,
     };
     if (!nextQuestId) update.finishedAt = Date.now();
-    return updateDoc(doc(db, 'teams', team.id), update);
+
+    // Progress and its board entry land together, or not at all. The entry ids are
+    // derived from the quest, so two teammates solving at once write one entry.
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'teams', team.id), update);
+    batch.set(doc(db, 'games', game.id, 'activity', questSolvedId(team.id, completed.id)), {
+      type: 'quest_solved',
+      at: Date.now(),
+      visibility: 'public',
+      teamId: team.id,
+      teamName: team.name,
+      questTitle: completed.title,
+      questNumber: game.questOrder.indexOf(completed.id) + 1,
+    });
+    if (!nextQuestId) {
+      batch.set(doc(db, 'games', game.id, 'activity', teamFinishedId(team.id)), {
+        type: 'team_finished',
+        at: Date.now(),
+        visibility: 'public',
+        teamId: team.id,
+        teamName: team.name,
+        placement: allTeams.filter(t => t.finishedAt).length + 1,
+      });
+    }
+    return batch.commit();
   }
 
   function continueQuest() {
@@ -858,7 +1023,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
         game={game}
         team={team}
         allTeams={allTeams}
-        onLeaderboard={() => setLeaderboardOpen(true)}
+        onLeaderboard={() => openSheet('leaderboard')}
       />
     );
     if (!quest) {
@@ -936,8 +1101,9 @@ export default function GameScreen({ teamId }: { teamId: string }) {
           <Text style={styles.coinPillText}>🪙 {coins}</Text>
         </View>
       )}
-      <TouchableOpacity style={styles.lbIconButton} onPress={() => setLeaderboardOpen(true)}>
+      <TouchableOpacity style={styles.lbIconButton} onPress={() => openSheet('activity')}>
         <Text style={styles.lbIconText}>≡</Text>
+        {hasUnreadActivity && <View style={styles.unreadDot} />}
       </TouchableOpacity>
       <ProfileButton name={userName} onPress={() => setProfileOpen(true)} />
       <ProfileSheet visible={profileOpen} name={userName} onClose={() => setProfileOpen(false)} />
@@ -948,6 +1114,10 @@ export default function GameScreen({ teamId }: { teamId: string }) {
           game={game}
           allTeams={allTeams}
           currentTeamId={teamId}
+          activity={activity}
+          tab={sheetTab}
+          onTabChange={setSheetTab}
+          highlightSince={highlightSince}
         />
       )}
     </View>
@@ -1265,6 +1435,71 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+  },
+
+  // Activity feed
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  activityIcon: {
+    fontSize: 15,
+    width: 20,
+  },
+  activityText: {
+    fontSize: 14,
+    color: '#111',
+    lineHeight: 20,
+  },
+  activityTime: {
+    fontSize: 12,
+    color: '#bbb',
+    fontVariant: ['tabular-nums'],
+  },
+  activityRowNew: {
+    backgroundColor: '#fefce8',
+    marginHorizontal: -8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  activityPrivate: {
+    fontSize: 11,
+    color: '#a1a1aa',
+    marginTop: 3,
+  },
+  newDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
+    marginTop: 6,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  tabLabel: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#d1d5db',
+  },
+  tabLabelActive: {
+    color: '#111',
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#ef4444',
+    borderWidth: 1.5,
+    borderColor: '#fff',
   },
 
   // Leaderboard modal

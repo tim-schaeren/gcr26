@@ -6,6 +6,8 @@ import {
 import { useParams } from 'react-router-dom';
 import { gameEconomy } from '@gcr26/shared';
 import { db } from '../firebase';
+import { sendPushToPlayers } from '../utils/push';
+import { logActivity, clearActivity } from '../utils/activity';
 
 function getStatus(game) {
   if (!game) return null;
@@ -26,33 +28,6 @@ function formatDuration(ms) {
   const s = Math.floor((ms % 60000) / 1000);
   if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
   return `${m}m ${String(s).padStart(2, '0')}s`;
-}
-
-async function sendPushToPlayers(gameId, title, body) {
-  try {
-    const teamsSnap = await getDocs(query(collection(db, 'teams'), where('gameId', '==', gameId)));
-    const memberIds = [...new Set(teamsSnap.docs.flatMap(d => d.data().memberIds ?? []))];
-    if (!memberIds.length) return;
-
-    const tokens = [];
-    for (let i = 0; i < memberIds.length; i += 10) {
-      const batch = memberIds.slice(i, i + 10);
-      const usersSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', batch)));
-      usersSnap.docs.forEach(d => {
-        const t = d.data().pushToken;
-        if (t) tokens.push(t);
-      });
-    }
-    if (!tokens.length) return;
-
-    await fetch('/api/send-push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tokens.map(to => ({ to, title, body, sound: 'default' }))),
-    });
-  } catch (e) {
-    console.warn('Push notification failed:', e);
-  }
 }
 
 const STATUS_STYLES = {
@@ -92,6 +67,7 @@ export default function GamePage() {
   async function startNow() {
     await run(async () => {
       await updateDoc(doc(db, 'games', gameId), { startDateTime: Date.now() });
+      await logActivity(gameId, { type: 'game_started' });
       await sendPushToPlayers(gameId, '🏁 The game has started!', 'Good luck — your first quest awaits.');
     });
   }
@@ -99,6 +75,7 @@ export default function GamePage() {
   async function pause() {
     await run(async () => {
       await updateDoc(doc(db, 'games', gameId), { pausedAt: Date.now() });
+      await logActivity(gameId, { type: 'game_paused' });
       await sendPushToPlayers(gameId, '⏸ Game paused', 'The admins have paused the game. Sit tight!');
     });
   }
@@ -110,6 +87,7 @@ export default function GamePage() {
         pausedAt: null,
         totalPausedMs: (game.totalPausedMs ?? 0) + extra,
       });
+      await logActivity(gameId, { type: 'game_resumed' });
       await sendPushToPlayers(gameId, '▶️ Game resumed', 'The game is back on — keep going!');
     });
   }
@@ -117,6 +95,7 @@ export default function GamePage() {
   async function endGame() {
     await run(async () => {
       await updateDoc(doc(db, 'games', gameId), { endedAt: Date.now() });
+      await logActivity(gameId, { type: 'game_ended' });
       await sendPushToPlayers(gameId, '🏁 Game over', 'The admins have ended the game. Thanks for playing!');
     });
     setShowEndConfirm(false);
@@ -139,6 +118,9 @@ export default function GamePage() {
         });
       });
       await batch.commit();
+      // The old board describes progress that no longer exists; the game is back at the start
+      await clearActivity(gameId);
+      await logActivity(gameId, { type: 'game_started' });
     });
     setShowResetConfirm(false);
     setResetInput('');
