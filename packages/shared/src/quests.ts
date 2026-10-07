@@ -10,6 +10,12 @@ export function toBlocks(value: unknown): ContentBlock[] {
   return [];
 }
 
+// Hints used to be plain strings; each one is now its own list of blocks
+export function toHintBlocks(value: unknown): ContentBlock[][] {
+  if (!Array.isArray(value)) return [];
+  return value.map(hint => toBlocks(hint)).filter(blocks => blocks.length > 0);
+}
+
 // Fills in defaults for quests created before trigger/task existed
 export function normalizeQuest(id: string, data: Record<string, any>): Quest {
   return {
@@ -20,6 +26,9 @@ export function normalizeQuest(id: string, data: Record<string, any>): Quest {
     task: TASKS.includes(data.task) ? data.task : 'answer',
     description: toBlocks(data.description),
     navigationHint: toBlocks(data.navigationHint),
+    hints: toHintBlocks(data.hints),
+    // Distance progress is shown unless a host turned it off
+    showDistanceProgress: data.showDistanceProgress !== false,
     isActive: data.isActive ?? true,
   };
 }

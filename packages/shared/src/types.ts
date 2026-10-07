@@ -77,7 +77,8 @@ export interface Quest {
   location?: GeoPoint;            // location
   distanceMeters?: number;        // distance: meters to travel after the quest starts
   answers?: string[];             // answer: trimmed; multiple valid answers allowed
-  hints?: string[];               // answer
+  hints?: ContentBlock[][];       // answer: each hint is its own list of blocks
+  showDistanceProgress?: boolean; // distance: show how far the team has come (default true)
   durationSeconds?: number;       // timer
   isActive: boolean;              // admin can hide without deleting
 }

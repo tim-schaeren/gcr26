@@ -51,6 +51,7 @@ import {
 	type QuestProgress,
 	type ActivityEntry,
 	type ChatMessage,
+	type ContentBlock,
 } from '@gcr26/shared';
 import { db, auth } from '../firebase';
 import { TASK_NAME as LOCATION_TASK } from '../tasks/locationTask';
@@ -237,12 +238,18 @@ function DistanceView({ quest, meters }: { quest: Quest; meters: number }) {
 					textStyle={styles.navigationHint}
 				/>
 			)}
-			<View style={styles.progressTrack}>
-				<View style={[styles.progressFill, { width: `${fraction * 100}%` }]} />
-			</View>
-			<Text style={styles.distance}>
-				{Math.round(Math.min(meters, target))} / {Math.round(target)} m
-			</Text>
+			{quest.showDistanceProgress !== false && (
+				<>
+					<View style={styles.progressTrack}>
+						<View
+							style={[styles.progressFill, { width: `${fraction * 100}%` }]}
+						/>
+					</View>
+					<Text style={styles.distance}>
+						{Math.round(Math.min(meters, target))} / {Math.round(target)} m
+					</Text>
+				</>
+			)}
 		</ScrollContainer>
 	);
 }
@@ -364,7 +371,7 @@ function HintSection({
 	coins,
 	onReveal,
 }: {
-	hints: string[];
+	hints: ContentBlock[][];
 	revealed: number;
 	cost: number;
 	coins: number;
@@ -378,7 +385,7 @@ function HintSection({
 			{hints.slice(0, revealed).map((hint, i) => (
 				<View key={i} style={styles.hintCard}>
 					<Text style={styles.hintLabel}>HINT {i + 1}</Text>
-					<Text style={styles.hintText}>{hint}</Text>
+					<ContentBlocks blocks={hint} textStyle={styles.hintText} />
 				</View>
 			))}
 			{!allRevealed && (

@@ -20,7 +20,8 @@ const EMPTY = {
 	distanceMeters: '500',
 	durationMinutes: '15',
 	answers: [''],
-	hints: [''],
+	hints: [[{ type: 'text', text: '' }]],
+	showDistanceProgress: true,
 	isActive: true,
 };
 
@@ -46,7 +47,10 @@ function toFormState(quest) {
 			quest.durationSeconds != null ? quest.durationSeconds / 60 : 15,
 		),
 		answers: quest.answers?.length ? quest.answers : [''],
-		hints: quest.hints?.length ? quest.hints : [''],
+		hints: quest.hints?.length
+			? quest.hints.map((hint) => toEditorBlocks(hint))
+			: EMPTY.hints,
+		showDistanceProgress: quest.showDistanceProgress !== false,
 		isActive: quest.isActive,
 	};
 }
@@ -219,10 +223,13 @@ export default function QuestForm({
 		}
 		if (form.trigger === 'distance') {
 			data.distanceMeters = parseFloat(form.distanceMeters);
+			data.showDistanceProgress = form.showDistanceProgress;
 		}
 		if (form.task === 'answer') {
 			data.answers = form.answers.map((a) => a.trim()).filter(Boolean);
-			data.hints = form.hints.map((h) => h.trim()).filter(Boolean);
+			data.hints = form.hints
+				.map((hint) => toContentBlocks(hint))
+				.filter((blocks) => blocks.length > 0);
 		}
 		if (form.task === 'timer') {
 			data.durationSeconds = Math.round(parseFloat(form.durationMinutes) * 60);
@@ -419,6 +426,26 @@ export default function QuestForm({
 										{errors.distanceMeters}
 									</p>
 								)}
+
+								<div className="flex items-center gap-3 mt-4">
+									<button
+										onClick={() =>
+											set('showDistanceProgress', !form.showDistanceProgress)
+										}
+										className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${form.showDistanceProgress ? 'bg-gray-900' : 'bg-gray-200'}`}
+									>
+										<span
+											className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.showDistanceProgress ? 'translate-x-4' : ''}`}
+										/>
+									</button>
+									<div>
+										<span className="text-sm text-gray-700">Show progress</span>
+										<p className="text-xs text-gray-400">
+											Off hides the bar and the meters walked, so teams don't
+											know how far they've come.
+										</p>
+									</div>
+								</div>
 							</div>
 						)}
 
@@ -552,32 +579,46 @@ export default function QuestForm({
 											(optional)
 										</span>
 									</label>
-									<div className="space-y-2">
+									<p className="text-xs text-gray-400 mb-2">
+										Teams pay coins to reveal these, one at a time. Each hint
+										can hold text, pictures and videos.
+									</p>
+									<div className="space-y-3">
 										{form.hints.map((hint, i) => (
-											<div key={i} className="flex gap-2 items-center">
-												<input
-													className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.hints ? 'border-red-400' : 'border-gray-300'}`}
-													value={hint}
-													onChange={(e) =>
-														setArrayItem('hints', i, e.target.value)
-													}
-													placeholder={`Hint ${i + 1}`}
+											<div
+												key={i}
+												className="border border-gray-200 rounded-lg p-3"
+											>
+												<div className="flex items-center mb-2">
+													<span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+														Hint {i + 1}
+													</span>
+													{form.hints.length > 1 && (
+														<button
+															onClick={() => removeArrayItem('hints', i)}
+															className="ml-auto text-gray-300 hover:text-red-400 transition-colors"
+														>
+															✕
+														</button>
+													)}
+												</div>
+												<ContentBlocksEditor
+													blocks={hint}
+													onChange={(blocks) => setArrayItem('hints', i, blocks)}
+													textPlaceholder={`Hint ${i + 1}`}
 												/>
-												{form.hints.length > 1 && (
-													<button
-														onClick={() => removeArrayItem('hints', i)}
-														className="text-gray-300 hover:text-red-400 transition-colors shrink-0"
-													>
-														✕
-													</button>
-												)}
 											</div>
 										))}
 										{errors.hints && (
 											<p className="text-xs text-red-500">{errors.hints}</p>
 										)}
 										<button
-											onClick={() => addArrayItem('hints')}
+											onClick={() =>
+												setForm((f) => ({
+													...f,
+													hints: [...f.hints, [{ type: 'text', text: '' }]],
+												}))
+											}
 											className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
 										>
 											+ Add hint

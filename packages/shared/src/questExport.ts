@@ -14,9 +14,9 @@ const TASKS: QuestTask[] = ['answer', 'timer', 'continue'];
 export const HOW_TO_EDIT = [
   'Each quest has a trigger (what unlocks it) and a task (what the team does once unlocked).',
   "trigger 'location': add location {lat, lng} and fenceRadius in meters. The quest unlocks inside that circle.",
-  "trigger 'distance': add distanceMeters. It unlocks once the team has travelled that far.",
+  "trigger 'distance': add distanceMeters. It unlocks once the team has travelled that far. Set showDistanceProgress false to hide how far the team has come.",
   "trigger 'none': unlocked immediately; no location or navigationHint.",
-  "task 'answer': add answers, a list of accepted answers (matched case-insensitively, any one is enough). hints is optional.",
+  "task 'answer': add answers, a list of accepted answers (matched case-insensitively, any one is enough). hints is optional and holds one entry per hint, each a string or a list of blocks like description.",
   "task 'timer': add durationSeconds (durationMinutes also accepted). Used for mandatory breaks.",
   "task 'continue': information only; the team reads it and taps continue.",
   'description is what players see once the quest is unlocked. navigationHint is shown before that, while they are on their way.',
@@ -78,7 +78,10 @@ export function questToExportEntry(quest: Quest): Record<string, unknown> {
     entry.location = { lat: quest.location?.lat, lng: quest.location?.lng };
     entry.fenceRadius = quest.fenceRadius ?? 50;
   }
-  if (quest.trigger === 'distance') entry.distanceMeters = quest.distanceMeters;
+  if (quest.trigger === 'distance') {
+    entry.distanceMeters = quest.distanceMeters;
+    entry.showDistanceProgress = quest.showDistanceProgress !== false;
+  }
   if (quest.trigger !== 'none') entry.navigationHint = quest.navigationHint;
   entry.description = quest.description;
   if (quest.task === 'answer') {
@@ -237,13 +240,19 @@ function parseQuestEntry(raw: unknown, index: number): ParsedQuestEntry {
     const meters = toNumber(q.distanceMeters);
     if (meters == null || meters <= 0) errors.push('distanceMeters must be a positive number.');
     else data.distanceMeters = meters;
+    data.showDistanceProgress = q.showDistanceProgress !== false;
   }
 
   if (task === 'answer') {
     const answers = toTrimmedStrings(q.answers);
     if (!answers.length) errors.push('answers needs at least one entry.');
     else data.answers = answers;
-    const hints = toTrimmedStrings(q.hints);
+    // A hint may be a plain string or a list of blocks, like description
+    const hints = Array.isArray(q.hints)
+      ? q.hints
+          .map((hint, i) => parseBlocks(hint, `hint ${i + 1}`, errors, warnings))
+          .filter(blocks => blocks.length > 0)
+      : [];
     if (hints.length) data.hints = hints;
   }
 
