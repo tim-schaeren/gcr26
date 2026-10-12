@@ -107,8 +107,16 @@ export function formatActivity(entry: ActivityEntry, viewerTeamId?: string | nul
 
   switch (entry.type) {
     case 'quest_solved': {
-      const number = entry.questNumber ? ` (quest ${entry.questNumber})` : '';
-      return { icon, text: `${team} solved ${quest}${number}` };
+      // Solves are public, so they name the quest by number: a title like
+      // "The Oldest Tree" would hand every other team their next hint
+      if (entry.questTitle) {
+        const number = entry.questNumber ? ` (quest ${entry.questNumber})` : '';
+        return { icon, text: `${team} solved “${entry.questTitle}”${number}` };
+      }
+      return {
+        icon,
+        text: entry.questNumber ? `${team} solved quest ${entry.questNumber}` : `${team} solved a quest`,
+      };
     }
     case 'team_finished':
       return {

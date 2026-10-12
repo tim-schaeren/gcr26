@@ -86,7 +86,7 @@ export function questToExportEntry(quest: Quest): Record<string, unknown> {
   entry.description = quest.description;
   if (quest.task === 'answer') {
     entry.answers = quest.answers ?? [];
-    if (quest.hints?.length) entry.hints = quest.hints;
+    if (quest.hints?.length) entry.hints = quest.hints.map(hint => hint.blocks);
   }
   if (quest.task === 'timer') entry.durationSeconds = quest.durationSeconds;
   entry.isActive = quest.isActive;
@@ -252,6 +252,7 @@ function parseQuestEntry(raw: unknown, index: number): ParsedQuestEntry {
       ? q.hints
           .map((hint, i) => parseBlocks(hint, `hint ${i + 1}`, errors, warnings))
           .filter(blocks => blocks.length > 0)
+          .map(blocks => ({ blocks }))
       : [];
     if (hints.length) data.hints = hints;
   }

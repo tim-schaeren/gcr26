@@ -48,7 +48,7 @@ function toFormState(quest) {
 		),
 		answers: quest.answers?.length ? quest.answers : [''],
 		hints: quest.hints?.length
-			? quest.hints.map((hint) => toEditorBlocks(hint))
+			? quest.hints.map((hint) => toEditorBlocks(hint.blocks))
 			: EMPTY.hints,
 		showDistanceProgress: quest.showDistanceProgress !== false,
 		isActive: quest.isActive,
@@ -227,9 +227,11 @@ export default function QuestForm({
 		}
 		if (form.task === 'answer') {
 			data.answers = form.answers.map((a) => a.trim()).filter(Boolean);
+			// Each hint is stored as a map: Firestore rejects an array of arrays
 			data.hints = form.hints
 				.map((hint) => toContentBlocks(hint))
-				.filter((blocks) => blocks.length > 0);
+				.filter((blocks) => blocks.length > 0)
+				.map((blocks) => ({ blocks }));
 		}
 		if (form.task === 'timer') {
 			data.durationSeconds = Math.round(parseFloat(form.durationMinutes) * 60);

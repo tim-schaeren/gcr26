@@ -51,7 +51,7 @@ import {
 	type QuestProgress,
 	type ActivityEntry,
 	type ChatMessage,
-	type ContentBlock,
+	type QuestHint,
 } from '@gcr26/shared';
 import { db, auth } from '../firebase';
 import { TASK_NAME as LOCATION_TASK } from '../tasks/locationTask';
@@ -371,7 +371,7 @@ function HintSection({
 	coins,
 	onReveal,
 }: {
-	hints: ContentBlock[][];
+	hints: QuestHint[];
 	revealed: number;
 	cost: number;
 	coins: number;
@@ -385,7 +385,7 @@ function HintSection({
 			{hints.slice(0, revealed).map((hint, i) => (
 				<View key={i} style={styles.hintCard}>
 					<Text style={styles.hintLabel}>HINT {i + 1}</Text>
-					<ContentBlocks blocks={hint} textStyle={styles.hintText} />
+					<ContentBlocks blocks={hint.blocks} textStyle={styles.hintText} />
 				</View>
 			))}
 			{!allRevealed && (
@@ -1603,7 +1603,8 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 				visibility: 'public',
 				teamId: team.id,
 				teamName: team.name,
-				questTitle: completed.title,
+				// No title: every team reads this entry, and a descriptive title
+				// would give away a quest they haven't hunted for yet
 				questNumber: game.questOrder.indexOf(completed.id) + 1,
 			},
 		);

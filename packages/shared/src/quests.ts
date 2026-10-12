@@ -1,4 +1,4 @@
-import type { ContentBlock, Quest, QuestTask, QuestTrigger } from './types';
+import type { ContentBlock, Quest, QuestHint, QuestTask, QuestTrigger } from './types';
 
 const TRIGGERS: QuestTrigger[] = ['location', 'distance', 'none'];
 const TASKS: QuestTask[] = ['answer', 'timer', 'continue'];
@@ -10,10 +10,19 @@ export function toBlocks(value: unknown): ContentBlock[] {
   return [];
 }
 
-// Hints used to be plain strings; each one is now its own list of blocks
-export function toHintBlocks(value: unknown): ContentBlock[][] {
+// Hints used to be plain strings; each one is now its own list of blocks,
+// wrapped in a map because Firestore rejects an array of arrays
+export function toHints(value: unknown): QuestHint[] {
   if (!Array.isArray(value)) return [];
-  return value.map(hint => toBlocks(hint)).filter(blocks => blocks.length > 0);
+  return value
+    .map(hint => {
+      const blocks =
+        hint && typeof hint === 'object' && !Array.isArray(hint) && 'blocks' in hint
+          ? toBlocks((hint as QuestHint).blocks)
+          : toBlocks(hint);
+      return { blocks };
+    })
+    .filter(hint => hint.blocks.length > 0);
 }
 
 // Fills in defaults for quests created before trigger/task existed
@@ -26,7 +35,7 @@ export function normalizeQuest(id: string, data: Record<string, any>): Quest {
     task: TASKS.includes(data.task) ? data.task : 'answer',
     description: toBlocks(data.description),
     navigationHint: toBlocks(data.navigationHint),
-    hints: toHintBlocks(data.hints),
+    hints: toHints(data.hints),
     // Distance progress is shown unless a host turned it off
     showDistanceProgress: data.showDistanceProgress !== false,
     isActive: data.isActive ?? true,

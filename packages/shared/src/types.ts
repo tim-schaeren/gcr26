@@ -54,6 +54,11 @@ export type ContentBlock =
   | { type: 'image'; url: string; caption?: string }
   | { type: 'youtube'; videoId: string };
 
+// Firestore has no nested arrays, so each hint wraps its blocks in a map
+export interface QuestHint {
+  blocks: ContentBlock[];
+}
+
 export type QuestTrigger =
   | 'location'  // unlocks inside the geofence
   | 'distance'  // unlocks after the team has moved a set distance
@@ -77,7 +82,7 @@ export interface Quest {
   location?: GeoPoint;            // location
   distanceMeters?: number;        // distance: meters to travel after the quest starts
   answers?: string[];             // answer: trimmed; multiple valid answers allowed
-  hints?: ContentBlock[][];       // answer: each hint is its own list of blocks
+  hints?: QuestHint[];            // answer: each hint is its own list of blocks
   showDistanceProgress?: boolean; // distance: show how far the team has come (default true)
   durationSeconds?: number;       // timer
   isActive: boolean;              // admin can hide without deleting
