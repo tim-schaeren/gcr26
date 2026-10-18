@@ -59,6 +59,25 @@ Upload needs one of these in `apps/mobile/.env`:
 
 After uploading, Apple takes ~10 minutes to process. Then go to [App Store Connect → TestFlight](https://appstoreconnect.apple.com) to add testers.
 
+### Mobile (Android)
+
+```bash
+cd apps/mobile
+npm run ship:android
+```
+
+Builds an app bundle locally with EAS and uploads it straight to the Play **internal testing** track with `fastlane supply`, skipping the EAS Submit queue. Version codes are auto-incremented.
+
+Needs `apps/mobile/play-service-account.json`: a Google service account key whose account is invited in Play Console → Users and permissions with release and testing-track access. The same key can serve both Play submissions and FCM push, so one key from Firebase Console → Project settings → Service accounts is enough. It is gitignored — never commit it.
+
+Push notifications additionally need that key uploaded to EAS once:
+
+```bash
+eas credentials   # Android → preview → Google Service Account → FCM V1
+```
+
+The signing keystore is managed by EAS. It is the upload key for the Play listing, so back it up (`eas credentials` can export it) and never replace it.
+
 ---
 
 ## Firestore

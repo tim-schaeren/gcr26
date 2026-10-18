@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "ship": "bash scripts/ship.sh"
+    "ship": "bash scripts/ship.sh",
+    "ship:android": "bash scripts/ship-android.sh"
   },
   "dependencies": {
     "@gcr26/shared": "*",
