@@ -9,13 +9,9 @@ Review account passwords are in `review-credentials.local.md` (not in git).
 
 ## Links
 
-The site is moving to **grand-city-race.com**. When the domain is live:
-
-1. Change `WEB_URL` in `apps/mobile/src/config.ts`.
-2. Replace the URLs in this file and in both store consoles.
-3. Keep `gcr26-dev.netlify.app` working, so links in builds already installed still open.
-
-Until then, use the URLs below, which work today.
+The console and these pages live at **grand-city-race.com**. Keep
+`gcr26-dev.netlify.app` attached to the same Netlify site: builds from before the
+move still link there.
 
 | Field                   | Value                                              |
 | ----------------------- | -------------------------------------------------- |
@@ -97,6 +93,15 @@ Expected result: 13+.
 - Users can interact or exchange content: **Yes**. Chat between a team and its hosts.
 - Shares user location with other users: **Yes**. Hosts see players' positions during a game.
 - Digital purchases: **No**. Coins are earned in the game, never bought.
+- Block users or user-generated content: **No**. Players can leave a game, and
+  hosts can remove players, but there is no block feature.
+- Report users or user-generated content: **Yes**. "Report a problem" in the
+  profile sheet and the team picker.
+- Chat moderation: **No**. Each team chats only with its own hosts.
+- Interactions limited to invited friends only: **Yes**. Games are joined by
+  invite code only.
+- Shares current, precise location with other users: **Yes**, with the hosts
+  of the player's game only.
 
 ## App privacy — App Store
 

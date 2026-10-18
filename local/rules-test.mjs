@@ -105,6 +105,10 @@ await seed(`games/${GAME}/messages/mA`, { teamId: S(TEAM_A), authorId: S(people.
 await seed(`games/${GAME}/messages/mB`, { teamId: S(TEAM_B), authorId: S(people.playerB.uid), authorName: S('B'), fromHost: B(false), text: S('team B only'), sentAt: I(2) });
 await seed(`games/${GAME}/attempts/a1`, { questId: S(QUEST), teamId: S(TEAM_A), teamName: S('Team A'), text: S('seven'), at: I(1) });
 await seed(`trail/tr1_${tag}`, { userId: S(people.playerA.uid), teamId: S(TEAM_A), gameId: S(GAME), lat: { doubleValue: 1 }, lng: { doubleValue: 2 }, t: I(1) });
+const LOC = { mapValue: { fields: { lat: { doubleValue: 1 }, lng: { doubleValue: 2 }, updatedAt: I(1) } } };
+await seed(`games/${GAME}/players/${people.playerA.uid}`, { id: S(people.playerA.uid), name: S('A'), joinedAt: I(1), lastLocation: LOC });
+await seed(`games/${GAME_NO_HOSTS}/players/${people.playerA.uid}`, { id: S(people.playerA.uid), name: S('A'), joinedAt: I(1), lastLocation: LOC });
+await seed(`trail/legacy_${tag}`, { userId: S(people.playerA.uid), teamId: S(TEAM_A), gameId: S(GAME_NO_HOSTS), lat: { doubleValue: 1 }, lng: { doubleValue: 2 }, t: I(1) });
 
 const as = async who => {
   await signOut(auth).catch(() => {});
@@ -231,6 +235,8 @@ await expect('leaves a team by removing only themselves', true, () =>
   updateDoc(doc(db, 'teams', TEAM_B), { memberIds: [people.playerB.uid] }));
 await expect('CANNOT remove somebody else from a team', false, () =>
   updateDoc(doc(db, 'teams', TEAM_B), { memberIds: [] }));
+await expect("CANNOT clear another player's position", false, () =>
+  updateDoc(doc(db, 'games', GAME, 'players', people.playerA.uid), { lastLocation: null }));
 await expect('leaves the game (deletes own membership)', true, () =>
   deleteDoc(doc(db, 'games', GAME, 'players', OUTSIDER)));
 
@@ -242,6 +248,7 @@ await seed(`trail/own_${tag}`, { userId: S(MATE), teamId: S(TEAM_A), gameId: S(G
 await seed(`games/${GAME}/messages/mine_${tag}`, { teamId: S(TEAM_A), authorId: S(MATE), authorName: S('Mate'), fromHost: B(false), text: S('mine'), sentAt: I(9) });
 await expect('reads their own trail points', true, async () =>
   (await getDocs(query(collection(db, 'trail'), where('userId', '==', MATE)))).docs.length);
+await expect("CANNOT delete someone else's trail point", false, () => deleteDoc(doc(db, 'trail', `tr1_${tag}`)));
 await expect("CANNOT read someone else's trail", false, async () =>
   (await getDocs(query(collection(db, 'trail'), where('userId', '==', people.playerA.uid)))).docs.length);
 await expect('deletes their own trail point', true, () => deleteDoc(doc(db, 'trail', `own_${tag}`)));
@@ -281,6 +288,19 @@ await expect('replies in chat', true, () => addDoc(messages, { teamId: TEAM_A, a
 await expect('marks a thread read', true, () => updateDoc(doc(db, 'teams', TEAM_A), { hostChatReadAt: Date.now() }));
 await expect('reads the trail of their game', true, async () =>
   (await getDocs(query(collection(db, 'trail'), where('gameId', '==', GAME)))).docs.length);
+await expect('deletes trail points in their game (reset)', true, () => deleteDoc(doc(db, 'trail', `tr1_${tag}`)));
+await expect("clears a player's last position in their game (reset)", true, () =>
+  updateDoc(doc(db, 'games', GAME, 'players', people.playerA.uid), { lastLocation: null }));
+await expect("CANNOT rename a player in their game", false, () =>
+  updateDoc(doc(db, 'games', GAME, 'players', people.playerA.uid), { name: 'hax' }));
+await expect('CANNOT clear positions in a game it does not host', false, () =>
+  updateDoc(doc(db, 'games', GAME_NO_HOSTS, 'players', people.playerA.uid), { lastLocation: null }));
+await expect('clears the chat (reset)', true, async () => {
+  const snap = await getDocs(messages);
+  for (const d of snap.docs) await deleteDoc(d.ref);
+  return true;
+});
+await expect('CANNOT delete trail points of a game it does not host', false, () => deleteDoc(doc(db, 'trail', `legacy_${tag}`)));
 await expect('CANNOT touch a game with no hostIds', false, () => updateDoc(doc(db, 'games', GAME_NO_HOSTS), { name: 'hax' }));
 await expect('CANNOT write a quest in a game it does not host', false, () => setDoc(doc(db, 'games', GAME_NO_HOSTS, 'quests', 'q1'), { title: 'hax' }));
 await expect('CANNOT read the player list', false, async () => (await getDocs(collection(db, 'users'))).docs.length);

@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, where, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 
 // Appends an entry to a game's bulletin board. Best-effort: a failure here
@@ -18,7 +18,11 @@ export async function logActivity(gameId, entry) {
 }
 
 async function clearCollection(path) {
-  const snap = await getDocs(collection(db, ...path));
+  await deleteAll(collection(db, ...path));
+}
+
+async function deleteAll(ref) {
+  const snap = await getDocs(ref);
   const docs = snap.docs;
   // In chunks, so a long game stays within batch limits
   for (let i = 0; i < docs.length; i += 400) {
@@ -34,4 +38,19 @@ export function clearActivity(gameId) {
 
 export function clearAttempts(gameId) {
   return clearCollection(['games', gameId, 'attempts']);
+}
+
+export function clearMessages(gameId) {
+  return clearCollection(['games', gameId, 'messages']);
+}
+
+// Why hosts changed a team's balance; the balance itself is reset alongside
+export function clearCoinLedger(teamId) {
+  return clearCollection(['teams', teamId, 'coinLedger']);
+}
+
+// The trails the live map draws. They belong to the race, so a reset that
+// sends every team back to the start takes them too.
+export function clearTrail(gameId) {
+  return deleteAll(query(collection(db, 'trail'), where('gameId', '==', gameId)));
 }

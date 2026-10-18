@@ -3,6 +3,7 @@
 import puppeteer from 'puppeteer-core';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { mkdir } from 'node:fs/promises';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SHOTS = [
@@ -15,6 +16,7 @@ const SHOTS = [
 ];
 const SIZES = [
   ['ios', 1320, 2868],      // 6.9" iPhone, which App Store Connect scales down
+  ['ios-6.3', 1206, 2622],  // 6.3" iPhone, for when its own slot is filled in
   ['android', 1080, 1920],  // Play wants 16:9 or wider for phone screenshots
 ];
 
@@ -30,7 +32,10 @@ for (const [platform, w, h] of SIZES) {
     const url = `file://${here}/screenshot.html?` + new URLSearchParams({ shot, caption, w, h });
     await page.goto(url, { waitUntil: 'networkidle0' });
     await page.waitForFunction(() => window.laidOut === true);
-    const out = path.join(here, '..', platform, 'screenshots', `${i + 1}-${shot.slice(3)}`);
+    const [store, ...variant] = platform.split('-');
+    const dir = path.join(here, '..', store, variant.length ? `screenshots-${variant.join('-')}` : 'screenshots');
+    await mkdir(dir, { recursive: true });
+    const out = path.join(dir, `${i + 1}-${shot.slice(3)}`);
     await page.screenshot({ path: out, clip: { x: 0, y: 0, width: w, height: h } });
     console.log(out);
   }

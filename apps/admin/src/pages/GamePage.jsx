@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import {
   doc, collection, query, where,
-  updateDoc, getDocs, onSnapshot, writeBatch,
+  updateDoc, getDocs, onSnapshot, writeBatch, deleteField,
 } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
 import { gameEconomy } from '@gcr26/shared';
 import { db } from '../firebase';
 import { sendPushToPlayers } from '../utils/push';
-import { logActivity, clearActivity, clearAttempts } from '../utils/activity';
+import {
+  logActivity, clearActivity, clearAttempts, clearTrail, clearMessages, clearCoinLedger,
+} from '../utils/activity';
 import { useAuth } from '../hooks/useAuth';
 import HostsPanel from '../components/HostsPanel';
 import JoinCodePanel from '../components/JoinCodePanel';
@@ -119,12 +121,34 @@ export default function GamePage() {
         batch.update(d.ref, {
           completedQuestIds: [], currentQuestId: null, finishedAt: null, questProgress: null,
           score: 0, coins: gameEconomy(game).startingCoins, hintsRevealed: {},
+          // A compass bought before the reset would otherwise keep running for free
+          activeCompassUntil: deleteField(),
+          teamChatReadAt: deleteField(), hostChatReadAt: deleteField(),
         });
       });
+      // Last known positions, so the live map doesn't show where people were
+      const playersSnap = await getDocs(collection(db, 'games', gameId, 'players'));
+      playersSnap.docs.forEach(d => {
+        if (d.data().lastLocation) batch.update(d.ref, { lastLocation: deleteField() });
+      });
       await batch.commit();
-      // The old board describes progress that no longer exists; the game is back at the start
+      // An admin's map also reads profiles, which hold a copy of the position.
+      // One at a time: a team can still list an account that has since been
+      // deleted, and that one failing must not undo the reset.
+      if (isAdmin) {
+        const memberIds = new Set([
+          ...playersSnap.docs.map(d => d.id),
+          ...teamsSnap.docs.flatMap(d => d.data().memberIds ?? []),
+        ]);
+        await Promise.all([...memberIds].map(uid =>
+          updateDoc(doc(db, 'users', uid), { lastLocation: null }).catch(() => {})));
+      }
+      // Everything the race left behind goes; the game is back at the start
       await clearActivity(gameId);
       await clearAttempts(gameId);
+      await clearTrail(gameId);
+      await clearMessages(gameId);
+      for (const team of teamsSnap.docs) await clearCoinLedger(team.id);
       await logActivity(gameId, { type: 'game_started' });
     });
     setShowResetConfirm(false);
@@ -244,7 +268,10 @@ export default function GamePage() {
           showResetConfirm ? (
             <div className="border border-gray-300 rounded-lg p-4 space-y-3">
               <p className="text-sm text-gray-700">
-                This will reset all team progress and clear the game state.
+                This sends every team back to the start and clears everything the
+                race left behind: progress, coins, the activity feed, chat, wrong
+                answers, and positions and trails on the live map. Teams and players
+                stay.
                 Type <span className="font-mono font-bold">RESET</span> to confirm.
               </p>
               <input

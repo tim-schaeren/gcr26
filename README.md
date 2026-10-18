@@ -157,7 +157,7 @@ See `packages/shared/src/types.ts` for the full data model. Collections:
 | `games/{id}/attempts`         | Rejected answers — hosts only, never readable by players           |
 | `teams`                       | Teams: members, progress, coins, hints bought, active items        |
 | `teams/{id}/coinLedger`       | Why a host changed a team's balance                                |
-| `trail`                       | Location history during a game; hosts read, the owner can delete   |
+| `trail`                       | Location history during a game; hosts read and clear it on reset, the owner can delete |
 | `settings`                    | Global config (sign-up open)                                       |
 | `registrations`               | Pre-game sign-up submissions (public write)                        |
 

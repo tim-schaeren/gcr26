@@ -133,7 +133,12 @@ service cloud.firestore {
                                       || canManageGame(gameId));
         allow create: if isAuth() && playerId == request.auth.uid
                       && request.resource.data.id == request.auth.uid;
-        allow update: if isAuth() && playerId == request.auth.uid;
+        // A host may clear a player's last position when resetting the game,
+        // and touch nothing else on the entry
+        allow update: if (isAuth() && playerId == request.auth.uid)
+                      || (canManageGame(gameId)
+                          && request.resource.data.diff(resource.data).affectedKeys()
+                               .hasOnly(['lastLocation']));
         allow delete: if isAuth() && (playerId == request.auth.uid || canManageGame(gameId));
       }
 
@@ -221,8 +226,10 @@ service cloud.firestore {
       allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
       allow read:   if canManageGame(resource.data.gameId)
                     || (isAuth() && resource.data.userId == request.auth.uid);
-      // Someone deleting their account takes their location history with them
-      allow delete: if isAuth() && resource.data.userId == request.auth.uid;
+      // Someone deleting their account takes their location history with them,
+      // and resetting a game clears the trails it collected
+      allow delete: if (isAuth() && resource.data.userId == request.auth.uid)
+                    || canManageGame(resource.data.gameId);
     }
 
     // Registrations: anyone can submit; only admins manage them
