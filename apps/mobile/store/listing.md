@@ -2,7 +2,7 @@
 
 Everything App Store Connect and Play Console ask for, in the order they ask.
 Character limits are noted; every field here fits its limit. Keep the privacy
-answers in step with [the privacy policy](https://gcr26-dev.netlify.app/privacy)
+answers in step with [the privacy policy](https://grand-city-race.com/privacy)
 when the app's data handling changes.
 
 Review account passwords are in `review-credentials.local.md` (not in git).
@@ -17,13 +17,13 @@ The site is moving to **grand-city-race.com**. When the domain is live:
 
 Until then, use the URLs below, which work today.
 
-| Field                         | Value                                                      |
-| ----------------------------- | ---------------------------------------------------------- |
-| Privacy policy                | https://gcr26-dev.netlify.app/privacy                      |
-| Support                       | https://gcr26-dev.netlify.app/support                      |
-| Account deletion (Play)       | https://gcr26-dev.netlify.app/support#delete-account       |
-| Marketing (optional)          | https://gcr26-dev.netlify.app/login                        |
-| Contact email                 | paddock-cliques5u@icloud.com                               |
+| Field                   | Value                                              |
+| ----------------------- | -------------------------------------------------- |
+| Privacy policy          | https://grand-city-race.com/privacy                |
+| Support                 | https://grand-city-race.com/support                |
+| Account deletion (Play) | https://grand-city-race.com/support#delete-account |
+| Marketing (optional)    | https://grand-city-race.com/login                  |
+| Contact email           | paddock-cliques5u@icloud.com                       |
 
 ## Text
 
@@ -67,18 +67,18 @@ Grand City Race uses your location only while you are playing, to unlock quests 
 
 **What's new** (first release) — `First release.`
 
-**Copyright — App Store** — `2026 Tim Schaeren` *(confirm the name you want shown)*
+**Copyright — App Store** — `2026 Tim Schaeren` _(confirm the name you want shown)_
 
 ## Categories and audience
 
-| Field                    | App Store                   | Play                         |
-| ------------------------ | --------------------------- | ---------------------------- |
-| Category                 | Games → Adventure           | Game → Adventure             |
-| Secondary                | Entertainment               | —                            |
-| Tags (Play)              | —                           | Scavenger hunt, Multiplayer, Outdoor |
-| Price                    | Free                        | Free                         |
-| Ads                      | —                           | No ads                       |
-| Target age (Play)        | —                           | 13–15, 16–17, 18+            |
+| Field             | App Store         | Play                                 |
+| ----------------- | ----------------- | ------------------------------------ |
+| Category          | Games → Adventure | Game → Adventure                     |
+| Secondary         | Entertainment     | —                                    |
+| Tags (Play)       | —                 | Scavenger hunt, Multiplayer, Outdoor |
+| Price             | Free              | Free                                 |
+| Ads               | —                 | No ads                               |
+| Target age (Play) | —                 | 13–15, 16–17, 18+                    |
 
 ### Age rating — App Store
 
@@ -104,16 +104,16 @@ Expected result: 13+.
 
 Data linked to the user, all for **App Functionality** only. Not used for tracking.
 
-| Data type                        | What it is in the app                                    |
-| -------------------------------- | -------------------------------------------------------- |
-| Contact Info → Name              | Name shown to your team and hosts                        |
-| Contact Info → Email Address     | Sign-in                                                  |
-| Location → Precise Location      | Unlocking quests, hosts' live map, team trail            |
+| Data type                              | What it is in the app                              |
+| -------------------------------------- | -------------------------------------------------- |
+| Contact Info → Name                    | Name shown to your team and hosts                  |
+| Contact Info → Email Address           | Sign-in                                            |
+| Location → Precise Location            | Unlocking quests, hosts' live map, team trail      |
 | User Content → Emails or Text Messages | Chat with your hosts                               |
-| User Content → Gameplay Content  | Team, progress, coins, answers typed, hints bought       |
-| User Content → Other User Content | Team names you create                                   |
-| Identifiers → User ID            | The account id                                           |
-| Identifiers → Device ID          | Push notification token                                  |
+| User Content → Gameplay Content        | Team, progress, coins, answers typed, hints bought |
+| User Content → Other User Content      | Team names you create                              |
+| Identifiers → User ID                  | The account id                                     |
+| Identifiers → Device ID                | Push notification token                            |
 
 Not collected: health, financial, contacts, browsing, search, purchases,
 diagnostics, usage data, sensitive info.
@@ -126,18 +126,18 @@ diagnostics, usage data, sensitive info.
   - Firebase, Expo and Netlify are service providers.
 - Data encrypted in transit: **Yes**.
 - Users can request deletion: **Yes**. In the app (Profile → Delete account) and
-  at https://gcr26-dev.netlify.app/support#delete-account.
+  at https://grand-city-race.com/support#delete-account.
 - Committed to Play Families policy: **No** (not aimed at children).
 
-| Category → type                  | Collected | Required / optional | Purpose                              |
-| -------------------------------- | --------- | ------------------- | ------------------------------------ |
-| Location → Precise location      | Yes       | Required            | App functionality                    |
-| Personal info → Name             | Yes       | Required            | App functionality, Account management |
-| Personal info → Email address    | Yes       | Required            | Account management                   |
-| Personal info → User IDs         | Yes       | Required            | App functionality, Account management |
-| Messages → Other in-app messages | Yes       | Optional            | App functionality                    |
-| App activity → Other user-generated content | Yes | Required      | App functionality                    |
-| Device or other IDs              | Yes       | Optional            | App functionality (push notifications) |
+| Category → type                             | Collected | Required / optional | Purpose                                |
+| ------------------------------------------- | --------- | ------------------- | -------------------------------------- |
+| Location → Precise location                 | Yes       | Required            | App functionality                      |
+| Personal info → Name                        | Yes       | Required            | App functionality, Account management  |
+| Personal info → Email address               | Yes       | Required            | Account management                     |
+| Personal info → User IDs                    | Yes       | Required            | App functionality, Account management  |
+| Messages → Other in-app messages            | Yes       | Optional            | App functionality                      |
+| App activity → Other user-generated content | Yes       | Required            | App functionality                      |
+| Device or other IDs                         | Yes       | Optional            | App functionality (push notifications) |
 
 None of it is processed ephemerally. Nothing is collected for analytics,
 advertising or fraud prevention.
@@ -150,7 +150,7 @@ advertising or fraud prevention.
 **Notes** (4000):
 
 ```
-Grand City Race is a scavenger hunt played in teams. A host creates a race on our website (https://gcr26-dev.netlify.app), and players join it in the app with an invite code.
+Grand City Race is a scavenger hunt played in teams. A host creates a race on our website (https://grand-city-race.com), and players join it in the app with an invite code.
 
 HOW TO TEST
 1. Sign in with the demo account above.
@@ -166,10 +166,10 @@ ACCOUNTS
 Profile (round button, top right) → Delete account deletes the account in the app.
 
 USER-GENERATED CONTENT
-Hosts write the quests of their own games, and each team has a private chat with its hosts. Players only see games they have joined with a code. Hosts can remove players; players can leave a game at any time. Reports go to the contact address on our support page (https://gcr26-dev.netlify.app/support) and our community guidelines (https://gcr26-dev.netlify.app/guidelines) apply to every game.
+Hosts write the quests of their own games, and each team has a private chat with its hosts. Players only see games they have joined with a code. Hosts can remove players; players can leave a game at any time. Reports go to the contact address on our support page (https://grand-city-race.com/support) and our community guidelines (https://grand-city-race.com/guidelines) apply to every game.
 
 HOSTING (optional)
-To see the host side, sign in on https://gcr26-dev.netlify.app with review-host@grandcityrace.example (password in the review field below, or on request). It hosts the demo race.
+To see the host side, sign in on https://grand-city-race.com with review-host@grandcityrace.example (password in the review field below, or on request). It hosts the demo race.
 ```
 
 **Contact for review**: your name, phone and paddock-cliques5u@icloud.com.

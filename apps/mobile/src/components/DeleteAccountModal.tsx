@@ -26,6 +26,7 @@ import {
 	where,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Deleting the person, not the race: their account, profile, location history
 // and messages go. Their team's progress stays — it belongs to the team, and
@@ -88,6 +89,7 @@ export default function DeleteAccountModal({
 	const [password, setPassword] = useState('');
 	const [error, setError] = useState<string | null>(null);
 	const [working, setWorking] = useState(false);
+	const insets = useSafeAreaInsets();
 
 	async function confirm() {
 		if (!password || working) return;
@@ -119,7 +121,9 @@ export default function DeleteAccountModal({
 				behavior={Platform.OS === 'ios' ? 'padding' : undefined}
 			>
 				<View style={styles.sheet}>
-					<ScrollView contentContainerStyle={{ padding: 24 }}>
+					<ScrollView
+						contentContainerStyle={{ padding: 24, paddingBottom: insets.bottom + 24 }}
+					>
 						<Text style={styles.title}>Delete your account</Text>
 						<Text style={styles.body}>
 							This removes your account, your profile and your location history,

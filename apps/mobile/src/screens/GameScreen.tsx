@@ -33,7 +33,6 @@ import {
 	limit,
 } from 'firebase/firestore';
 import * as Location from 'expo-location';
-import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
 	normalizeQuest,
@@ -69,6 +68,7 @@ import {
 import { distanceMeters, bearingDegrees } from '../utils/geo';
 import { listen } from '../utils/listen';
 import { reportProblem } from '../utils/report';
+import { requestPushToken } from '../utils/pushToken';
 import ContentBlocks from '../components/ContentBlocks';
 import ShopSheet from '../components/ShopSheet';
 import DeleteAccountModal from '../components/DeleteAccountModal';
@@ -1433,10 +1433,9 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		// Notifications are asked for here rather than at app launch, so the
 		// prompt follows the explanation of what they are for
 		try {
-			const { status } = await Notifications.requestPermissionsAsync();
+			const token = await requestPushToken();
 			const uid = auth.currentUser?.uid;
-			if (status === 'granted' && uid) {
-				const token = (await Notifications.getExpoPushTokenAsync()).data;
+			if (token && uid) {
 				await updateDoc(doc(db, 'users', uid), { pushToken: token });
 			}
 		} catch {

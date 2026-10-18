@@ -1,4 +1,13 @@
-import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
+import {
+	View,
+	Text,
+	TouchableOpacity,
+	Modal,
+	ScrollView,
+	StyleSheet,
+	Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Theme } from '@gcr26/shared';
 import Icon from '../theme/Icon';
 import { useTheme } from '../theme/ThemeContext';
@@ -16,9 +25,18 @@ export default function PermissionsIntro({
 	const theme = useTheme();
 	const styles = makeStyles(theme);
 	const { colors } = theme;
+	const insets = useSafeAreaInsets();
 	return (
 		<Modal visible={visible} animationType="slide" onRequestClose={onContinue}>
-			<View style={styles.wrap}>
+			{/* Scrolls on small screens, and stays clear of the camera cutout
+			    and the navigation bar, which Android draws over the app */}
+			<ScrollView
+				style={styles.scroll}
+				contentContainerStyle={[
+					styles.wrap,
+					{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
+				]}
+			>
 				<Text style={styles.title}>Before you start</Text>
 
 				<View style={styles.item}>
@@ -64,7 +82,7 @@ export default function PermissionsIntro({
 				<Text style={styles.footnote}>
 					You'll be asked for each permission next, and you can say no to either.
 				</Text>
-			</View>
+			</ScrollView>
 		</Modal>
 	);
 }
@@ -72,10 +90,13 @@ export default function PermissionsIntro({
 function makeStyles(t: Theme) {
 	const c = t.colors;
 	return StyleSheet.create({
-		wrap: {
+		scroll: {
 			flex: 1,
 			backgroundColor: c.background,
-			padding: 32,
+		},
+		wrap: {
+			flexGrow: 1,
+			paddingHorizontal: 28,
 			justifyContent: 'center',
 		},
 		title: {

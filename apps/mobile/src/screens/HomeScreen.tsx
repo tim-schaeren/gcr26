@@ -14,7 +14,7 @@ import GameScreen from './GameScreen';
 import JoinGameScreen from './JoinGameScreen';
 import TeamPickerScreen from './TeamPickerScreen';
 
-const ADMIN_URL = 'https://gcr26-dev.netlify.app';
+const ADMIN_URL = 'https://grand-city-race.com';
 
 export default function HomeScreen() {
 	const { profile, loading } = useUser();

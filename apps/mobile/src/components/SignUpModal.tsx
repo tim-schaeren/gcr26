@@ -22,6 +22,7 @@ import {
 import { auth, db } from '../firebase';
 import Icon from '../theme/Icon';
 import { LEGAL } from '../config';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Props {
   visible: boolean;
@@ -86,10 +87,18 @@ export default function SignUpModal({ visible, onClose }: Props) {
     onClose();
   }
 
+  // iOS shows this as a card below the status bar; Android draws it full
+  // screen, under the status bar and camera cutout
+  const insets = useSafeAreaInsets();
+  const edges =
+    Platform.OS === 'android'
+      ? { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }
+      : null;
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, edges]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
