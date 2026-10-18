@@ -3,9 +3,9 @@
 //   node local/functions-dev.mjs
 // The console's dev server forwards /api here. For the app on a phone, set
 // EXPO_PUBLIC_API_URL=http://<this computer's LAN IP>:8888 in apps/mobile/.env.
-import { build } from 'esbuild';
+import { buildFunctions } from '../netlify/build-functions.mjs';
 import { createServer } from 'node:http';
-import { mkdirSync, readdirSync, symlinkSync, existsSync } from 'node:fs';
+import { mkdirSync, symlinkSync, existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
@@ -20,13 +20,8 @@ mkdirSync(out, { recursive: true });
 if (!existsSync(path.join(out, 'node_modules'))) symlinkSync(path.join(root, 'node_modules'), path.join(out, 'node_modules'));
 
 const routes = {};
-for (const file of readdirSync(path.join(root, 'netlify', 'functions')).filter(f => f.endsWith('.mjs'))) {
-  const outfile = path.join(out, file);
-  await build({
-    entryPoints: [path.join(root, 'netlify', 'functions', file)],
-    bundle: true, platform: 'node', format: 'esm', external: ['firebase-admin'], outfile, logLevel: 'warning',
-  });
-  const mod = await import(pathToFileURL(outfile).href);
+for (const file of await buildFunctions(out)) {
+  const mod = await import(pathToFileURL(path.join(out, file)).href);
   routes[mod.config.path] = mod.default;
 }
 

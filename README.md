@@ -52,6 +52,9 @@ by itself, deployed with the site:
 | `/api/hosts`       | A host adds or removes co-hosts by email                             |
 | `/api/send-push`   | A host's push to the game's players                                  |
 
+The Netlify build bundles them with `netlify/build-functions.mjs` (they import
+the shared TypeScript package) and deploys the result from `netlify/.dist`.
+
 They run with Firebase admin access, which bypasses the security rules, so
 each one checks the caller's Firebase sign-in itself. They need the
 service account key in the Netlify site's environment as
