@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
 import type { Theme } from '@gcr26/shared';
 import Icon from '../theme/Icon';
 import { useTheme } from '../theme/ThemeContext';
@@ -26,15 +26,19 @@ export default function PermissionsIntro({
 						<Icon name="map-marker-outline" size={20} color={colors.onSurface} />
 						<Text style={styles.itemTitle}>Location</Text>
 					</View>
+					{/* The app stores require this disclosure before the prompt, and
+					    Google Play requires its wording: what is collected, for which
+					    features, and that it happens when the app is closed or not in use */}
 					<Text style={styles.itemText}>
-						Quests unlock when your team reaches a place, or has walked far
-						enough. Your position is shown to the people hosting your race so
-						they can help if you get stuck or lost.
+						Grand City Race collects location data to unlock quests, measure how
+						far your team has walked, and show the hosts of your race where your
+						team is, even when the app is closed or not in use.
 					</Text>
 					<Text style={styles.itemText}>
-						Choosing “Always” keeps that working while your phone is in your
-						pocket. Without it, your team's progress stops whenever the screen
-						goes dark.
+						This only happens while you are in a game, and your location is shared
+						with the hosts of that game and nobody else. Choosing{' '}
+						{Platform.OS === 'ios' ? '“Always”' : '“Allow all the time”'} keeps the
+						race going while your phone is in your pocket.
 					</Text>
 				</View>
 

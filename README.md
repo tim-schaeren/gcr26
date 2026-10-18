@@ -80,6 +80,19 @@ The signing keystore is managed by EAS. It is the upload key for the Play listin
 
 ---
 
+### Store listings
+
+Everything the App Store and Play listings need lives in `apps/mobile/store/`:
+the listing text and privacy answers (`listing.md`), screenshots for both
+stores, the Play feature graphic, and in `source/` what they are rendered
+from. Two scripts in `local/` support them:
+
+- `seed-demo.mjs` fills the local emulator with a believable race to take
+  screenshots of.
+- `setup-review.mjs` creates the app reviewers' accounts and demo race in
+  production, and resets it between review rounds. Its passwords live in
+  `apps/mobile/store/review-credentials.local.md`, which is never committed.
+
 ## Firestore
 
 ### Security rules

@@ -5,4 +5,8 @@ export const LEGAL = {
 	privacy: `${WEB_URL}/privacy`,
 	terms: `${WEB_URL}/terms`,
 	guidelines: `${WEB_URL}/guidelines`,
+	support: `${WEB_URL}/support`,
 };
+
+// Where reports about a game, a host or a player go
+export const CONTACT_EMAIL = 'paddock-cliques5u@icloud.com';

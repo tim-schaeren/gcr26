@@ -14,14 +14,15 @@ export default function LegalLayout({ title, updated, children }) {
           <Link to="/privacy" className="hover:text-gray-700">Privacy</Link>
           <Link to="/terms" className="hover:text-gray-700">Terms</Link>
           <Link to="/guidelines" className="hover:text-gray-700">Community guidelines</Link>
+          <Link to="/support" className="hover:text-gray-700">Support</Link>
         </div>
       </div>
     </div>
   );
 }
 
-export function H2({ children }) {
-  return <h2 className="text-base font-semibold text-gray-900 pt-3">{children}</h2>;
+export function H2({ id, children }) {
+  return <h2 id={id} className="text-base font-semibold text-gray-900 pt-3 scroll-mt-6">{children}</h2>;
 }
 
 export function UL({ children }) {

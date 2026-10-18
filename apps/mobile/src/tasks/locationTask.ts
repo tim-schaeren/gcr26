@@ -27,3 +27,17 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }: TaskManager.TaskManage
   await updateDoc(doc(db, 'games', gameId, 'players', uid), { lastLocation: { lat, lng, updatedAt: t } }).catch(() => {});
   await addDoc(collection(db, 'trail'), { userId: uid, teamId, gameId, lat, lng, t }).catch(() => {});
 });
+
+// Background location is for the race and nothing else: stopped when the
+// player leaves the game, signs out, or the race is over for them, and the
+// saved ids go with it so a stray update has nowhere to write.
+export async function stopBackgroundTracking() {
+  try {
+    if (await Location.hasStartedLocationUpdatesAsync(TASK_NAME)) {
+      await Location.stopLocationUpdatesAsync(TASK_NAME);
+    }
+  } catch {
+    // Not available in this host app; nothing was started
+  }
+  await AsyncStorage.multiRemove(['uid', 'teamId', 'gameId']).catch(() => {});
+}

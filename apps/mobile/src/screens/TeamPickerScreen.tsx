@@ -34,6 +34,7 @@ import { auth, db } from '../firebase';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import * as ui from '../theme/primitives';
 import { listen } from '../utils/listen';
+import { reportProblem } from '../utils/report';
 
 interface PickerTeam {
 	id: string;
@@ -292,6 +293,12 @@ export default function TeamPickerScreen({
 			<View style={styles.footer}>
 				<TouchableOpacity onPress={leaveGame} disabled={busy} hitSlop={8}>
 					<Text style={styles.leaveText}>Leave this game</Text>
+				</TouchableOpacity>
+				<TouchableOpacity
+					onPress={() => reportProblem({ gameId, gameName: game?.name })}
+					hitSlop={8}
+				>
+					<Text style={styles.leaveText}>Report a problem</Text>
 				</TouchableOpacity>
 				<TouchableOpacity onPress={() => setDeletingAccount(true)} hitSlop={8}>
 					<Text style={styles.leaveText}>Delete account</Text>
@@ -572,8 +579,10 @@ function makeStyles(t: Theme) {
 		},
 		footer: {
 			flexDirection: 'row',
+			flexWrap: 'wrap',
 			justifyContent: 'center',
-			gap: 28,
+			columnGap: 24,
+			rowGap: 12,
 			marginTop: 48,
 		},
 		leaveText: {

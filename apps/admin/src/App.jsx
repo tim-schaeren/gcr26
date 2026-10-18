@@ -14,6 +14,7 @@ import GamePage from './pages/GamePage';
 import PrivacyPage from './pages/legal/PrivacyPage';
 import TermsPage from './pages/legal/TermsPage';
 import GuidelinesPage from './pages/legal/GuidelinesPage';
+import SupportPage from './pages/legal/SupportPage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/guidelines" element={<GuidelinesPage />} />
+        <Route path="/support" element={<SupportPage />} />
         <Route
           path="/login"
           element={user ? <Navigate to="/games" replace /> : <LoginPage />}

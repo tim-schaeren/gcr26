@@ -34,3 +34,6 @@ Thumbs.db
 # "play-service-account.json.json" slipped past a narrower pattern once.
 *service-account*.json
 *-adminsdk-*.json
+
+# Review account passwords, never committed
+apps/mobile/store/*.local.md

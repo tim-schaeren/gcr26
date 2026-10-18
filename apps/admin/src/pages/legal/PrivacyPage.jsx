@@ -79,6 +79,11 @@ export default function PrivacyPage() {
 					<strong>Expo</strong> — delivery of push notifications.
 				</li>
 				<li>
+					<strong>YouTube and image hosts</strong> — videos and pictures a host adds
+					to a quest are loaded from where they are published, which sees your
+					device's IP address. YouTube videos play in its privacy-enhanced mode.
+				</li>
+				<li>
 					<strong>Netlify</strong> — hosting of the web console you are reading
 					this on.
 				</li>
@@ -96,8 +101,11 @@ export default function PrivacyPage() {
 			<H2>Deleting your account</H2>
 			<p>
 				In the app, open your profile and choose <strong>Delete account</strong>
-				. It is immediate and cannot be undone. You can also email us and we
-				will do it for you.
+				. It is immediate and cannot be undone. Without the app, see{' '}
+				<a className="underline" href="/support#delete-account">
+					Deleting your account
+				</a>{' '}
+				on the support page.
 			</p>
 
 			<H2>Children</H2>

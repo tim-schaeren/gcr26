@@ -1,0 +1,43 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face { font-family: Righteous; src: url(../../assets/fonts/Righteous-Regular.ttf); }
+html, body { margin: 0; }
+.frame {
+  width: 1024px; height: 500px; position: relative; overflow: hidden;
+  background: #FF5C34;
+}
+/* Billboard sunburst behind everything, a shade darker than the ground */
+.burst {
+  position: absolute; left: 230px; top: 250px; width: 2400px; height: 2400px;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, #F24E28 0deg 7.5deg, #FF5C34 7.5deg 15deg);
+}
+.badge {
+  position: absolute; left: 92px; top: 92px; width: 296px; height: 296px;
+  background: #D7EFFF; border: 8px solid #351E28; border-radius: 22px;
+  box-shadow: 14px 14px 0 #351E28;
+  display: flex; align-items: center; justify-content: center;
+}
+.badge img { width: 236px; height: 236px; image-rendering: pixelated; }
+.words { position: absolute; left: 470px; top: 84px; }
+.title {
+  font-family: Righteous; font-size: 96px; line-height: 0.98; color: #D7EFFF;
+  text-transform: uppercase; letter-spacing: 2px;
+  text-shadow: 6px 6px 0 #351E28;
+  -webkit-text-stroke: 3px #351E28; paint-order: stroke fill;
+}
+.tag {
+  margin-top: 26px; display: inline-block;
+  font-family: Righteous; font-size: 30px; color: #D7EFFF; letter-spacing: 1px;
+  background: #351E28; padding: 10px 22px; border-radius: 8px;
+}
+</style></head>
+<body><div class="frame">
+  <div class="burst"></div>
+  <div class="badge"><img src="maze-retro.svg"></div>
+  <div class="words">
+    <div class="title">Grand<br>City Race</div>
+    <div class="tag">Scavenger hunts for your city</div>
+  </div>
+</div></body></html>

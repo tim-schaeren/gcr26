@@ -34,7 +34,6 @@ import {
 } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
-import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
 	normalizeQuest,
@@ -58,7 +57,10 @@ import {
 	themeFor,
 } from '@gcr26/shared';
 import { db, auth } from '../firebase';
-import { TASK_NAME as LOCATION_TASK } from '../tasks/locationTask';
+import {
+	TASK_NAME as LOCATION_TASK,
+	stopBackgroundTracking,
+} from '../tasks/locationTask';
 import {
 	startTracking,
 	stopTracking,
@@ -66,6 +68,7 @@ import {
 } from '../tasks/distanceTracker';
 import { distanceMeters, bearingDegrees } from '../utils/geo';
 import { listen } from '../utils/listen';
+import { reportProblem } from '../utils/report';
 import ContentBlocks from '../components/ContentBlocks';
 import ShopSheet from '../components/ShopSheet';
 import DeleteAccountModal from '../components/DeleteAccountModal';
@@ -1054,6 +1057,7 @@ function ProfileSheet({
 	onLeaveGame,
 	leaving,
 	onDeleteAccount,
+	onReport,
 	onClose,
 }: {
 	visible: boolean;
@@ -1061,6 +1065,7 @@ function ProfileSheet({
 	onLeaveGame: () => void;
 	leaving: boolean;
 	onDeleteAccount: () => void;
+	onReport: () => void;
 	onClose: () => void;
 }) {
 	const styles = useStyles();
@@ -1120,6 +1125,10 @@ function ProfileSheet({
 						onPress={() => signOut(auth)}
 					>
 						<Text style={styles.sheetRowText}>Sign out</Text>
+					</TouchableOpacity>
+
+					<TouchableOpacity style={styles.sheetRow} onPress={onReport}>
+						<Text style={styles.sheetRowText}>Report a problem</Text>
 					</TouchableOpacity>
 
 					<TouchableOpacity
@@ -1408,15 +1417,16 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		);
 	}, [game?.id, currentQuestId]);
 
+	// v2: the location wording changed, so everyone reads it once more
 	useEffect(() => {
-		AsyncStorage.getItem('permissionsIntro:v1')
+		AsyncStorage.getItem('permissionsIntro:v2')
 			.then((seen) => setIntroState(seen ? 'done' : 'show'))
 			.catch(() => setIntroState('show'));
 	}, []);
 
 	async function finishIntro(grantNow: boolean) {
 		setIntroState('done');
-		AsyncStorage.setItem('permissionsIntro:v1', String(Date.now())).catch(
+		AsyncStorage.setItem('permissionsIntro:v2', String(Date.now())).catch(
 			() => {},
 		);
 		if (!grantNow) return;
@@ -1461,15 +1471,25 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			try {
 				const { status: bgStatus } =
 					await Location.requestBackgroundPermissionsAsync();
-				if (bgStatus === 'granted') {
+				const finished = !!game?.endedAt || !!team?.finishedAt;
+				if (bgStatus === 'granted' && !finished) {
 					const running =
-						await TaskManager.isTaskRegisteredAsync(LOCATION_TASK);
+						await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK);
 					if (!running) {
 						await Location.startLocationUpdatesAsync(LOCATION_TASK, {
 							accuracy: Location.Accuracy.Balanced,
 							distanceInterval: 50,
 							timeInterval: 60000,
 							showsBackgroundLocationIndicator: true,
+							// Android throttles background location to a few updates an
+							// hour unless it runs as a foreground service, which also
+							// tells the player, in a notification, that it is running
+							foregroundService: {
+								notificationTitle: 'Your race is on',
+								notificationBody:
+									'Grand City Race uses your location to count distance and keep your team’s trail until you leave the game.',
+								notificationColor: '#111111',
+							},
 						});
 					}
 				}
@@ -1530,6 +1550,15 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			sub?.remove();
 		};
 	}, [team?.id, game?.id, introState]);
+
+	// The race is over for this player once the game ends or their team
+	// finishes; leaving the game, signing out and deleting the account all
+	// unmount this screen
+	const raceOver = !!game?.endedAt || !!team?.finishedAt;
+	useEffect(() => {
+		if (raceOver) stopBackgroundTracking();
+	}, [raceOver]);
+	useEffect(() => () => void stopBackgroundTracking(), []);
 
 	// Team member locations — for spread check
 	useEffect(() => {
@@ -2085,6 +2114,14 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 					onDeleteAccount={() => {
 						setProfileOpen(false);
 						setDeletingAccount(true);
+					}}
+					onReport={() => {
+						setProfileOpen(false);
+						reportProblem({
+							gameId: game?.id,
+							gameName: game?.name,
+							teamName: team?.name,
+						});
 					}}
 					onClose={() => setProfileOpen(false)}
 				/>

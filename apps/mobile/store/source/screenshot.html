@@ -1,0 +1,64 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Store screenshot frame. Rendered by render-screenshots.mjs with
+     ?shot=<raw file>&caption=<text>&w=<width>&h=<height> -->
+<style>
+@font-face { font-family: Righteous; src: url(../../assets/fonts/Righteous-Regular.ttf); }
+html, body { margin: 0; }
+.frame { position: relative; overflow: hidden; background: #FF5C34; }
+.burst {
+  position: absolute; left: 50%; top: 0; width: 400%; aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, #F24E28 0deg 7.5deg, #FF5C34 7.5deg 15deg);
+}
+.caption {
+  position: absolute; left: 6%; right: 6%; text-align: center;
+  font-family: Righteous; color: #D7EFFF; text-transform: uppercase;
+  line-height: 1.05; letter-spacing: 0.02em;
+  -webkit-text-stroke: var(--stroke) #351E28; paint-order: stroke fill;
+}
+.phone {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  border: var(--border) solid #351E28; border-radius: var(--radius);
+  box-shadow: var(--shadow) var(--shadow) 0 #351E28;
+  overflow: hidden; background: #351E28;
+  outline: var(--ring) solid #D7EFFF;
+}
+.phone img { display: block; width: 100%; height: 100%; }
+</style></head>
+<body>
+<div class="frame" id="frame">
+  <div class="burst"></div>
+  <div class="caption" id="caption"></div>
+  <div class="phone" id="phone"><img id="shot"></div>
+</div>
+<script>
+const q = new URLSearchParams(location.search);
+const W = +q.get('w'), H = +q.get('h');
+const frame = document.getElementById('frame');
+frame.style.width = W + 'px'; frame.style.height = H + 'px';
+const u = W / 1000;                       // one unit per thousandth of the width
+const caption = document.getElementById('caption');
+caption.textContent = q.get('caption');
+const captionTop = H * 0.04, captionSize = 80 * u;
+caption.style.top = captionTop + 'px';
+caption.style.fontSize = captionSize + 'px';
+caption.style.textShadow = `${7 * u}px ${7 * u}px 0 #351E28`;
+caption.style.setProperty('--stroke', `${4 * u}px`);
+const phone = document.getElementById('phone');
+phone.style.setProperty('--border', `${10 * u}px`);
+phone.style.setProperty('--radius', `${70 * u}px`);
+phone.style.setProperty('--shadow', `${18 * u}px`);
+phone.style.setProperty('--ring', `${8 * u}px`);
+document.getElementById('shot').src = 'raw/' + q.get('shot');
+// The phone starts below however many lines the caption took, so it has to
+// wait for the font to know that
+document.fonts.ready.then(() => {
+  const phoneTop = caption.getBoundingClientRect().bottom + 50 * u;
+  const bottom = H * 0.035;
+  const ph = H - phoneTop - bottom, pw = ph * 1320 / 2868;
+  Object.assign(phone.style, { top: phoneTop + 'px', width: pw + 'px', height: ph + 'px' });
+  window.laidOut = true;
+});
+</script>
+</body></html>
