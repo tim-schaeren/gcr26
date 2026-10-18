@@ -26,6 +26,7 @@ import {
 	where,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { removePrivateEntry } from '../utils/privateEntry';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Deleting the person, not the race: their account, profile, location history
@@ -59,6 +60,7 @@ async function eraseAccount(password: string) {
 		await deleteDoc(doc(db, 'games', data.gameId, 'players', uid)).catch(
 			() => {},
 		);
+		await removePrivateEntry(data.gameId, uid).catch(() => {});
 		// Anything they wrote in chat
 		const mine = await getDocs(
 			query(

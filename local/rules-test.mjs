@@ -14,7 +14,7 @@ import {
 } from 'firebase/auth';
 import {
   getFirestore, connectFirestoreEmulator, doc, setDoc, updateDoc, addDoc, getDoc,
-  getDocs, collection, query, where, orderBy, documentId, writeBatch, deleteDoc,
+  getDocs, collection, query, where, orderBy, documentId, writeBatch, deleteDoc, deleteField,
 } from 'firebase/firestore';
 
 const PROJECT = 'rules-test';
@@ -318,6 +318,34 @@ await expect('runs a game with no hostIds', true, () => updateDoc(doc(db, 'games
 await expect('grants hosting', true, () => updateDoc(doc(db, 'games', GAME_NO_HOSTS), { hostIds: [people.host.uid] }));
 await expect('reads the player list', true, async () => (await getDocs(collection(db, 'users'))).docs.length);
 await expect('reads a sparse profile', true, () => getDoc(doc(db, 'users', people.playerA.uid)));
+
+// ── positions and push tokens: the player and their hosts, nobody else ────
+group('private entries');
+const priv = uid => doc(db, 'games', GAME, 'private', uid);
+const HERE = { lat: 1, lng: 2, updatedAt: Date.now() };
+await as('playerA');
+await expect('saves their position privately', true, () => setDoc(priv(people.playerA.uid), { lastLocation: HERE }, { merge: true }));
+await expect('saves their push token privately', true, () => setDoc(priv(people.playerA.uid), { pushToken: 'ExponentPushToken[a]' }, { merge: true }));
+await expect('reads their own private entry', true, () => getDoc(priv(people.playerA.uid)));
+await expect('CANNOT put anything else in it', false, () => setDoc(priv(people.playerA.uid), { name: 'hax' }, { merge: true }));
+await expect("CANNOT write somebody else's", false, () => setDoc(priv(people.mateA.uid), { lastLocation: HERE }));
+await expect('CANNOT put a position on the player list (old builds)', false, () =>
+  updateDoc(doc(db, 'games', GAME, 'players', people.playerA.uid), { lastLocation: HERE }));
+await expect('CANNOT put a push token on the player list (old builds)', false, () =>
+  updateDoc(doc(db, 'games', GAME, 'players', people.playerA.uid), { pushToken: 'ExponentPushToken[a]' }));
+await expect('strips old fields from their own player list entry', true, () =>
+  updateDoc(doc(db, 'games', GAME, 'players', people.playerA.uid), { lastLocation: deleteField(), pushToken: deleteField() }));
+await as('mateA');
+await expect("CANNOT read a teammate's private entry", false, () => getDoc(priv(people.playerA.uid)));
+await expect('CANNOT list private entries', false, async () => (await getDocs(collection(db, 'games', GAME, 'private'))).docs.length);
+await as('playerB');
+await expect("CANNOT read a rival's private entry", false, () => getDoc(priv(people.playerA.uid)));
+await as('host');
+await expect('reads every private entry in their game', true, async () => (await getDocs(collection(db, 'games', GAME, 'private'))).docs.length);
+await expect('clears a position (reset)', true, () => updateDoc(priv(people.playerA.uid), { lastLocation: deleteField() }));
+await expect("CANNOT change a player's push token", false, () => updateDoc(priv(people.playerA.uid), { pushToken: 'ExponentPushToken[hax]' }));
+await as('playerA');
+await expect('deletes their private entry (leaving, account deletion)', true, () => deleteDoc(priv(people.playerA.uid)));
 
 let current = '';
 for (const r of results) {

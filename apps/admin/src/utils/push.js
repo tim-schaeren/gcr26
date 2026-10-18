@@ -23,11 +23,11 @@ async function isPlatformAdmin() {
   return snap?.exists() && snap.data().isAdmin === true;
 }
 
-// Tokens live on the game's player list, which hosts can read. Profiles are
-// only readable by platform admins; they fill in players from before the app
-// copied its token over.
+// Tokens live on each player's private entry in the game, which only its
+// hosts can read. Profiles are only readable by platform admins; they fill in
+// players from before the app copied its token over.
 async function tokensForMembers(gameId, memberIds) {
-  const tokens = await tokensIn(collection(db, 'games', gameId, 'players'), memberIds).catch(() => new Map());
+  const tokens = await tokensIn(collection(db, 'games', gameId, 'private'), memberIds).catch(() => new Map());
   const missing = memberIds.filter(id => !tokens.has(id));
   if (missing.length && (await isPlatformAdmin())) {
     const fromProfiles = await tokensIn(collection(db, 'users'), missing).catch(() => new Map());

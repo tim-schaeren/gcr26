@@ -69,6 +69,12 @@ import { distanceMeters, bearingDegrees } from '../utils/geo';
 import { listen } from '../utils/listen';
 import { reportProblem } from '../utils/report';
 import { requestPushToken } from '../utils/pushToken';
+import {
+	savePosition,
+	savePushToken,
+	removePrivateEntry,
+	scrubPlayerListEntry,
+} from '../utils/privateEntry';
 import ContentBlocks from '../components/ContentBlocks';
 import ShopSheet from '../components/ShopSheet';
 import DeleteAccountModal from '../components/DeleteAccountModal';
@@ -1208,15 +1214,21 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	const theme = themeFor(game?.themeId);
 	const styles = stylesFor(theme);
 
-	// The hosts' console sends push from the game's player list, so the token
-	// goes there too — once per game, and again if it changes
+	// The hosts' console sends push using the token on this player's private
+	// entry in the game — once per game, and again if it changes
 	useEffect(() => {
 		const uid = auth.currentUser?.uid;
 		if (!uid || !game?.id || !profile?.pushToken) return;
-		updateDoc(doc(db, 'games', game.id, 'players', uid), {
-			pushToken: profile.pushToken,
-		}).catch(() => {});
+		savePushToken(game.id, uid, profile.pushToken).catch(() => {});
 	}, [game?.id, profile?.pushToken]);
+
+	// Earlier builds left the position and token on the player list, which
+	// every player in the game can read
+	useEffect(() => {
+		const uid = auth.currentUser?.uid;
+		if (!uid || !game?.id) return;
+		scrubPlayerListEntry(game.id, uid).catch(() => {});
+	}, [game?.id]);
 
 	// Tick for countdown
 	useEffect(() => {
@@ -1518,11 +1530,11 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 						updateDoc(doc(db, 'users', currentUid), {
 							lastLocation: { lat, lng, updatedAt: t },
 						}).catch(() => {});
-						// Hosts read positions from the game's player list, never from
-						// profiles, which also hold the email address
-						updateDoc(doc(db, 'games', game.id, 'players', currentUid), {
-							lastLocation: { lat, lng, updatedAt: t },
-						}).catch(() => {});
+						// Hosts read positions from the player's private entry in the
+						// game, never from profiles, which also hold the email address
+						savePosition(game.id, currentUid, { lat, lng, updatedAt: t }).catch(
+							() => {},
+						);
 
 						// Write trail point every 50 m or 2 min
 						const lastTrail = lastTrailRef.current;
@@ -1757,6 +1769,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 				await deleteDoc(doc(db, 'games', game.id, 'players', uid)).catch(
 					() => {},
 				);
+				await removePrivateEntry(game.id, uid).catch(() => {});
 			}
 		} catch {
 			setLeavingGame(false);

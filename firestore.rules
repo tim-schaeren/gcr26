@@ -131,15 +131,34 @@ service cloud.firestore {
         allow read:   if isAuth() && (playerId == request.auth.uid
                                       || hasJoined(gameId)
                                       || canManageGame(gameId));
+        // Everyone in the game can read this list, so it never holds a position
+        // or a push token: those live in private/{uid} below. Builds from
+        // before that wrote them here; their writes are refused, and the
+        // player or a host may strip what is left.
         allow create: if isAuth() && playerId == request.auth.uid
-                      && request.resource.data.id == request.auth.uid;
-        // A host may clear a player's last position when resetting the game,
-        // and touch nothing else on the entry
-        allow update: if (isAuth() && playerId == request.auth.uid)
+                      && request.resource.data.id == request.auth.uid
+                      && !request.resource.data.keys().hasAny(['lastLocation', 'pushToken']);
+        allow update: if (isAuth() && playerId == request.auth.uid
+                          && !request.resource.data.keys().hasAny(['lastLocation', 'pushToken']))
+                      || (canManageGame(gameId)
+                          && request.resource.data.diff(resource.data).affectedKeys()
+                               .hasOnly(['lastLocation', 'pushToken']));
+        allow delete: if isAuth() && (playerId == request.auth.uid || canManageGame(gameId));
+      }
+
+      // What only a player and the game's hosts may see: the player's last
+      // position, for the live map, and their push token.
+      match /private/{playerId} {
+        allow read:   if (isAuth() && playerId == request.auth.uid) || canManageGame(gameId);
+        allow create: if isAuth() && playerId == request.auth.uid
+                      && request.resource.data.keys().hasOnly(['lastLocation', 'pushToken']);
+        // A host may clear the position when resetting the game, nothing else
+        allow update: if (isAuth() && playerId == request.auth.uid
+                          && request.resource.data.keys().hasOnly(['lastLocation', 'pushToken']))
                       || (canManageGame(gameId)
                           && request.resource.data.diff(resource.data).affectedKeys()
                                .hasOnly(['lastLocation']));
-        allow delete: if isAuth() && (playerId == request.auth.uid || canManageGame(gameId));
+        allow delete: if (isAuth() && playerId == request.auth.uid) || canManageGame(gameId);
       }
 
       // Wrong answers: teams write their own, only hosts read them. Teams must not

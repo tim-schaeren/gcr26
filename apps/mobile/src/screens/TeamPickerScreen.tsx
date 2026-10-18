@@ -35,6 +35,7 @@ import DeleteAccountModal from '../components/DeleteAccountModal';
 import * as ui from '../theme/primitives';
 import { listen } from '../utils/listen';
 import { reportProblem } from '../utils/report';
+import { removePrivateEntry } from '../utils/privateEntry';
 
 interface PickerTeam {
 	id: string;
@@ -162,6 +163,7 @@ export default function TeamPickerScreen({
 			// Membership first: if the second write fails, the player is out of the
 			// game's roster and the join screen will let them start over
 			await deleteDoc(doc(db, 'games', gameId, 'players', uid));
+			await removePrivateEntry(gameId, uid).catch(() => {});
 			await updateDoc(doc(db, 'users', uid), { gameId: null, teamId: null });
 		} catch {
 			setError("Couldn't leave the game. Try again.");

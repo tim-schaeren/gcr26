@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { recordPosition } from './distanceTracker';
+import { savePosition } from '../utils/privateEntry';
 
 export const TASK_NAME = 'gcr-background-location';
 
@@ -24,7 +25,7 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }: TaskManager.TaskManage
   const t = Date.now();
 
   await updateDoc(doc(db, 'users', uid), { lastLocation: { lat, lng, updatedAt: t } }).catch(() => {});
-  await updateDoc(doc(db, 'games', gameId, 'players', uid), { lastLocation: { lat, lng, updatedAt: t } }).catch(() => {});
+  await savePosition(gameId, uid, { lat, lng, updatedAt: t }).catch(() => {});
   await addDoc(collection(db, 'trail'), { userId: uid, teamId, gameId, lat, lng, t }).catch(() => {});
 });
 

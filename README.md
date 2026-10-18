@@ -136,11 +136,13 @@ that record is what lets them pick or start a team, and what lets a host see
 their own players without read access to every user on the platform. Players can
 leave a game, and delete their account, from the app.
 
-The app copies each player's last position and push token onto that record, and
-the console's live map, leaderboard and push read them from there. Profiles in
-`users` also hold email addresses, which hosts don't get to see; only platform
-admins read them, and the console merges both so players from before the copy
-existed still show up for an admin.
+Every player in a game can read its player list (the team picker names who is
+in each team), so it holds names only. Each player's last position and push
+token go to `games/{id}/private/{uid}`, which only that player and the game's
+hosts can read; the console's live map, leaderboard and push read them from
+there. Profiles in `users` also hold email addresses, which hosts don't get to
+see; only platform admins read them, and the console merges them in so players
+on older builds still show up for an admin.
 
 ### Data model
 
@@ -151,7 +153,8 @@ See `packages/shared/src/types.ts` for the full data model. Collections:
 | `users`                       | Accounts: name, email, `gameId`, `teamId`, push token              |
 | `games`                       | Race events — `hostIds`, `joinCode`, `themeId`, coin and shop settings |
 | `games/{id}/quests`           | Quests scoped to a game; order stored as `questOrder` on the game  |
-| `games/{id}/players`          | Who joined, with last position and push token — what hosts read    |
+| `games/{id}/players`          | Who joined, by name — every player in the game can read it         |
+| `games/{id}/private`          | Each player's last position and push token — only they and the hosts read it |
 | `games/{id}/activity`         | The bulletin board; entries are `public` or `team`-private         |
 | `games/{id}/messages`         | Chat, one thread per team, between that team and the hosts         |
 | `games/{id}/attempts`         | Rejected answers — hosts only, never readable by players           |

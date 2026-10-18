@@ -126,10 +126,20 @@ export default function GamePage() {
           teamChatReadAt: deleteField(), hostChatReadAt: deleteField(),
         });
       });
-      // Last known positions, so the live map doesn't show where people were
+      // Last known positions, so the live map doesn't show where people were.
+      // Push tokens stay: the players are still in the game.
+      const privateSnap = await getDocs(collection(db, 'games', gameId, 'private'));
+      privateSnap.docs.forEach(d => {
+        if (d.data().lastLocation) batch.update(d.ref, { lastLocation: deleteField() });
+      });
+      // Older builds left positions and tokens on the player list, which every
+      // player can read; they go entirely
       const playersSnap = await getDocs(collection(db, 'games', gameId, 'players'));
       playersSnap.docs.forEach(d => {
-        if (d.data().lastLocation) batch.update(d.ref, { lastLocation: deleteField() });
+        const { lastLocation, pushToken } = d.data();
+        if (lastLocation || pushToken) {
+          batch.update(d.ref, { lastLocation: deleteField(), pushToken: deleteField() });
+        }
       });
       await batch.commit();
       // An admin's map also reads profiles, which hold a copy of the position.
