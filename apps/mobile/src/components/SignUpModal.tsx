@@ -20,6 +20,7 @@ import {
   MIN_PASSWORD_LENGTH,
 } from '@gcr26/shared';
 import { auth, db } from '../firebase';
+import Icon from '../theme/Icon';
 import { LEGAL } from '../config';
 
 interface Props {
@@ -143,7 +144,7 @@ export default function SignUpModal({ visible, onClose }: Props) {
           activeOpacity={0.7}
         >
           <View style={[styles.checkbox, accepted && styles.checkboxOn]}>
-            {accepted && <Text style={styles.checkboxTick}>✓</Text>}
+            {accepted && <Icon name="check" size={15} color="#fff" />}
           </View>
           <Text style={styles.acceptText}>
             I agree to the{' '}

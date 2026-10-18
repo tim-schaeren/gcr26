@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
-import { DEFAULT_ECONOMY, gameEconomy } from '@gcr26/shared';
+import {
+	DEFAULT_ECONOMY,
+	DEFAULT_THEME_ID,
+	THEME_LIST,
+	gameEconomy,
+	themeFor,
+} from '@gcr26/shared';
 import { geocodeCity } from '../utils/geocode';
 
 const EMPTY = {
@@ -12,6 +18,7 @@ const EMPTY = {
 	startingCoins: String(DEFAULT_ECONOMY.startingCoins),
 	coinsPerQuest: String(DEFAULT_ECONOMY.coinsPerQuest),
 	hintCost: String(DEFAULT_ECONOMY.hintCost),
+	themeId: DEFAULT_THEME_ID,
 };
 
 function toFormState(game) {
@@ -30,7 +37,65 @@ function toFormState(game) {
 		startingCoins: String(economy.startingCoins),
 		coinsPerQuest: String(economy.coinsPerQuest),
 		hintCost: String(economy.hintCost),
+		themeId: themeFor(game.themeId).id,
 	};
+}
+
+// A small drawing of a quest screen in the theme's own colours and type
+function ThemeOption({ theme, selected, onSelect }) {
+	const c = theme.colors;
+	const edge = theme.shape.shadowOffset;
+	const display = theme.fonts.display
+		? `'${theme.fonts.display}', system-ui, sans-serif`
+		: undefined;
+	return (
+		<button
+			type="button"
+			onClick={onSelect}
+			className={`text-left rounded-lg border-2 p-1.5 transition-colors ${selected ? 'border-gray-900' : 'border-gray-200 hover:border-gray-300'}`}
+		>
+			<div
+				className="rounded-md px-3 py-4 flex flex-col items-center gap-2"
+				style={{ background: c.background, border: `1px solid ${edge ? c.border : '#e5e7eb'}` }}
+			>
+				<span
+					className="text-[9px] tracking-[0.2em] uppercase"
+					style={{ color: theme.uppercaseHeadings ? c.text : c.muted, fontFamily: display }}
+				>
+					Quest 3 of 8
+				</span>
+				<span
+					className="text-lg leading-tight text-center"
+					style={{
+						color: c.heading,
+						fontFamily: display,
+						fontWeight: display ? 400 : 700,
+						textTransform: theme.uppercaseHeadings ? 'uppercase' : 'none',
+						textShadow: theme.headingShadow ? `2px 2px 0 ${c.shadow}` : 'none',
+					}}
+				>
+					The old fountain
+				</span>
+				<span
+					className="text-[11px] px-3 py-1 mt-1"
+					style={{
+						background: c.accent,
+						color: c.onAccent,
+						fontFamily: display,
+						borderRadius: theme.shape.radius / 2,
+						boxShadow: edge ? `${edge / 2}px ${edge / 2}px 0 ${c.shadow}` : 'none',
+						textTransform: theme.uppercaseHeadings ? 'uppercase' : 'none',
+					}}
+				>
+					Continue
+				</span>
+			</div>
+			<div className="px-1 pt-2 pb-1">
+				<p className="text-sm font-medium text-gray-900">{theme.name}</p>
+				<p className="text-xs text-gray-400">{theme.description}</p>
+			</div>
+		</button>
+	);
 }
 
 export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
@@ -100,6 +165,7 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 				startingCoins: parseInt(form.startingCoins),
 				coinsPerQuest: parseInt(form.coinsPerQuest),
 				hintCost: parseInt(form.hintCost),
+				themeId: form.themeId,
 			});
 		} finally {
 			setGeocoding(false);
@@ -244,6 +310,25 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 							<p className="text-xs text-gray-400 mt-1">
 								Shown to players as “Call the hosts". Leave blank to hide it.
 							</p>
+						</div>
+
+						<div className="border-t border-gray-200 pt-5">
+							<h3 className="text-sm font-semibold text-gray-900 mb-1">
+								Look
+							</h3>
+							<p className="text-xs text-gray-400 mb-3">
+								How the game looks on players' phones.
+							</p>
+							<div className="grid grid-cols-2 gap-3">
+								{THEME_LIST.map((theme) => (
+									<ThemeOption
+										key={theme.id}
+										theme={theme}
+										selected={form.themeId === theme.id}
+										onSelect={() => set('themeId', theme.id)}
+									/>
+								))}
+							</div>
 						</div>
 
 						<div className="border-t border-gray-200 pt-5">

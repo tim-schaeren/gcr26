@@ -7,3 +7,5 @@ export * from './activity';
 export * from './invites';
 export * from './authErrors';
 export * from './teams';
+export * from './themes';
+export * from './icons';

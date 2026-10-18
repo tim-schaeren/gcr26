@@ -20,6 +20,7 @@ import { db, auth } from '../firebase';
 import CoinAdjustModal from '../components/CoinAdjustModal';
 import TeamProgressModal from '../components/TeamProgressModal';
 import { logActivity } from '../utils/activity';
+import Icon from '../components/Icon';
 
 function DraggableMemberRow({ user, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: user.id });
@@ -48,7 +49,7 @@ function DraggableMemberRow({ user, onRemove }) {
         onClick={onRemove}
         className="text-xs text-gray-300 hover:text-red-500 transition-colors ml-2"
       >
-        ✕
+        <Icon name="close" size={14} />
       </button>
     </div>
   );
@@ -104,9 +105,9 @@ function DroppableTeamCard({ team, members, maxTeamSize, coins, onRemove, onEdit
           <button
             onClick={() => onAdjustCoins(team)}
             title="Adjust coins"
-            className="text-xs text-gray-500 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors"
           >
-            🪙 {coins}
+            <Icon name="circle-multiple-outline" size={14} /> {coins}
           </button>
           <button
             onClick={() => onProgress(team)}

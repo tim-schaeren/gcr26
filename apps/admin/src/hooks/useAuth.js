@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+
+const DEAD_SESSION_CODES = ['auth/user-not-found', 'auth/user-token-expired', 'auth/user-disabled', 'auth/invalid-user-token'];
 
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -19,13 +21,28 @@ export function useAuth() {
         return;
       }
 
-      // Check Firestore for admin flag
-      const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
-      const isAdminUser = snap.exists() && snap.data().isAdmin === true;
+      // A session restored from the browser can belong to an account that no
+      // longer exists. Refreshing its token is what finds out, and the only
+      // way back from that is signing out.
+      try {
+        await firebaseUser.getIdToken();
+      } catch (e) {
+        if (DEAD_SESSION_CODES.includes(e?.code)) {
+          await signOut(auth).catch(() => {});
+          return;
+        }
+      }
 
       setUser(firebaseUser);
-      setIsAdmin(isAdminUser);
-      setLoading(false);
+      // Check Firestore for admin flag
+      try {
+        const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
+        setIsAdmin(snap.exists() && snap.data().isAdmin === true);
+      } catch {
+        setIsAdmin(false);
+      } finally {
+        setLoading(false);
+      }
     });
   }, []);
 

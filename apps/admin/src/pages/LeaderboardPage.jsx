@@ -3,13 +3,8 @@ import { collection, doc, query, where, onSnapshot } from 'firebase/firestore';
 import { useParams, useNavigate } from 'react-router-dom';
 import { gameEconomy, teamCoins } from '@gcr26/shared';
 import { db } from '../firebase';
-
-function medal(rank) {
-  if (rank === 0) return '🥇';
-  if (rank === 1) return '🥈';
-  if (rank === 2) return '🥉';
-  return null;
-}
+import Icon from '../components/Icon';
+import { useGamePlayers } from '../hooks/useGamePlayers';
 
 function formatDuration(ms) {
   if (!ms || ms <= 0) return '—';
@@ -56,7 +51,7 @@ export default function LeaderboardPage() {
   const [game, setGame] = useState(null);
   const [teams, setTeams] = useState([]);
   const [questMap, setQuestMap] = useState({});
-  const [users, setUsers] = useState([]);
+  const users = useGamePlayers(gameId);
   const [attempts, setAttempts] = useState([]);
 
   useEffect(() => {
@@ -84,12 +79,6 @@ export default function LeaderboardPage() {
       setQuestMap(map);
     });
   }, [gameId]);
-
-  useEffect(() => {
-    return onSnapshot(collection(db, 'users'), snap => {
-      setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-  }, []);
 
   const totalQuests = game?.questOrder?.length ?? 0;
   const totalPausedMs = game?.totalPausedMs ?? 0;
@@ -133,21 +122,30 @@ export default function LeaderboardPage() {
                 onClick={() => navigate(`/games/${gameId}/teams`, { state: { highlightTeamId: team.id } })}
               >
                 <div className="flex items-center gap-4">
-                  <span className="text-xl w-8 text-center shrink-0">
-                    {medal(i) ?? <span className="text-sm font-semibold text-gray-400">#{i + 1}</span>}
+                  <span className="w-8 flex justify-center shrink-0">
+                    {i < 3 ? (
+                      <span className="w-7 h-7 rounded-full bg-gray-900 text-white text-sm font-semibold flex items-center justify-center">{i + 1}</span>
+                    ) : (
+                      <span className="text-sm font-semibold text-gray-400">{i + 1}</span>
+                    )}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between gap-2 mb-1">
                       <p className="text-sm font-semibold text-gray-900 truncate">{team.name}</p>
                       <p className="text-xs text-gray-500 shrink-0">
-                        <span className="text-gray-400 mr-2" title="Coins · hints revealed">
-                          🪙 {teamCoins(team, economy)}
-                          {hintsUsed > 0 && ` · 💡 ${hintsUsed}`}
+                        <span className="inline-flex items-center gap-1 text-gray-400 mr-2 align-middle" title="Coins · hints revealed">
+                          <Icon name="circle-multiple-outline" size={13} /> {teamCoins(team, economy)}
+                          {hintsUsed > 0 && (
+                            <>
+                              <span className="mx-0.5">·</span>
+                              <Icon name="lightbulb-outline" size={13} /> {hintsUsed}
+                            </>
+                          )}
                         </span>
                         {completed} / {totalQuests} quests
                         {team.finishedAt && game && (
-                          <span className="ml-2 text-green-600 font-medium">
-                            ✓ {formatDuration(team.finishedAt - game.startDateTime - totalPausedMs)}
+                          <span className="ml-2 inline-flex items-center gap-1 text-green-600 font-medium align-middle">
+                            <Icon name="check" size={13} /> {formatDuration(team.finishedAt - game.startDateTime - totalPausedMs)}
                           </span>
                         )}
                       </p>

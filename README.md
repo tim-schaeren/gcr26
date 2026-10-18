@@ -9,7 +9,7 @@ Licensed under [GPL v3](LICENSE) — free to use, modify, and distribute, but de
 ```
 gcr26/
 ├── apps/
-│   ├── mobile/       React Native (Expo SDK 54) — iOS & Android
+│   ├── mobile/       React Native (Expo SDK 57) — iOS & Android
 │   └── admin/        React + Vite + Tailwind — web admin console
 └── packages/
     └── shared/       Shared TypeScript types and constants
@@ -123,18 +123,22 @@ that record is what lets them pick or start a team, and what lets a host see
 their own players without read access to every user on the platform. Players can
 leave a game, and delete their account, from the app.
 
+The app copies each player's last position and push token onto that record, and
+the console's live map, leaderboard and push read them from there. Profiles in
+`users` also hold email addresses, which hosts don't get to see; only platform
+admins read them, and the console merges both so players from before the copy
+existed still show up for an admin.
+
 ### Data model
 
 See `packages/shared/src/types.ts` for the full data model. Collections:
 
-| Collection                    | Description                                                   |
-| ----------------------------- | ------------------------------------------------------------- |
 | Collection                    | Description                                                        |
 | ----------------------------- | ------------------------------------------------------------------ |
 | `users`                       | Accounts: name, email, `gameId`, `teamId`, push token              |
-| `games`                       | Race events — `hostIds`, `joinCode`, coin and shop settings        |
+| `games`                       | Race events — `hostIds`, `joinCode`, `themeId`, coin and shop settings |
 | `games/{id}/quests`           | Quests scoped to a game; order stored as `questOrder` on the game  |
-| `games/{id}/players`          | Who joined this game, so hosts can see their own players           |
+| `games/{id}/players`          | Who joined, with last position and push token — what hosts read    |
 | `games/{id}/activity`         | The bulletin board; entries are `public` or `team`-private         |
 | `games/{id}/messages`         | Chat, one thread per team, between that team and the hosts         |
 | `games/{id}/attempts`         | Rejected answers — hosts only, never readable by players           |
@@ -147,6 +151,24 @@ See `packages/shared/src/types.ts` for the full data model. Collections:
 User → Team → Game is the chain: a user belongs to one team, a team belongs to
 one game. A user may also have a `gameId` without a `teamId` — joined, but still
 picking a team.
+
+### Themes and icons
+
+A host picks a look per game in the console (`themeId` on the game): **Basic**
+(black on white) or **Retro** (Tangerine, Black Cherry and Cool Blue, set in
+Righteous). Themes are presets in `packages/shared/src/themes.ts`, each with
+every colour role checked for contrast against its own background, which is why
+hosts choose a preset rather than free colours. The app applies the theme from
+the team picker on; sign-in and joining stay Basic.
+
+Screens build their styles from the theme through
+`apps/mobile/src/theme/primitives.ts` (headings, labels, panels, buttons,
+inputs) rather than hardcoded colours. Icons are Material Design Icons
+everywhere — `@expo/vector-icons` in the app, `@mdi/js` in the console — named
+in `packages/shared/src/icons.ts`. The UI uses no emoji.
+
+App icons and splash come from `apps/mobile/app-icons/`; Expo generates every
+size from the masters referenced in `app.json`.
 
 ### Public pages
 

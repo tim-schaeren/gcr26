@@ -165,6 +165,7 @@ export interface Game {
   questOrder: string[];     // ordered list of quest IDs (subcollection)
   hostIds?: string[];       // users who may run this game; platform admins can run every game
   joinCode?: string;        // what players type to join
+  themeId?: string;         // visual theme for players; see themes.ts
   hotlineNumber?: string;   // phone number teams can call when something goes wrong
   shop?: Record<string, { enabled?: boolean; price?: number; durationMinutes?: number }>;
   maxTeamSize?: number;     // optional soft limit shown in admin UI

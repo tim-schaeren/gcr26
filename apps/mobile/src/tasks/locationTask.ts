@@ -24,5 +24,6 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }: TaskManager.TaskManage
   const t = Date.now();
 
   await updateDoc(doc(db, 'users', uid), { lastLocation: { lat, lng, updatedAt: t } }).catch(() => {});
+  await updateDoc(doc(db, 'games', gameId, 'players', uid), { lastLocation: { lat, lng, updatedAt: t } }).catch(() => {});
   await addDoc(collection(db, 'trail'), { userId: uid, teamId, gameId, lat, lng, t }).catch(() => {});
 });

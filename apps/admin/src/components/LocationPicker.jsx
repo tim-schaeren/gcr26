@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import Icon from './Icon';
 
 // Fix Leaflet's default marker icons broken by bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -60,7 +61,7 @@ export default function LocationPicker({ value, onChange, defaultCenter, fenceRa
       {hasLocation ? (
         <p className="text-xs text-gray-500">
           {parseFloat(value.lat).toFixed(6)}, {parseFloat(value.lng).toFixed(6)}
-          <button onClick={() => onChange({ lat: '', lng: '' })} className="ml-2 text-gray-400 hover:text-red-400 transition-colors">✕ clear</button>
+          <button onClick={() => onChange({ lat: '', lng: '' })} className="ml-2 inline-flex items-center gap-0.5 text-gray-400 hover:text-red-400 transition-colors"><Icon name="close" size={12} /> clear</button>
         </p>
       ) : (
         <p className="text-xs text-gray-400">Click on the map to set the location.</p>

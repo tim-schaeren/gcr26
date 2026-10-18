@@ -5,6 +5,7 @@ import { formatActivity, formatActivityTime } from '@gcr26/shared';
 import { db } from '../firebase';
 import { logActivity } from '../utils/activity';
 import { sendPushToPlayers } from '../utils/push';
+import Icon from '../components/Icon';
 
 const FEED_LIMIT = 300;
 
@@ -46,7 +47,7 @@ export default function ActivityPage() {
     setPosting(true);
     try {
       await logActivity(gameId, { type: 'admin_note', text });
-      if (alsoPush) await sendPushToPlayers(gameId, '📣 Announcement', text);
+      if (alsoPush) await sendPushToPlayers(gameId, 'Announcement', text);
       setNote('');
       setAlsoPush(false);
     } finally {
@@ -108,8 +109,8 @@ export default function ActivityPage() {
               {group.entries.map(entry => {
                 const { icon, text } = formatActivity(entry);
                 return (
-                  <div key={entry.id} className="flex items-baseline gap-3 bg-white border border-gray-200 rounded-lg px-4 py-2.5">
-                    <span className="shrink-0">{icon}</span>
+                  <div key={entry.id} className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg px-4 py-2.5">
+                    <Icon name={icon} size={18} className="text-gray-500" />
                     <span className="flex-1 text-sm text-gray-900">{text}</span>
                     {entry.visibility === 'team' && (
                       <span className="text-xs text-gray-300 shrink-0" title="Only this team can see this entry">private</span>

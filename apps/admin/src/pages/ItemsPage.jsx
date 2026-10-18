@@ -3,6 +3,7 @@ import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
 import { SHOP_ITEMS, shopConfig } from '@gcr26/shared';
 import { db } from '../firebase';
+import Icon from '../components/Icon';
 
 function ItemCard({ item, config, onSave, saving }) {
   const [price, setPrice] = useState(String(config.price));
@@ -26,7 +27,7 @@ function ItemCard({ item, config, onSave, saving }) {
   return (
     <div className={`bg-white border rounded-lg p-5 ${config.enabled ? 'border-gray-200' : 'border-gray-100'}`}>
       <div className="flex items-start gap-3">
-        <span className="text-2xl leading-none">{item.icon}</span>
+        <Icon name={item.icon} size={24} className="text-gray-700" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
             <h2 className={`text-sm font-semibold ${config.enabled ? 'text-gray-900' : 'text-gray-400'}`}>

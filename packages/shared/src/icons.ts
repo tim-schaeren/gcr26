@@ -1,0 +1,31 @@
+// Every icon either app draws, by Material Design Icons name. Kept in one list
+// so the console can map exactly these, and a typo is caught in one place.
+export const ICON_NAMES = [
+  'check-circle-outline',
+  'trophy-outline',
+  'lightbulb-outline',
+  'compass-outline',
+  'circle-multiple-outline',
+  'flag-outline',
+  'pause-circle-outline',
+  'play-circle-outline',
+  'flag-checkered',
+  'bullhorn-outline',
+  'wrench-outline',
+  'circle-small',
+  'lock-outline',
+  'phone-outline',
+  'map-marker-outline',
+  'bell-outline',
+  'party-popper',
+  'menu',
+  'close',
+  'arrow-right',
+  'navigation',
+  'open-in-new',
+  'check',
+  'chat-outline',
+  'account-outline',
+] as const;
+
+export type AppIcon = (typeof ICON_NAMES)[number];

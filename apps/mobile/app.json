@@ -4,7 +4,7 @@
     "slug": "gcr26",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./app-icons/ios/AppIcon.appiconset/AppIcon-1024.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
@@ -14,15 +14,19 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Grand City Race tracks your location in the background so your team's trail stays up to date on the map.",
         "NSLocationAlwaysUsageDescription": "Grand City Race tracks your location in the background so your team's trail stays up to date on the map.",
         "NSLocationWhenInUseUsageDescription": "Grand City Race uses your location to unlock nearby quests and show your position on the map."
+      },
+      "icon": {
+        "light": "./app-icons/ios/AppIcon.appiconset/AppIcon-1024.png",
+        "dark": "./app-icons/ios/AppIcon.appiconset/AppIcon-1024-dark.png",
+        "tinted": "./app-icons/ios/AppIcon.appiconset/AppIcon-1024-tinted.png"
       }
     },
     "android": {
       "package": "com.gcrace.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./app-icons/android/res/mipmap-xxxhdpi/ic_launcher_foreground.png",
+        "monochromeImage": "./app-icons/android/res/mipmap-xxxhdpi/ic_launcher_monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "googleServicesFile": "./google-services.json"
@@ -44,7 +48,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash-icon.png",
+          "image": "./app-icons/ios/AppIcon.appiconset/AppIcon-1024.png",
+          "imageWidth": 180,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }

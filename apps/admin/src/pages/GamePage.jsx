@@ -72,7 +72,7 @@ export default function GamePage() {
     await run(async () => {
       await updateDoc(doc(db, 'games', gameId), { startDateTime: Date.now() });
       await logActivity(gameId, { type: 'game_started' });
-      await sendPushToPlayers(gameId, '🏁 The game has started!', 'Good luck — your first quest awaits.');
+      await sendPushToPlayers(gameId, 'The game has started!', 'Good luck — your first quest awaits.');
     });
   }
 
@@ -80,7 +80,7 @@ export default function GamePage() {
     await run(async () => {
       await updateDoc(doc(db, 'games', gameId), { pausedAt: Date.now() });
       await logActivity(gameId, { type: 'game_paused' });
-      await sendPushToPlayers(gameId, '⏸ Game paused', 'The admins have paused the game. Sit tight!');
+      await sendPushToPlayers(gameId, 'Game paused', 'The admins have paused the game. Sit tight!');
     });
   }
 
@@ -100,7 +100,7 @@ export default function GamePage() {
     await run(async () => {
       await updateDoc(doc(db, 'games', gameId), { endedAt: Date.now() });
       await logActivity(gameId, { type: 'game_ended' });
-      await sendPushToPlayers(gameId, '🏁 Game over', 'The admins have ended the game. Thanks for playing!');
+      await sendPushToPlayers(gameId, 'Game over', 'The admins have ended the game. Thanks for playing!');
     });
     setShowEndConfirm(false);
     setEndInput('');

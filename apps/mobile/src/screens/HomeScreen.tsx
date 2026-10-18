@@ -51,7 +51,7 @@ export default function HomeScreen() {
 					style={styles.adminButton}
 					onPress={() => Linking.openURL(ADMIN_URL)}
 				>
-					<Text style={styles.adminButtonText}>Open Admin Panel →</Text>
+					<Text style={styles.adminButtonText}>Open Admin Panel</Text>
 				</TouchableOpacity>
 				<TouchableOpacity
 					style={styles.signOutButton}

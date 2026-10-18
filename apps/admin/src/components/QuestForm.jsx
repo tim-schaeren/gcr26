@@ -8,6 +8,7 @@ import {
 	blockErrors,
 } from '../utils/contentBlocks';
 import { TRIGGER_OPTIONS, TASK_OPTIONS } from '../utils/questOptions';
+import Icon from './Icon';
 
 const EMPTY = {
 	title: '',
@@ -498,7 +499,7 @@ export default function QuestForm({
 														onClick={() => removeArrayItem('answers', i)}
 														className="text-gray-300 hover:text-red-400 transition-colors shrink-0"
 													>
-														✕
+														<Icon name="close" size={14} />
 													</button>
 												)}
 											</div>
@@ -600,7 +601,7 @@ export default function QuestForm({
 															onClick={() => removeArrayItem('hints', i)}
 															className="ml-auto text-gray-300 hover:text-red-400 transition-colors"
 														>
-															✕
+															<Icon name="close" size={14} />
 														</button>
 													)}
 												</div>

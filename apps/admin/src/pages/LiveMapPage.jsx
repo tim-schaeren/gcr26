@@ -5,6 +5,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
+import Icon from '../components/Icon';
+import { useGamePlayers } from '../hooks/useGamePlayers';
 
 const TEAM_COLORS = [
   '#e11d48', '#2563eb', '#16a34a', '#d97706',
@@ -114,7 +116,7 @@ export default function LiveMapPage() {
   const [game, setGame] = useState(null);
   const [quests, setQuests] = useState([]);
   const [teams, setTeams] = useState([]);
-  const [users, setUsers] = useState([]);
+  const users = useGamePlayers(gameId);
   const [trail, setTrail] = useState([]);
   const [headerFlyTarget, setHeaderFlyTarget] = useState(null);
 
@@ -141,13 +143,6 @@ export default function LiveMapPage() {
       snap => setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
     );
   }, [gameId]);
-
-  // Subscribe to all users — small event scale, filter client-side
-  useEffect(() => {
-    return onSnapshot(collection(db, 'users'), snap => {
-      setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-  }, []);
 
   useEffect(() => {
     return onSnapshot(
@@ -197,7 +192,7 @@ export default function LiveMapPage() {
                   style={{ backgroundColor: team.color ?? teamColor(i) }}
                 />
                 <span className="font-medium">{team.name}</span>
-                {team.finishedAt && <span className="text-green-600">✓</span>}
+                {team.finishedAt && <Icon name="check" size={14} className="text-green-600" title="Finished" />}
                 {status && (
                   <span className="text-gray-400">
                     — <span className={status.solving ? 'text-green-600' : 'text-yellow-500'}>

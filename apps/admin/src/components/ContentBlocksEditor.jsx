@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { parseYouTubeId } from '@gcr26/shared';
+import Icon from './Icon';
 
 const NEW_BLOCK = {
   text: () => ({ type: 'text', text: '' }),
@@ -49,7 +50,7 @@ export default function ContentBlocksEditor({ blocks, onChange, textPlaceholder,
               <div className="ml-auto flex items-center gap-2">
                 <button onClick={() => move(i, -1)} disabled={i === 0} className="hover:text-gray-700 disabled:opacity-30">↑</button>
                 <button onClick={() => move(i, 1)} disabled={i === blocks.length - 1} className="hover:text-gray-700 disabled:opacity-30">↓</button>
-                <button onClick={() => onChange(blocks.filter((_, j) => j !== i))} className="hover:text-red-400">✕</button>
+                <button onClick={() => onChange(blocks.filter((_, j) => j !== i))} className="hover:text-red-400" title="Remove"><Icon name="close" size={14} /></button>
               </div>
             </div>
 

@@ -13,7 +13,7 @@ export interface ShopItemConfig {
 export interface ShopItemDefinition {
   type: ShopItemType;
   name: string;
-  icon: string;
+  icon: string;          // Material Design Icons name
   description: string;   // shown to hosts and players, so the wording can't drift
   hasDuration: boolean;
   defaults: ShopItemConfig;
@@ -24,7 +24,7 @@ export const SHOP_ITEMS: ShopItemDefinition[] = [
   {
     type: 'compass',
     name: 'Compass',
-    icon: '🧭',
+    icon: 'compass-outline',
     description:
       'Shows the direction to the next quest and how far away it is, for a while.',
     hasDuration: true,

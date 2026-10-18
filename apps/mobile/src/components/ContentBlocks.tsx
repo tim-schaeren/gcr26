@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, Linking, StyleSheet, type TextStyle, type StyleProp } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type { ContentBlock } from '@gcr26/shared';
+import Icon from '../theme/Icon';
+import { useTheme } from '../theme/ThemeContext';
 
 // YouTube rejects embeds without a referrer (error 153), so the player page gets an origin
 const EMBED_BASE_URL = 'https://gcr26.app/';
@@ -9,12 +11,13 @@ const EMBED_BASE_URL = 'https://gcr26.app/';
 function RemoteImage({ url, caption }: { url: string; caption?: string }) {
   const [aspectRatio, setAspectRatio] = useState(4 / 3);
   const [failed, setFailed] = useState(false);
+  const t = useTheme();
   if (failed) return null;
   return (
     <View style={styles.block}>
       <Image
         source={{ uri: url }}
-        style={[styles.image, { aspectRatio }]}
+        style={[styles.image, { aspectRatio, borderRadius: t.shape.radius, backgroundColor: t.colors.surface }]}
         resizeMode="contain"
         onLoad={e => {
           const { width, height } = e.nativeEvent.source;
@@ -22,7 +25,7 @@ function RemoteImage({ url, caption }: { url: string; caption?: string }) {
         }}
         onError={() => setFailed(true)}
       />
-      {caption ? <Text style={styles.caption}>{caption}</Text> : null}
+      {caption ? <Text style={[styles.caption, { color: t.colors.muted }]}>{caption}</Text> : null}
     </View>
   );
 }
@@ -37,10 +40,11 @@ function YouTubeEmbed({ videoId }: { videoId: string }) {
   referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </body></html>`;
   const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const t = useTheme();
 
   return (
     <View style={styles.block}>
-      <View style={styles.video}>
+      <View style={[styles.video, { borderRadius: t.shape.radius }]}>
         <WebView
           source={{ html, baseUrl: EMBED_BASE_URL }}
           allowsInlineMediaPlayback
@@ -55,8 +59,9 @@ function YouTubeEmbed({ videoId }: { videoId: string }) {
           }}
         />
       </View>
-      <TouchableOpacity onPress={() => Linking.openURL(watchUrl)}>
-        <Text style={styles.caption}>Open in YouTube ↗</Text>
+      <TouchableOpacity style={styles.watchLink} onPress={() => Linking.openURL(watchUrl)}>
+        <Text style={[styles.caption, { color: t.colors.muted, marginTop: 0 }]}>Open in YouTube</Text>
+        <Icon name="open-in-new" size={13} color={t.colors.muted} />
       </TouchableOpacity>
     </View>
   );
@@ -93,6 +98,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#000',
+  },
+  watchLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 6,
   },
   caption: {
     fontSize: 13,

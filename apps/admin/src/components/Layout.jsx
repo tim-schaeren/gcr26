@@ -8,6 +8,7 @@ import { auth, db } from '../firebase';
 import { generateJoinCode } from '@gcr26/shared';
 import { useAuth } from '../hooks/useAuth';
 import GameForm from './GameForm';
+import Icon from './Icon';
 
 export default function Layout() {
   const { user, isAdmin } = useAuth();
@@ -173,7 +174,7 @@ export default function Layout() {
                   className="px-2 py-2 text-xs text-gray-300 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                   title="Edit game"
                 >
-                  ✎
+                  <Icon name="pencil-outline" size={14} />
                 </button>
               </div>
             ))}

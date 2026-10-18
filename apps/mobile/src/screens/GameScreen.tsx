@@ -54,6 +54,8 @@ import {
 	type ActivityEntry,
 	type ChatMessage,
 	type QuestHint,
+	type Theme,
+	themeFor,
 } from '@gcr26/shared';
 import { db, auth } from '../firebase';
 import { TASK_NAME as LOCATION_TASK } from '../tasks/locationTask';
@@ -63,11 +65,15 @@ import {
 	recordPosition,
 } from '../tasks/distanceTracker';
 import { distanceMeters, bearingDegrees } from '../utils/geo';
+import { listen } from '../utils/listen';
 import ContentBlocks from '../components/ContentBlocks';
 import ShopSheet from '../components/ShopSheet';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import PermissionsIntro from '../components/PermissionsIntro';
 import { LEGAL } from '../config';
+import Icon from '../theme/Icon';
+import { ThemeProvider, useTheme } from '../theme/ThemeContext';
+import * as ui from '../theme/primitives';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,6 +105,7 @@ interface Game {
 	coinsPerQuest?: number;
 	hintCost?: number;
 	hotlineNumber?: string;
+	themeId?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -143,21 +150,25 @@ type SheetTab = 'activity' | 'chat' | 'leaderboard';
 // ─── Sub-views ────────────────────────────────────────────────────────────────
 
 function WaitingView({ game, now }: { game: Game; now: number }) {
+	const styles = useStyles();
 	const ms = game.startDateTime - now;
 	return (
 		<View style={styles.container}>
 			<Text style={styles.label}>GET READY</Text>
 			<Text style={styles.gameName}>{game.name}</Text>
 			<Text style={styles.countdownLabel}>starts in</Text>
-			<Text style={styles.countdown}>{formatCountdown(ms)}</Text>
+			<Text style={styles.countdown} numberOfLines={1} adjustsFontSizeToFit>
+				{formatCountdown(ms)}
+			</Text>
 		</View>
 	);
 }
 
 function ScrollContainer({ children }: { children: ReactNode }) {
+	const styles = useStyles();
 	return (
 		<ScrollView
-			style={{ flex: 1, backgroundColor: '#fff' }}
+			style={styles.scroll}
 			contentContainerStyle={styles.scrollContent}
 			keyboardShouldPersistTaps="handled"
 		>
@@ -177,6 +188,8 @@ function CompassArrow({
 	distance: number | null;
 	msLeft: number;
 }) {
+	const styles = useStyles();
+	const { colors } = useTheme();
 	// With a device heading the arrow points the real way; without one it still
 	// shows the bearing, just relative to north
 	const rotation = heading === null ? bearing : bearing - heading;
@@ -185,14 +198,9 @@ function CompassArrow({
 	return (
 		<View style={styles.compassWrap}>
 			<View style={styles.compassDial}>
-				<Text
-					style={[
-						styles.compassArrow,
-						{ transform: [{ rotate: `${rotation}deg` }] },
-					]}
-				>
-					↑
-				</Text>
+				<View style={{ transform: [{ rotate: `${rotation}deg` }] }}>
+					<Icon name="navigation" size={48} color={colors.accent} />
+				</View>
 			</View>
 			{distance !== null && (
 				<Text style={styles.compassDistance}>
@@ -219,13 +227,16 @@ function NavigationView({
 	heading: number | null;
 	compassMsLeft: number;
 }) {
+	const styles = useStyles();
 	return (
 		<ScrollContainer>
 			<Text style={styles.label}>FIND YOUR NEXT QUEST</Text>
-			<ContentBlocks
-				blocks={quest.navigationHint}
-				textStyle={styles.navigationHint}
-			/>
+			<View style={styles.hintPanel}>
+				<ContentBlocks
+					blocks={quest.navigationHint}
+					textStyle={styles.navigationHint}
+				/>
+			</View>
 			{compassMsLeft > 0 && bearing !== null && (
 				<CompassArrow
 					bearing={bearing}
@@ -239,16 +250,19 @@ function NavigationView({
 }
 
 function DistanceView({ quest, meters }: { quest: Quest; meters: number }) {
+	const styles = useStyles();
 	const target = quest.distanceMeters ?? 0;
 	const fraction = target > 0 ? Math.min(meters / target, 1) : 1;
 	return (
 		<ScrollContainer>
 			<Text style={styles.label}>KEEP MOVING</Text>
 			{quest.navigationHint.length > 0 && (
-				<ContentBlocks
-					blocks={quest.navigationHint}
-					textStyle={styles.navigationHint}
-				/>
+				<View style={styles.hintPanel}>
+					<ContentBlocks
+						blocks={quest.navigationHint}
+						textStyle={styles.navigationHint}
+					/>
+				</View>
 			)}
 			{quest.showDistanceProgress !== false && (
 				<>
@@ -275,6 +289,7 @@ function QuestHeader({
 	questNumber: number;
 	totalQuests: number;
 }) {
+	const styles = useStyles();
 	return (
 		<>
 			<Text style={styles.questNumber}>
@@ -298,6 +313,8 @@ function ContinueButton({
 	label: string;
 	onPress: () => void;
 }) {
+	const styles = useStyles();
+	const { colors } = useTheme();
 	return (
 		<TouchableOpacity
 			style={[styles.continueButton, disabled && styles.submitButtonDisabled]}
@@ -305,6 +322,7 @@ function ContinueButton({
 			disabled={disabled}
 		>
 			<Text style={styles.continueButtonText}>{label}</Text>
+			<Icon name="arrow-right" size={20} color={colors.onAccent} />
 		</TouchableOpacity>
 	);
 }
@@ -324,6 +342,7 @@ function TimerView({
 	submitting: boolean;
 	onContinue: () => void;
 }) {
+	const styles = useStyles();
 	const done = remainingMs <= 0;
 	return (
 		<ScrollContainer>
@@ -335,12 +354,16 @@ function TimerView({
 			<Text style={styles.countdownLabel}>
 				{done ? 'time is up' : 'continue in'}
 			</Text>
-			<Text style={[styles.countdown, styles.timerCountdown]}>
+			<Text
+				style={[styles.countdown, styles.timerCountdown]}
+				numberOfLines={1}
+				adjustsFontSizeToFit
+			>
 				{formatCountdown(remainingMs)}
 			</Text>
 			<ContinueButton
 				disabled={!done || submitting}
-				label="Continue →"
+				label="Continue"
 				onPress={onContinue}
 			/>
 		</ScrollContainer>
@@ -360,6 +383,7 @@ function InfoView({
 	submitting: boolean;
 	onContinue: () => void;
 }) {
+	const styles = useStyles();
 	return (
 		<ScrollContainer>
 			<QuestHeader
@@ -369,7 +393,7 @@ function InfoView({
 			/>
 			<ContinueButton
 				disabled={submitting}
-				label="Continue →"
+				label="Continue"
 				onPress={onContinue}
 			/>
 		</ScrollContainer>
@@ -389,6 +413,7 @@ function HintSection({
 	coins: number;
 	onReveal: () => void;
 }) {
+	const styles = useStyles();
 	if (!hints.length) return null;
 	const allRevealed = revealed >= hints.length;
 	const affordable = coins >= cost;
@@ -411,8 +436,8 @@ function HintSection({
 				>
 					<Text style={styles.hintButtonText}>
 						{affordable
-							? `Reveal ${revealed > 0 ? 'another ' : 'a '}hint — ${cost} 🪙`
-							: `Not enough coins (${cost} 🪙 needed)`}
+							? `Reveal ${revealed > 0 ? 'another ' : 'a '}hint · ${cost} coins`
+							: `Not enough coins (${cost} needed)`}
 					</Text>
 				</TouchableOpacity>
 			)}
@@ -447,6 +472,8 @@ function QuestView({
 	coins: number;
 	onRevealHint: () => void;
 }) {
+	const styles = useStyles();
+	const { colors } = useTheme();
 	return (
 		<KeyboardAvoidingView
 			style={{ flex: 1 }}
@@ -465,7 +492,7 @@ function QuestView({
 						value={answer}
 						onChangeText={setAnswer}
 						placeholder="Your answer…"
-						placeholderTextColor="#bbb"
+						placeholderTextColor={colors.mutedOnSurface}
 						autoCorrect={false}
 						autoCapitalize="none"
 						returnKeyType="done"
@@ -479,7 +506,7 @@ function QuestView({
 						onPress={onSubmit}
 						disabled={submitting}
 					>
-						<Text style={styles.submitButtonText}>→</Text>
+						<Icon name="arrow-right" size={22} color={colors.onAccent} />
 					</TouchableOpacity>
 				</View>
 
@@ -510,6 +537,8 @@ function FinishedView({
 	allTeams: Team[];
 	onLeaderboard: () => void;
 }) {
+	const styles = useStyles();
+	const { colors } = useTheme();
 	const rank = allTeams.filter(
 		(t) => t.finishedAt && t.finishedAt <= (team.finishedAt ?? 0),
 	).length;
@@ -518,7 +547,9 @@ function FinishedView({
 		: 0;
 	return (
 		<View style={styles.container}>
-			<Text style={styles.finishedEmoji}>🏁</Text>
+			<View style={styles.finishedIcon}>
+				<Icon name="flag-checkered" size={72} color={colors.text} />
+			</View>
 			<Text style={styles.finishedHeading}>You finished!</Text>
 			<Text style={styles.finishedPlacement}>{ordinal(rank)} place</Text>
 			<Text style={styles.finishedSub}>{formatDuration(duration)}</Text>
@@ -526,16 +557,22 @@ function FinishedView({
 				style={styles.leaderboardButton}
 				onPress={onLeaderboard}
 			>
-				<Text style={styles.leaderboardButtonText}>See leaderboard →</Text>
+				<Text style={styles.leaderboardButtonText}>See leaderboard</Text>
+				<Icon name="arrow-right" size={18} color={colors.text} />
 			</TouchableOpacity>
 		</View>
 	);
 }
 
 function PausedView() {
+	const styles = useStyles();
+	const { colors } = useTheme();
 	return (
 		<View style={styles.container}>
-			<Text style={styles.label}>GAME PAUSED</Text>
+			<View style={styles.finishedIcon}>
+				<Icon name="pause-circle-outline" size={96} color={colors.text} />
+			</View>
+			<Text style={styles.finishedHeading}>Game paused</Text>
 			<Text style={styles.message}>
 				The admins have paused the game.{'\n'}Sit tight!
 			</Text>
@@ -544,9 +581,13 @@ function PausedView() {
 }
 
 function EndedView({ game }: { game: Game }) {
+	const styles = useStyles();
+	const { colors } = useTheme();
 	return (
 		<View style={styles.container}>
-			<Text style={styles.finishedEmoji}>🏁</Text>
+			<View style={styles.finishedIcon}>
+				<Icon name="flag-checkered" size={72} color={colors.text} />
+			</View>
 			<Text style={styles.finishedHeading}>
 				The admins have ended the game.
 			</Text>
@@ -564,6 +605,8 @@ function ActivityList({
 	viewerTeamId: string;
 	highlightSince: number;
 }) {
+	const styles = useStyles();
+	const { colors } = useTheme();
 	if (!entries.length) {
 		return (
 			<Text style={[styles.message, { marginTop: 32 }]}>
@@ -583,19 +626,28 @@ function ActivityList({
 						key={entry.id}
 						style={[styles.activityRow, isNew && styles.activityRowNew]}
 					>
-						<Text style={styles.activityIcon}>{icon}</Text>
+						<View style={styles.activityBadge}>
+							<Icon name={icon} size={18} color={colors.onAccent} />
+						</View>
 						<View style={{ flex: 1 }}>
-							<Text style={styles.activityText}>{text}</Text>
-							{entry.visibility === 'team' && (
-								<Text style={styles.activityPrivate}>
-									🔒 Only your team can see this
+							<Text
+								style={[styles.activityText, isNew && styles.activityTextNew]}
+							>
+								{text}
+							</Text>
+							<View style={styles.activityMeta}>
+								<Text style={styles.activityTime}>
+									{formatActivityTime(entry.at)}
 								</Text>
-							)}
+								{entry.visibility === 'team' && (
+									<>
+										<Icon name="lock-outline" size={12} color={colors.muted} />
+										<Text style={styles.activityTime}>Only your team</Text>
+									</>
+								)}
+							</View>
 						</View>
 						{isNew && <View style={styles.newDot} />}
-						<Text style={styles.activityTime}>
-							{formatActivityTime(entry.at)}
-						</Text>
 					</View>
 				);
 			})}
@@ -604,6 +656,7 @@ function ActivityList({
 }
 
 function HotlineBar({ number }: { number: string }) {
+	const styles = useStyles();
 	return (
 		<TouchableOpacity
 			style={styles.hotlineBar}
@@ -636,6 +689,8 @@ function ChatView({
 	teamReadAt: number;
 	hostReadAt: number;
 }) {
+	const styles = useStyles();
+	const { colors } = useTheme();
 	const scrollRef = useRef<ScrollView>(null);
 
 	// Keep the newest message in view, including when one arrives while reading
@@ -747,7 +802,7 @@ function ChatView({
 					value={draft}
 					onChangeText={setDraft}
 					placeholder="Write a message…"
-					placeholderTextColor="#bbb"
+					placeholderTextColor={colors.mutedOnSurface}
 					multiline
 				/>
 				<TouchableOpacity
@@ -758,7 +813,7 @@ function ChatView({
 					onPress={onSend}
 					disabled={sending || !draft.trim()}
 				>
-					<Text style={styles.submitButtonText}>→</Text>
+					<Icon name="arrow-right" size={22} color={colors.onAccent} />
 				</TouchableOpacity>
 			</View>
 		</View>
@@ -802,6 +857,8 @@ function LeaderboardModal({
 	teamReadAt: number;
 	hostReadAt: number;
 }) {
+	const styles = useStyles();
+	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
 	const sorted = [...allTeams].sort((a, b) => {
 		if (a.finishedAt && b.finishedAt) return a.finishedAt - b.finishedAt;
@@ -817,7 +874,7 @@ function LeaderboardModal({
 	return (
 		<Modal visible={visible} animationType="slide" onRequestClose={onClose}>
 			<KeyboardAvoidingView
-				style={{ flex: 1, backgroundColor: '#fff' }}
+				style={styles.modal}
 				behavior={Platform.OS === 'ios' ? 'padding' : undefined}
 			>
 				<View style={[styles.lbHeader, { paddingTop: insets.top + 12 }]}>
@@ -825,10 +882,7 @@ function LeaderboardModal({
 						{(['activity', 'chat', 'leaderboard'] as const).map((name) => (
 							<TouchableOpacity key={name} onPress={() => onTabChange(name)}>
 								<Text
-									style={[
-										styles.tabLabel,
-										tab === name && styles.tabLabelActive,
-									]}
+									style={tab === name ? styles.tabLabelActive : styles.tabLabel}
 								>
 									{name === 'activity'
 										? 'Activity'
@@ -844,7 +898,7 @@ function LeaderboardModal({
 						onPress={onClose}
 						hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
 					>
-						<Text style={styles.lbClose}>✕</Text>
+						<Icon name="close" size={26} color={colors.text} />
 					</TouchableOpacity>
 				</View>
 				{tab === 'chat' ? (
@@ -876,16 +930,20 @@ function LeaderboardModal({
 								const duration = t.finishedAt
 									? t.finishedAt - game.startDateTime - totalPausedMs
 									: null;
-								const medalEmoji =
-									i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
 								return (
 									<View
 										key={t.id}
 										style={[styles.lbRow, isCurrent && styles.lbRowCurrent]}
 									>
-										<Text style={styles.lbRank}>
-											{medalEmoji ?? `#${i + 1}`}
-										</Text>
+										<View style={styles.lbRank}>
+											{i < 3 ? (
+												<View style={styles.lbPodium}>
+													<Text style={styles.lbPodiumText}>{i + 1}</Text>
+												</View>
+											) : (
+												<Text style={styles.lbRankText}>{i + 1}</Text>
+											)}
+										</View>
 										<View style={{ flex: 1 }}>
 											<Text
 												style={[
@@ -896,7 +954,12 @@ function LeaderboardModal({
 												{t.name}
 												{isCurrent ? ' (you)' : ''}
 											</Text>
-											<Text style={styles.lbDetail}>
+											<Text
+												style={[
+													styles.lbDetail,
+													isCurrent && styles.lbDetailCurrent,
+												]}
+											>
 												{duration !== null
 													? `Finished · ${formatDuration(duration)}`
 													: `${completed} / ${totalQuests} quests`}
@@ -913,6 +976,7 @@ function LeaderboardModal({
 }
 
 function SpreadOverlay() {
+	const styles = useStyles();
 	return (
 		<View style={styles.spreadOverlay}>
 			<Text style={styles.spreadTitle}>Team too spread out</Text>
@@ -924,6 +988,7 @@ function SpreadOverlay() {
 }
 
 function LocationDeniedView() {
+	const styles = useStyles();
 	return (
 		<View style={styles.container}>
 			<Text style={styles.heading}>Location access needed</Text>
@@ -944,15 +1009,17 @@ function CelebrationOverlay({
 	visible: boolean;
 	anim: Animated.Value;
 }) {
+	const styles = useStyles();
+	const { colors } = useTheme();
 	if (!visible) return null;
 	const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
 	return (
 		<Animated.View style={[styles.celebrationOverlay, { opacity: anim }]}>
-			<Animated.Text
-				style={[styles.celebrationEmoji, { transform: [{ scale }] }]}
+			<Animated.View
+				style={[styles.celebrationIcon, { transform: [{ scale }] }]}
 			>
-				🎉
-			</Animated.Text>
+				<Icon name="party-popper" size={88} color={colors.text} />
+			</Animated.View>
 			<Text style={styles.celebrationText}>Well done!</Text>
 		</Animated.View>
 	);
@@ -969,9 +1036,13 @@ function ProfileButton({
 	top: number;
 	onPress: () => void;
 }) {
+	const styles = useStyles();
 	const initial = name ? name[0].toUpperCase() : '?';
 	return (
-		<TouchableOpacity style={[styles.profileButton, { top }]} onPress={onPress}>
+		<TouchableOpacity
+			style={[styles.roundButton, styles.profileButton, { top }]}
+			onPress={onPress}
+		>
 			<Text style={styles.profileButtonText}>{initial}</Text>
 		</TouchableOpacity>
 	);
@@ -992,6 +1063,7 @@ function ProfileSheet({
 	onDeleteAccount: () => void;
 	onClose: () => void;
 }) {
+	const styles = useStyles();
 	const [confirmingLeave, setConfirmingLeave] = useState(false);
 	return (
 		<Modal
@@ -1122,6 +1194,21 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	const insets = useSafeAreaInsets();
 	const [profileOpen, setProfileOpen] = useState(false);
 
+	// This component loads the game, so it reads the theme directly; everything
+	// it renders gets it through the provider below
+	const theme = themeFor(game?.themeId);
+	const styles = stylesFor(theme);
+
+	// The hosts' console sends push from the game's player list, so the token
+	// goes there too — once per game, and again if it changes
+	useEffect(() => {
+		const uid = auth.currentUser?.uid;
+		if (!uid || !game?.id || !profile?.pushToken) return;
+		updateDoc(doc(db, 'games', game.id, 'players', uid), {
+			pushToken: profile.pushToken,
+		}).catch(() => {});
+	}, [game?.id, profile?.pushToken]);
+
 	// Tick for countdown
 	useEffect(() => {
 		const id = setInterval(() => setNow(Date.now()), 1000);
@@ -1172,9 +1259,10 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		);
 	}, [game?.id]);
 
+	// Team-only listeners retry: see listen()
 	useEffect(() => {
 		if (!game?.id || !team?.id) return;
-		return onSnapshot(
+		return listen(
 			query(
 				collection(db, 'games', game.id, 'activity'),
 				where('teamId', '==', team.id),
@@ -1185,7 +1273,6 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 				setTeamActivity(
 					snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ActivityEntry),
 				),
-			() => {},
 		);
 	}, [game?.id, team?.id]);
 
@@ -1198,7 +1285,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	// This team's thread with the hosts
 	useEffect(() => {
 		if (!game?.id || !team?.id) return;
-		return onSnapshot(
+		return listen(
 			query(
 				collection(db, 'games', game.id, 'messages'),
 				where('teamId', '==', team.id),
@@ -1208,7 +1295,6 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 				setMessages(
 					snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ChatMessage),
 				),
-			() => {},
 		);
 	}, [game?.id, team?.id]);
 
@@ -1413,6 +1499,11 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 						updateDoc(doc(db, 'users', currentUid), {
 							lastLocation: { lat, lng, updatedAt: t },
 						}).catch(() => {});
+						// Hosts read positions from the game's player list, never from
+						// profiles, which also hold the email address
+						updateDoc(doc(db, 'games', game.id, 'players', currentUid), {
+							lastLocation: { lat, lng, updatedAt: t },
+						}).catch(() => {});
 
 						// Write trail point every 50 m or 2 min
 						const lastTrail = lastTrailRef.current;
@@ -1446,7 +1537,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			setMemberLocations({});
 			return;
 		}
-		return onSnapshot(
+		return listen(
 			query(collection(db, 'users'), where(documentId(), 'in', team.memberIds)),
 			(snap) => {
 				const locs: Record<string, { lat: number; lng: number } | null> = {};
@@ -1671,6 +1762,8 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			.commit()
 			.catch(() => {})
 			.finally(() => setBuyingItem(false));
+		// Back to the hint, where the arrow now points the way
+		setShopOpen(false);
 	}
 	const hintsRevealed = quest ? hintsRevealedFor(team, quest.id) : 0;
 
@@ -1714,13 +1807,16 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		if (!team || !game) return Promise.resolve();
 		const nextQuestId =
 			game.questOrder[game.questOrder.indexOf(completed.id) + 1] ?? null;
+		// One clock for both entries: equal timestamps sort arbitrarily, and
+		// finishing has to read after the solve that caused it
+		const at = Date.now();
 		const update: Record<string, unknown> = {
 			completedQuestIds: arrayUnion(completed.id),
 			currentQuestId: nextQuestId,
 			questProgress: null,
 			coins: coins + economy.coinsPerQuest,
 		};
-		if (!nextQuestId) update.finishedAt = Date.now();
+		if (!nextQuestId) update.finishedAt = at;
 
 		// Progress and its board entry land together, or not at all. The entry ids are
 		// derived from the quest, so two teammates solving at once write one entry.
@@ -1736,7 +1832,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			),
 			{
 				type: 'quest_solved',
-				at: Date.now(),
+				at,
 				visibility: 'public',
 				teamId: team.id,
 				teamName: team.name,
@@ -1750,7 +1846,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 				doc(db, 'games', game.id, 'activity', teamFinishedId(team.id)),
 				{
 					type: 'team_finished',
-					at: Date.now(),
+					at: at + 1,
 					visibility: 'public',
 					teamId: team.id,
 					teamName: team.name,
@@ -1827,7 +1923,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		if (!team || !game) {
 			return (
 				<View style={styles.container}>
-					<ActivityIndicator size="large" />
+					<ActivityIndicator size="large" color={theme.colors.text} />
 				</View>
 			);
 		}
@@ -1931,745 +2027,791 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	}
 
 	return (
-		<View style={{ flex: 1 }}>
-			{renderContent()}
-			<CelebrationOverlay visible={celebrating} anim={celebrateAnim} />
-			{team && !game?.endedAt && (
+		<ThemeProvider themeId={game?.themeId}>
+			<View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+				{renderContent()}
+				<CelebrationOverlay visible={celebrating} anim={celebrateAnim} />
+				{team && !game?.endedAt && (
+					<TouchableOpacity
+						style={[styles.coinPill, { top: insets.top + 8 }]}
+						onPress={() => setShopOpen(true)}
+					>
+						<Icon
+							name="circle-multiple-outline"
+							size={16}
+							color={theme.colors.onSurface}
+						/>
+						<Text style={styles.coinPillText}>{coins}</Text>
+						{compassLeft > 0 && (
+							<Icon
+								name="compass-outline"
+								size={16}
+								color={theme.colors.onSurface}
+							/>
+						)}
+					</TouchableOpacity>
+				)}
 				<TouchableOpacity
-					style={[styles.coinPill, { top: insets.top + 8 }]}
-					onPress={() => setShopOpen(true)}
+					style={[
+						styles.roundButton,
+						styles.lbIconButton,
+						{ top: insets.top + 8 },
+					]}
+					onPress={() => openSheet('activity')}
 				>
-					<Text style={styles.coinPillText}>
-						🪙 {coins}
-						{compassLeft > 0 ? ' 🧭' : ''}
-					</Text>
+					<Icon name="menu" size={20} color={theme.colors.onAccent} />
+					{hasUnreadActivity && <View style={styles.unreadDot} />}
 				</TouchableOpacity>
-			)}
-			<TouchableOpacity
-				style={[styles.lbIconButton, { top: insets.top + 8 }]}
-				onPress={() => openSheet('activity')}
-			>
-				<Text style={styles.lbIconText}>≡</Text>
-				{hasUnreadActivity && <View style={styles.unreadDot} />}
-			</TouchableOpacity>
-			<ProfileButton
-				name={userName}
-				top={insets.top + 8}
-				onPress={() => setProfileOpen(true)}
-			/>
-			<ShopSheet
-				visible={shopOpen}
-				onClose={() => setShopOpen(false)}
-				shop={shop}
-				coins={coins}
-				compassMsLeft={compassLeft}
-				compassUseful={quest?.trigger === 'location' && !!quest?.location}
-				onBuyCompass={buyCompass}
-				buying={buyingItem}
-			/>
-			<ProfileSheet
-				visible={profileOpen}
-				name={userName}
-				onLeaveGame={leaveGame}
-				leaving={leavingGame}
-				onDeleteAccount={() => {
-					setProfileOpen(false);
-					setDeletingAccount(true);
-				}}
-				onClose={() => setProfileOpen(false)}
-			/>
-			<DeleteAccountModal
-				visible={deletingAccount}
-				onClose={() => setDeletingAccount(false)}
-			/>
-			<PermissionsIntro
-				visible={introState === 'show'}
-				onContinue={() => finishIntro(true)}
-			/>
-			{game && (
-				<LeaderboardModal
-					visible={leaderboardOpen}
-					onClose={() => setLeaderboardOpen(false)}
-					game={game}
-					allTeams={allTeams}
-					currentTeamId={teamId}
-					activity={activity}
-					tab={sheetTab}
-					onTabChange={setSheetTab}
-					highlightSince={highlightSince}
-					messages={messages}
-					chatUnread={chatUnread}
-					draft={draft}
-					setDraft={setDraft}
-					onSend={sendMessage}
-					sending={sendingMessage}
-					teamReadAt={team?.teamChatReadAt ?? 0}
-					hostReadAt={team?.hostChatReadAt ?? 0}
+				<ProfileButton
+					name={userName}
+					top={insets.top + 8}
+					onPress={() => setProfileOpen(true)}
 				/>
-			)}
-		</View>
+				<ShopSheet
+					visible={shopOpen}
+					onClose={() => setShopOpen(false)}
+					shop={shop}
+					coins={coins}
+					compassMsLeft={compassLeft}
+					compassUseful={quest?.trigger === 'location' && !!quest?.location}
+					onBuyCompass={buyCompass}
+					buying={buyingItem}
+				/>
+				<ProfileSheet
+					visible={profileOpen}
+					name={userName}
+					onLeaveGame={leaveGame}
+					leaving={leavingGame}
+					onDeleteAccount={() => {
+						setProfileOpen(false);
+						setDeletingAccount(true);
+					}}
+					onClose={() => setProfileOpen(false)}
+				/>
+				<DeleteAccountModal
+					visible={deletingAccount}
+					onClose={() => setDeletingAccount(false)}
+				/>
+				<PermissionsIntro
+					visible={introState === 'show'}
+					onContinue={() => finishIntro(true)}
+				/>
+				{game && (
+					<LeaderboardModal
+						visible={leaderboardOpen}
+						onClose={() => setLeaderboardOpen(false)}
+						game={game}
+						allTeams={allTeams}
+						currentTeamId={teamId}
+						activity={activity}
+						tab={sheetTab}
+						onTabChange={setSheetTab}
+						highlightSince={highlightSince}
+						messages={messages}
+						chatUnread={chatUnread}
+						draft={draft}
+						setDraft={setDraft}
+						onSend={sendMessage}
+						sending={sendingMessage}
+						teamReadAt={team?.teamChatReadAt ?? 0}
+						hostReadAt={team?.hostChatReadAt ?? 0}
+					/>
+				)}
+			</View>
+		</ThemeProvider>
 	);
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		justifyContent: 'center',
-		alignItems: 'center',
-		padding: 32,
-		backgroundColor: '#fff',
-	},
-	scrollContent: {
-		flexGrow: 1,
-		justifyContent: 'center',
-		alignItems: 'center',
-		paddingHorizontal: 32,
-		paddingTop: 100, // clear the floating header buttons
-		paddingBottom: 48,
-	},
+function makeStyles(t: Theme) {
+	const c = t.colors;
+	return StyleSheet.create({
+		container: {
+			flex: 1,
+			justifyContent: 'center',
+			alignItems: 'center',
+			padding: 32,
+			backgroundColor: c.background,
+		},
+		scroll: {
+			flex: 1,
+			backgroundColor: c.background,
+		},
+		scrollContent: {
+			flexGrow: 1,
+			justifyContent: 'center',
+			alignItems: 'center',
+			paddingHorizontal: 32,
+			paddingTop: 100, // clear the floating header buttons
+			paddingBottom: 48,
+		},
 
-	// Waiting
-	label: {
-		fontSize: 11,
-		fontWeight: '700',
-		letterSpacing: 3,
-		color: '#aaa',
-		marginBottom: 16,
-	},
-	gameName: {
-		fontSize: 28,
-		fontWeight: '700',
-		color: '#111',
-		textAlign: 'center',
-		marginBottom: 8,
-	},
-	countdownLabel: {
-		fontSize: 14,
-		color: '#aaa',
-		marginTop: 32,
-		marginBottom: 8,
-	},
-	countdown: {
-		fontSize: 56,
-		fontWeight: '700',
-		fontVariant: ['tabular-nums'],
-		color: '#111',
-		letterSpacing: 2,
-	},
+		// Waiting
+		label: {
+			...ui.label(t),
+			marginBottom: 16,
+			textAlign: 'center',
+		},
+		gameName: {
+			...ui.heading(t, 40),
+			textAlign: 'center',
+			marginBottom: 8,
+		},
+		countdownLabel: {
+			fontSize: 20,
+			color: c.muted,
+			marginTop: 40,
+			marginBottom: 8,
+		},
+		countdown: {
+			...ui.heading(t, 72),
+			fontVariant: ['tabular-nums'],
+			letterSpacing: 2,
+		},
 
-	// Navigation
-	navigationHint: {
-		fontSize: 22,
-		fontWeight: '600',
-		color: '#111',
-		textAlign: 'center',
-		lineHeight: 32,
-		marginBottom: 16,
-	},
-	distance: {
-		fontSize: 14,
-		color: '#aaa',
-	},
-	progressTrack: {
-		width: '100%',
-		height: 8,
-		borderRadius: 4,
-		backgroundColor: '#f0f0f0',
-		overflow: 'hidden',
-		marginTop: 16,
-		marginBottom: 12,
-	},
-	progressFill: {
-		height: '100%',
-		borderRadius: 4,
-		backgroundColor: '#111',
-	},
+		// Navigation
+		navigationHint: {
+			fontSize: 24,
+			fontWeight: '600',
+			color: c.onSurface,
+			textAlign: 'center',
+			lineHeight: 34,
+		},
+		// The hint is the whole screen's job, so it gets a panel of its own
+		hintPanel: {
+			...ui.panel(t),
+			width: '100%',
+			paddingHorizontal: 20,
+			paddingTop: 20,
+			paddingBottom: 4, // each text block already carries space below it
+			marginBottom: 20,
+		},
+		distance: {
+			fontSize: 18,
+			color: c.muted,
+		},
+		progressTrack: {
+			width: '100%',
+			height: 12,
+			borderRadius: t.shape.radius,
+			backgroundColor: c.surface,
+			borderWidth: t.shape.shadowOffset ? t.shape.borderWidth : 0,
+			borderColor: c.border,
+			overflow: 'hidden',
+			marginTop: 16,
+			marginBottom: 12,
+		},
+		progressFill: {
+			height: '100%',
+			backgroundColor: c.accent,
+		},
 
-	// Quest
-	questNumber: {
-		fontSize: 11,
-		fontWeight: '700',
-		letterSpacing: 3,
-		color: '#aaa',
-		marginBottom: 16,
-	},
-	questTitle: {
-		fontSize: 26,
-		fontWeight: '700',
-		color: '#111',
-		textAlign: 'center',
-		marginBottom: 12,
-	},
-	questDescription: {
-		fontSize: 16,
-		color: '#555',
-		textAlign: 'center',
-		lineHeight: 24,
-		marginBottom: 16,
-	},
-	answerRow: {
-		flexDirection: 'row',
-		width: '100%',
-		gap: 8,
-		marginTop: 24,
-	},
-	answerInput: {
-		flex: 1,
-		borderWidth: 1.5,
-		borderColor: '#ddd',
-		borderRadius: 12,
-		paddingHorizontal: 16,
-		paddingVertical: 14,
-		fontSize: 16,
-		color: '#111',
-		backgroundColor: '#fafafa',
-	},
-	answerInputWrong: {
-		borderColor: '#f87171',
-		backgroundColor: '#fff5f5',
-	},
-	submitButton: {
-		width: 52,
-		height: 52,
-		borderRadius: 12,
-		backgroundColor: '#111',
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
-	submitButtonDisabled: {
-		opacity: 0.4,
-	},
-	submitButtonText: {
-		color: '#fff',
-		fontSize: 20,
-		fontWeight: '600',
-	},
-	timerCountdown: {
-		marginBottom: 32,
-	},
-	continueButton: {
-		marginTop: 24,
-		paddingHorizontal: 32,
-		paddingVertical: 16,
-		borderRadius: 12,
-		backgroundColor: '#111',
-	},
-	continueButtonText: {
-		color: '#fff',
-		fontSize: 16,
-		fontWeight: '600',
-	},
-	wrongText: {
-		marginTop: 12,
-		fontSize: 13,
-		color: '#ef4444',
-	},
+		// Quest
+		questNumber: {
+			...ui.label(t),
+			marginBottom: 16,
+		},
+		questTitle: {
+			...ui.heading(t, 34),
+			textAlign: 'center',
+			marginBottom: 16,
+		},
+		questDescription: {
+			fontSize: 18,
+			color: c.text,
+			textAlign: 'center',
+			lineHeight: 27,
+			marginBottom: 16,
+		},
+		answerRow: {
+			flexDirection: 'row',
+			width: '100%',
+			gap: 8,
+			marginTop: 24,
+		},
+		answerInput: {
+			...ui.input(t),
+			flex: 1,
+			paddingHorizontal: 16,
+			paddingVertical: 14,
+			fontSize: 18,
+		},
+		answerInputWrong: {
+			borderColor: c.danger,
+		},
+		submitButton: {
+			...ui.button(t),
+			width: 52,
+			height: 52,
+		},
+		submitButtonDisabled: {
+			opacity: 0.4,
+		},
+		timerCountdown: {
+			marginBottom: 32,
+		},
+		continueButton: {
+			...ui.button(t),
+			flexDirection: 'row',
+			gap: 8,
+			marginTop: 24,
+			paddingHorizontal: 32,
+			paddingVertical: 16,
+		},
+		continueButtonText: {
+			...ui.buttonText(t),
+			fontSize: 18,
+		},
+		// Errors sit on a surface chip, where the danger colour holds its contrast
+		wrongText: {
+			marginTop: 12,
+			fontSize: 15,
+			fontWeight: '600',
+			color: c.danger,
+			backgroundColor: c.surface,
+			paddingHorizontal: 12,
+			paddingVertical: 6,
+			borderRadius: t.shape.radius,
+			overflow: 'hidden',
+		},
 
-	// Finished
-	finishedEmoji: {
-		fontSize: 64,
-		marginBottom: 24,
-	},
-	finishedHeading: {
-		fontSize: 32,
-		fontWeight: '700',
-		color: '#111',
-		textAlign: 'center',
-		paddingHorizontal: 24,
-		marginBottom: 8,
-	},
-	finishedPlacement: {
-		fontSize: 28,
-		fontWeight: '700',
-		color: '#111',
-		marginBottom: 4,
-	},
-	finishedSub: {
-		fontSize: 16,
-		color: '#aaa',
-		marginBottom: 32,
-	},
-	leaderboardButton: {
-		paddingHorizontal: 24,
-		paddingVertical: 14,
-		borderRadius: 12,
-		borderWidth: 1.5,
-		borderColor: '#111',
-	},
-	leaderboardButtonText: {
-		fontSize: 15,
-		fontWeight: '600',
-		color: '#111',
-	},
+		// Finished
+		finishedIcon: {
+			marginBottom: 24,
+		},
+		finishedHeading: {
+			...ui.heading(t, 38),
+			textAlign: 'center',
+			paddingHorizontal: 16,
+			marginBottom: 12,
+		},
+		finishedPlacement: {
+			...ui.heading(t, 32),
+			marginBottom: 6,
+		},
+		finishedSub: {
+			fontSize: 20,
+			color: c.muted,
+			marginBottom: 36,
+		},
+		leaderboardButton: {
+			...ui.outlineButton(t),
+			flexDirection: 'row',
+			gap: 8,
+			paddingHorizontal: 24,
+			paddingVertical: 14,
+		},
+		leaderboardButtonText: {
+			...ui.buttonText(t),
+			fontSize: 15,
+			color: c.text,
+		},
 
-	// Spread overlay
-	spreadOverlay: {
-		position: 'absolute',
-		top: 0,
-		left: 0,
-		right: 0,
-		bottom: 0,
-		backgroundColor: 'rgba(0,0,0,0.7)',
-		justifyContent: 'center',
-		alignItems: 'center',
-		padding: 32,
-	},
-	spreadTitle: {
-		fontSize: 22,
-		fontWeight: '700',
-		color: '#fff',
-		textAlign: 'center',
-		marginBottom: 12,
-	},
-	spreadMessage: {
-		fontSize: 15,
-		color: 'rgba(255,255,255,0.75)',
-		textAlign: 'center',
-		lineHeight: 22,
-	},
+		// Spread overlay
+		spreadOverlay: {
+			position: 'absolute',
+			top: 0,
+			left: 0,
+			right: 0,
+			bottom: 0,
+			backgroundColor: c.accent + 'E6',
+			justifyContent: 'center',
+			alignItems: 'center',
+			padding: 32,
+		},
+		spreadTitle: {
+			fontFamily: t.fonts.display,
+			fontSize: 22,
+			fontWeight: t.fonts.display ? 'normal' : '700',
+			textTransform: t.uppercaseHeadings ? 'uppercase' : 'none',
+			color: c.onAccent,
+			textAlign: 'center',
+			marginBottom: 12,
+		},
+		spreadMessage: {
+			fontSize: 15,
+			color: c.onAccent,
+			opacity: 0.8,
+			textAlign: 'center',
+			lineHeight: 22,
+		},
 
-	// Celebration overlay
-	celebrationOverlay: {
-		position: 'absolute',
-		top: 0,
-		left: 0,
-		right: 0,
-		bottom: 0,
-		backgroundColor: 'rgba(255,255,255,0.92)',
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
-	celebrationEmoji: {
-		fontSize: 80,
-		marginBottom: 16,
-	},
-	celebrationText: {
-		fontSize: 32,
-		fontWeight: '700',
-		color: '#111',
-	},
+		// Celebration overlay
+		celebrationOverlay: {
+			position: 'absolute',
+			top: 0,
+			left: 0,
+			right: 0,
+			bottom: 0,
+			backgroundColor: c.background + 'EB',
+			justifyContent: 'center',
+			alignItems: 'center',
+		},
+		celebrationIcon: {
+			marginBottom: 16,
+		},
+		celebrationText: ui.heading(t, 36),
 
-	// Hints
-	hintSection: {
-		width: '100%',
-		marginTop: 28,
-	},
-	hintCard: {
-		width: '100%',
-		backgroundColor: '#fffbeb',
-		borderRadius: 12,
-		padding: 14,
-		marginBottom: 10,
-	},
-	hintLabel: {
-		fontSize: 10,
-		fontWeight: '700',
-		letterSpacing: 2,
-		color: '#b45309',
-		marginBottom: 4,
-	},
-	hintText: {
-		fontSize: 15,
-		color: '#92400e',
-		lineHeight: 21,
-	},
-	hintButton: {
-		alignSelf: 'center',
-		paddingHorizontal: 20,
-		paddingVertical: 12,
-		borderRadius: 12,
-		borderWidth: 1.5,
-		borderColor: '#111',
-	},
-	hintButtonText: {
-		fontSize: 14,
-		fontWeight: '600',
-		color: '#111',
-	},
+		// Hints
+		hintSection: {
+			width: '100%',
+			marginTop: 28,
+		},
+		hintCard: {
+			...ui.panel(t),
+			backgroundColor: c.highlight,
+			borderColor: t.shape.shadowOffset ? c.border : c.highlight,
+			width: '100%',
+			padding: 14,
+			marginBottom: 10,
+		},
+		hintLabel: {
+			...ui.label(t),
+			fontSize: 11,
+			letterSpacing: 2,
+			color: c.onHighlight,
+			marginBottom: 4,
+		},
+		hintText: {
+			fontSize: 17,
+			color: c.onHighlight,
+			lineHeight: 24,
+		},
+		hintButton: {
+			...ui.outlineButton(t),
+			alignSelf: 'center',
+			paddingHorizontal: 20,
+			paddingVertical: 12,
+		},
+		hintButtonText: {
+			fontSize: 16,
+			fontWeight: '600',
+			color: c.text,
+		},
 
-	// Compass
-	compassWrap: {
-		alignItems: 'center',
-		marginBottom: 16,
-	},
-	compassDial: {
-		width: 92,
-		height: 92,
-		borderRadius: 46,
-		borderWidth: 2,
-		borderColor: '#111',
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	compassArrow: {
-		fontSize: 44,
-		lineHeight: 50,
-		color: '#111',
-	},
-	compassDistance: {
-		fontSize: 15,
-		fontWeight: '600',
-		color: '#111',
-		marginTop: 10,
-	},
-	compassMeta: {
-		fontSize: 12,
-		color: '#9ca3af',
-		marginTop: 8,
-		fontVariant: ['tabular-nums'],
-	},
+		// Compass
+		compassWrap: {
+			alignItems: 'center',
+			marginBottom: 16,
+		},
+		compassDial: {
+			width: 92,
+			height: 92,
+			borderRadius: 46,
+			borderWidth: Math.max(2, t.shape.borderWidth),
+			borderColor: c.accent,
+			backgroundColor: c.surface,
+			alignItems: 'center',
+			justifyContent: 'center',
+		},
+		compassDistance: {
+			fontSize: 18,
+			fontWeight: '600',
+			color: c.text,
+			marginTop: 12,
+		},
+		compassMeta: {
+			fontSize: 14,
+			color: c.muted,
+			marginTop: 8,
+			fontVariant: ['tabular-nums'],
+		},
 
-	// Coin balance pill
-	coinPill: {
-		position: 'absolute',
-		top: 52, // replaced at render with the real safe-area inset
-		left: 16,
-		paddingHorizontal: 12,
-		height: 36,
-		borderRadius: 18,
-		backgroundColor: '#f3f4f6',
-		justifyContent: 'center',
-	},
-	coinPillText: {
-		fontSize: 14,
-		fontWeight: '700',
-		color: '#111',
-	},
+		// Coin balance pill
+		// A plain pill: an even border all round, as tall as the round buttons
+		coinPill: {
+			position: 'absolute',
+			top: 52, // replaced at render with the real safe-area inset
+			left: 16,
+			flexDirection: 'row',
+			alignItems: 'center',
+			gap: 6,
+			paddingHorizontal: 14,
+			height: 36,
+			borderRadius: 18,
+			backgroundColor: c.surface,
+			borderWidth: t.shape.shadowOffset ? 2 : 0,
+			borderColor: c.border,
+		},
+		coinPillText: {
+			fontSize: 15,
+			fontWeight: '700',
+			color: c.onSurface,
+			fontVariant: ['tabular-nums'],
+		},
 
-	// Leaderboard icon button (left of profile)
-	lbIconButton: {
-		position: 'absolute',
-		top: 52, // replaced at render with the real safe-area inset
-		right: 60,
-		width: 36,
-		height: 36,
-		borderRadius: 18,
-		backgroundColor: '#111',
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
-	lbIconText: {
-		color: '#fff',
-		fontSize: 18,
-		fontWeight: '700',
-	},
+		// Round header buttons (activity, profile)
+		roundButton: {
+			position: 'absolute',
+			top: 52, // replaced at render with the real safe-area inset
+			width: 36,
+			height: 36,
+			borderRadius: 18,
+			backgroundColor: c.accent,
+			justifyContent: 'center',
+			alignItems: 'center',
+		},
+		lbIconButton: {
+			right: 60,
+		},
+		profileButton: {
+			right: 16,
+		},
+		profileButtonText: {
+			fontFamily: t.fonts.display,
+			color: c.onAccent,
+			fontSize: 15,
+			fontWeight: t.fonts.display ? 'normal' : '700',
+		},
 
-	// Chat
-	chatWrap: {
-		flex: 1,
-	},
-	chatMessages: {
-		paddingHorizontal: 16,
-		paddingTop: 8,
-		paddingBottom: 16,
-	},
-	chatInput: {
-		maxHeight: 110,
-	},
-	hotlineBar: {
-		paddingHorizontal: 16,
-		paddingVertical: 10,
-		borderBottomWidth: 1,
-		borderBottomColor: '#f0f0f0',
-	},
-	hotlineBarText: {
-		fontSize: 13,
-		color: '#9ca3af',
-	},
-	hotlineBarLink: {
-		color: '#111',
-		fontWeight: '600',
-	},
-	seenLabel: {
-		fontSize: 11,
-		color: '#9ca3af',
-		marginTop: -6,
-		marginBottom: 10,
-	},
-	seenLabelRight: {
-		textAlign: 'right',
-	},
-	seenLabelLeft: {
-		textAlign: 'left',
-	},
-	bubbleRow: {
-		flexDirection: 'row',
-		marginBottom: 10,
-	},
-	bubbleRowLeft: {
-		justifyContent: 'flex-start',
-	},
-	bubbleRowRight: {
-		justifyContent: 'flex-end',
-	},
-	bubble: {
-		maxWidth: '80%',
-		borderRadius: 14,
-		paddingHorizontal: 12,
-		paddingVertical: 9,
-	},
-	bubbleHost: {
-		backgroundColor: '#f3f4f6',
-	},
-	bubbleMine: {
-		backgroundColor: '#111',
-	},
-	bubbleTextHost: {
-		fontSize: 15,
-		color: '#111',
-		lineHeight: 20,
-	},
-	bubbleTextMine: {
-		fontSize: 15,
-		color: '#fff',
-		lineHeight: 20,
-	},
-	bubbleMetaHost: {
-		fontSize: 11,
-		color: '#9ca3af',
-		marginTop: 4,
-	},
-	bubbleMetaMine: {
-		fontSize: 11,
-		color: 'rgba(255,255,255,0.5)',
-		marginTop: 4,
-	},
-	chatInputRow: {
-		flexDirection: 'row',
-		alignItems: 'flex-end',
-		gap: 8,
-		paddingHorizontal: 16,
-		paddingTop: 8,
-		paddingBottom: 12,
-		borderTopWidth: 1,
-		borderTopColor: '#f0f0f0',
-		backgroundColor: '#fff',
-	},
+		// Chat
+		chatWrap: {
+			flex: 1,
+		},
+		chatMessages: {
+			paddingHorizontal: 16,
+			paddingTop: 8,
+			paddingBottom: 16,
+		},
+		chatInput: {
+			maxHeight: 110,
+		},
+		hotlineBar: {
+			paddingHorizontal: 16,
+			paddingVertical: 10,
+			borderBottomWidth: 1,
+			borderBottomColor: c.border,
+		},
+		hotlineBarText: {
+			fontSize: 13,
+			color: c.muted,
+		},
+		hotlineBarLink: {
+			color: c.text,
+			fontWeight: '700',
+		},
+		seenLabel: {
+			fontSize: 11,
+			color: c.muted,
+			marginTop: -6,
+			marginBottom: 10,
+		},
+		seenLabelRight: {
+			textAlign: 'right',
+		},
+		seenLabelLeft: {
+			textAlign: 'left',
+		},
+		bubbleRow: {
+			flexDirection: 'row',
+			marginBottom: 10,
+		},
+		bubbleRowLeft: {
+			justifyContent: 'flex-start',
+		},
+		bubbleRowRight: {
+			justifyContent: 'flex-end',
+		},
+		bubble: {
+			maxWidth: '80%',
+			borderRadius: t.shape.radius + 2,
+			paddingHorizontal: 12,
+			paddingVertical: 9,
+		},
+		bubbleHost: {
+			...ui.panel(t),
+			borderRadius: t.shape.radius + 2,
+		},
+		bubbleMine: {
+			backgroundColor: c.accent,
+		},
+		bubbleTextHost: {
+			fontSize: 16,
+			color: c.onSurface,
+			lineHeight: 22,
+		},
+		bubbleTextMine: {
+			fontSize: 16,
+			color: c.onAccent,
+			lineHeight: 22,
+		},
+		bubbleMetaHost: {
+			fontSize: 11,
+			color: c.mutedOnSurface,
+			marginTop: 4,
+		},
+		bubbleMetaMine: {
+			fontSize: 11,
+			color: c.onAccent,
+			opacity: 0.6,
+			marginTop: 4,
+		},
+		chatInputRow: {
+			flexDirection: 'row',
+			alignItems: 'flex-end',
+			gap: 8,
+			paddingHorizontal: 16,
+			paddingTop: 8,
+			paddingBottom: 12,
+			borderTopWidth: 1,
+			borderTopColor: c.border,
+			backgroundColor: c.background,
+		},
 
-	// Activity feed
-	activityRow: {
-		flexDirection: 'row',
-		alignItems: 'flex-start',
-		gap: 10,
-		paddingVertical: 12,
-		borderBottomWidth: 1,
-		borderBottomColor: '#f5f5f5',
-	},
-	activityIcon: {
-		fontSize: 15,
-		width: 20,
-	},
-	activityText: {
-		fontSize: 14,
-		color: '#111',
-		lineHeight: 20,
-	},
-	activityTime: {
-		fontSize: 12,
-		color: '#bbb',
-		fontVariant: ['tabular-nums'],
-	},
-	activityRowNew: {
-		backgroundColor: '#fefce8',
-		marginHorizontal: -8,
-		paddingHorizontal: 8,
-		borderRadius: 8,
-	},
-	activityPrivate: {
-		fontSize: 11,
-		color: '#a1a1aa',
-		marginTop: 3,
-	},
-	newDot: {
-		width: 7,
-		height: 7,
-		borderRadius: 4,
-		backgroundColor: '#ef4444',
-		marginTop: 6,
-	},
-	tabRow: {
-		flexDirection: 'row',
-		gap: 16,
-	},
-	tabLabel: {
-		fontSize: 20,
-		fontWeight: '700',
-		color: '#d1d5db',
-	},
-	tabLabelActive: {
-		color: '#111',
-	},
-	unreadDot: {
-		position: 'absolute',
-		top: 2,
-		right: 2,
-		width: 9,
-		height: 9,
-		borderRadius: 5,
-		backgroundColor: '#ef4444',
-		borderWidth: 1.5,
-		borderColor: '#fff',
-	},
+		// Activity feed
+		// Full-width rows, like the board's, so the columns line up edge to edge
+		activityRow: {
+			flexDirection: 'row',
+			alignItems: 'center',
+			gap: 14,
+			paddingVertical: 14,
+			marginHorizontal: -16,
+			paddingHorizontal: 16,
+			borderBottomWidth: 1,
+			borderBottomColor: c.border,
+		},
+		activityBadge: {
+			width: 34,
+			height: 34,
+			borderRadius: 17,
+			backgroundColor: c.accent,
+			alignItems: 'center',
+			justifyContent: 'center',
+		},
+		activityMeta: {
+			flexDirection: 'row',
+			alignItems: 'center',
+			gap: 5,
+			marginTop: 3,
+		},
+		activityText: {
+			fontSize: 16,
+			color: c.text,
+			lineHeight: 22,
+		},
+		activityTime: {
+			fontSize: 13,
+			color: c.muted,
+			fontVariant: ['tabular-nums'],
+		},
+		activityRowNew: {
+			backgroundColor: c.highlight,
+		},
+		activityTextNew: {
+			color: c.onHighlight,
+		},
+		newDot: {
+			width: 9,
+			height: 9,
+			borderRadius: 5,
+			backgroundColor: c.danger,
+		},
+		tabRow: {
+			flexDirection: 'row',
+			gap: 16,
+		},
+		tabLabel: {
+			...ui.heading(t, 22),
+			color: c.muted,
+			textShadowColor: 'transparent',
+			opacity: 0.6,
+		},
+		tabLabelActive: {
+			...ui.heading(t, 22),
+		},
+		unreadDot: {
+			position: 'absolute',
+			top: 0,
+			right: 0,
+			width: 10,
+			height: 10,
+			borderRadius: 5,
+			backgroundColor: c.danger,
+			borderWidth: 1.5,
+			borderColor: c.background,
+		},
 
-	// Leaderboard modal
-	lbHeader: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		alignItems: 'center',
-		paddingHorizontal: 20,
-		paddingTop: 60,
-		paddingBottom: 16,
-		borderBottomWidth: 1,
-		borderBottomColor: '#f0f0f0',
-	},
-	lbTitle: {
-		fontSize: 20,
-		fontWeight: '700',
-		color: '#111',
-	},
-	lbClose: {
-		fontSize: 18,
-		color: '#aaa',
-	},
-	lbRow: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 12,
-		paddingVertical: 14,
-		borderBottomWidth: 1,
-		borderBottomColor: '#f5f5f5',
-	},
-	lbRowCurrent: {
-		backgroundColor: '#f8f8ff',
-		marginHorizontal: -16,
-		paddingHorizontal: 16,
-	},
-	lbRank: {
-		fontSize: 18,
-		width: 36,
-		textAlign: 'center',
-	},
-	lbTeamName: {
-		fontSize: 14,
-		fontWeight: '600',
-		color: '#111',
-		marginBottom: 2,
-	},
-	lbTeamNameCurrent: {
-		color: '#4f46e5',
-	},
-	lbDetail: {
-		fontSize: 12,
-		color: '#888',
-	},
+		// Leaderboard modal
+		modal: {
+			flex: 1,
+			backgroundColor: c.background,
+		},
+		lbHeader: {
+			flexDirection: 'row',
+			justifyContent: 'space-between',
+			alignItems: 'center',
+			paddingHorizontal: 20,
+			paddingTop: 60,
+			paddingBottom: 16,
+			borderBottomWidth: t.shape.shadowOffset ? t.shape.borderWidth : 1,
+			borderBottomColor: c.border,
+		},
+		lbRow: {
+			flexDirection: 'row',
+			alignItems: 'center',
+			gap: 12,
+			paddingVertical: 14,
+			borderBottomWidth: 1,
+			borderBottomColor: c.border,
+		},
+		lbRowCurrent: {
+			backgroundColor: c.highlight,
+			marginHorizontal: -16,
+			paddingHorizontal: 16,
+		},
+		lbRank: {
+			width: 36,
+			alignItems: 'center',
+		},
+		lbRankText: {
+			fontFamily: t.fonts.display,
+			fontSize: 16,
+			fontWeight: t.fonts.display ? 'normal' : '700',
+			color: c.muted,
+		},
+		// The podium gets a filled badge instead of a medal emoji
+		lbPodium: {
+			width: 30,
+			height: 30,
+			borderRadius: 15,
+			backgroundColor: c.accent,
+			alignItems: 'center',
+			justifyContent: 'center',
+		},
+		lbPodiumText: {
+			fontFamily: t.fonts.display,
+			fontSize: 15,
+			fontWeight: t.fonts.display ? 'normal' : '700',
+			color: c.onAccent,
+		},
+		lbTeamName: {
+			fontSize: 17,
+			fontWeight: '600',
+			color: c.text,
+			marginBottom: 2,
+		},
+		lbTeamNameCurrent: {
+			color: c.onHighlight,
+		},
+		lbDetail: {
+			fontSize: 14,
+			color: c.muted,
+		},
+		lbDetailCurrent: {
+			color: c.onHighlight,
+			opacity: 0.8,
+		},
 
-	// Profile button
-	profileButton: {
-		position: 'absolute',
-		top: 52, // replaced at render with the real safe-area inset
-		right: 16,
-		width: 36,
-		height: 36,
-		borderRadius: 18,
-		backgroundColor: '#111',
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
-	profileButtonText: {
-		color: '#fff',
-		fontSize: 14,
-		fontWeight: '700',
-	},
+		// Profile sheet
+		sheetBackdrop: {
+			flex: 1,
+			backgroundColor: 'rgba(0,0,0,0.4)',
+			justifyContent: 'flex-end',
+		},
+		sheet: {
+			backgroundColor: c.surface,
+			borderTopLeftRadius: 20,
+			borderTopRightRadius: 20,
+			borderWidth: t.shape.shadowOffset ? t.shape.borderWidth : 0,
+			borderBottomWidth: 0,
+			borderColor: c.border,
+			paddingHorizontal: 24,
+			paddingBottom: 48,
+			paddingTop: 12,
+		},
+		sheetHandle: {
+			width: 40,
+			height: 4,
+			backgroundColor: c.mutedOnSurface,
+			opacity: 0.35,
+			borderRadius: 2,
+			alignSelf: 'center',
+			marginBottom: 24,
+		},
+		sheetName: {
+			fontFamily: t.fonts.display,
+			fontSize: 22,
+			fontWeight: t.fonts.display ? 'normal' : '700',
+			color: c.onSurface,
+			marginBottom: 24,
+		},
+		sheetRow: {
+			paddingVertical: 16,
+			borderTopWidth: 1,
+			borderTopColor: c.border,
+		},
+		sheetRowText: {
+			fontSize: 16,
+			color: c.onSurface,
+		},
+		sheetConfirmText: {
+			fontSize: 14,
+			color: c.mutedOnSurface,
+			lineHeight: 20,
+		},
+		sheetConfirmRow: {
+			flexDirection: 'row',
+			gap: 10,
+			marginTop: 12,
+		},
+		sheetCancel: {
+			paddingVertical: 10,
+			paddingHorizontal: 16,
+			borderRadius: t.shape.radius - 2,
+			borderWidth: t.shape.borderWidth,
+			borderColor: c.border,
+		},
+		sheetCancelText: {
+			fontSize: 15,
+			fontWeight: '600',
+			color: c.onSurface,
+		},
+		sheetLeave: {
+			paddingVertical: 10,
+			paddingHorizontal: 16,
+			borderRadius: t.shape.radius - 2,
+			backgroundColor: c.danger,
+		},
+		sheetLeaveText: {
+			fontSize: 15,
+			fontWeight: '600',
+			color: '#ffffff',
+		},
+		sheetRowDestructive: {
+			fontSize: 16,
+			color: c.danger,
+		},
 
-	// Profile sheet
-	sheetBackdrop: {
-		flex: 1,
-		backgroundColor: 'rgba(0,0,0,0.4)',
-		justifyContent: 'flex-end',
-	},
-	sheet: {
-		backgroundColor: '#fff',
-		borderTopLeftRadius: 20,
-		borderTopRightRadius: 20,
-		paddingHorizontal: 24,
-		paddingBottom: 48,
-		paddingTop: 12,
-	},
-	sheetHandle: {
-		width: 40,
-		height: 4,
-		backgroundColor: '#e5e7eb',
-		borderRadius: 2,
-		alignSelf: 'center',
-		marginBottom: 24,
-	},
-	sheetName: {
-		fontSize: 20,
-		fontWeight: '700',
-		color: '#111',
-		marginBottom: 24,
-	},
-	sheetRow: {
-		paddingVertical: 16,
-		borderTopWidth: 1,
-		borderTopColor: '#f3f4f6',
-	},
-	sheetRowText: {
-		fontSize: 16,
-		color: '#111',
-	},
-	sheetConfirmText: {
-		fontSize: 14,
-		color: '#666',
-		lineHeight: 20,
-	},
-	sheetConfirmRow: {
-		flexDirection: 'row',
-		gap: 10,
-		marginTop: 12,
-	},
-	sheetCancel: {
-		paddingVertical: 10,
-		paddingHorizontal: 16,
-		borderRadius: 10,
-		borderWidth: 1.5,
-		borderColor: '#e5e7eb',
-	},
-	sheetCancelText: {
-		fontSize: 15,
-		fontWeight: '600',
-		color: '#111',
-	},
-	sheetLeave: {
-		paddingVertical: 10,
-		paddingHorizontal: 16,
-		borderRadius: 10,
-		backgroundColor: '#ef4444',
-	},
-	sheetLeaveText: {
-		fontSize: 15,
-		fontWeight: '600',
-		color: '#fff',
-	},
-	sheetRowDestructive: {
-		fontSize: 16,
-		color: '#ef4444',
-	},
+		// Generic
+		heading: {
+			...ui.heading(t, 28),
+			textAlign: 'center',
+			marginBottom: 12,
+		},
+		message: {
+			fontSize: 18,
+			color: c.muted,
+			textAlign: 'center',
+			lineHeight: 26,
+		},
+	});
+}
 
-	// Generic
-	heading: {
-		fontSize: 20,
-		fontWeight: '600',
-		color: '#111',
-		textAlign: 'center',
-		marginBottom: 12,
-	},
-	message: {
-		fontSize: 15,
-		color: '#888',
-		textAlign: 'center',
-		lineHeight: 22,
-	},
-});
+type Styles = ReturnType<typeof makeStyles>;
+
+// Built once per theme and shared by every component on the screen
+const styleCache = new Map<string, Styles>();
+
+function stylesFor(t: Theme): Styles {
+	let styles = styleCache.get(t.id);
+	if (!styles) {
+		styles = makeStyles(t);
+		styleCache.set(t.id, styles);
+	}
+	return styles;
+}
+
+function useStyles(): Styles {
+	return stylesFor(useTheme());
+}

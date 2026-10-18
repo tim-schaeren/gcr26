@@ -69,21 +69,25 @@ export function isNewsFor(entry: ActivityEntry, teamId: string | null | undefine
   return entry.teamId !== teamId || HOST_INITIATED_TYPES.includes(entry.type);
 }
 
-const ICONS: Record<ActivityType, string> = {
-  quest_solved: '✅',
-  team_finished: '🏆',
-  hint_revealed: '💡',
-  item_bought: '🧭',
-  coins_adjusted: '🪙',
-  game_started: '🚩',
-  game_paused: '⏸️',
-  game_resumed: '▶️',
-  game_ended: '🏁',
-  admin_note: '📣',
-  admin_marked_solved: '🛠️',
-  admin_moved: '🛠️',
-  admin_finished: '🛠️',
-  admin_unfinished: '🛠️',
+// Material Design Icons names. The app renders them with @expo/vector-icons
+// and the console with @mdi/js — the same set, so both sides match.
+export type IconName = string;
+
+const ICONS: Record<ActivityType, IconName> = {
+  quest_solved: 'check-circle-outline',
+  team_finished: 'trophy-outline',
+  hint_revealed: 'lightbulb-outline',
+  item_bought: 'compass-outline',
+  coins_adjusted: 'circle-multiple-outline',
+  game_started: 'flag-outline',
+  game_paused: 'pause-circle-outline',
+  game_resumed: 'play-circle-outline',
+  game_ended: 'flag-checkered',
+  admin_note: 'bullhorn-outline',
+  admin_marked_solved: 'wrench-outline',
+  admin_moved: 'wrench-outline',
+  admin_finished: 'wrench-outline',
+  admin_unfinished: 'wrench-outline',
 };
 
 function ordinal(n: number): string {
@@ -103,7 +107,7 @@ export function formatActivity(entry: ActivityEntry, viewerTeamId?: string | nul
   const mine = !!viewerTeamId && entry.teamId === viewerTeamId;
   const team = mine ? 'You' : entry.teamName ?? 'A team';
   const quest = entry.questTitle ? `“${entry.questTitle}”` : 'a quest';
-  const icon = ICONS[entry.type] ?? '•';
+  const icon = ICONS[entry.type] ?? 'circle-small';
 
   switch (entry.type) {
     case 'quest_solved': {
