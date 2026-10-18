@@ -99,7 +99,7 @@ export default function Layout() {
   }, [location.pathname]);
 
   function switchGame(game) {
-    const gameSections = ['game', 'quests', 'teams', 'items', 'leaderboard', 'live-map', 'activity', 'chat'];
+    const gameSections = ['game', 'quests', 'teams', 'items', 'avatars', 'leaderboard', 'live-map', 'activity', 'chat'];
     const target = gameSections.includes(section) ? section : 'quests';
     navigate(`/games/${game.id}/${target}`);
   }
@@ -196,6 +196,8 @@ export default function Layout() {
             <NavLink to={`/games/${activeGameId}/quests`} className={navClass}>Quests</NavLink>
             <NavLink to={`/games/${activeGameId}/teams`} className={navClass}>Teams</NavLink>
             <NavLink to={`/games/${activeGameId}/items`} className={navClass}>Items</NavLink>
+            {/* Avatar (temporary) */}
+            <NavLink to={`/games/${activeGameId}/avatars`} className={navClass}>Avatars</NavLink>
             <NavLink to={`/games/${activeGameId}/leaderboard`} className={navClass}>Leaderboard</NavLink>
             <NavLink to={`/games/${activeGameId}/live-map`} className={navClass}>Live Map</NavLink>
             <NavLink to={`/games/${activeGameId}/activity`} className={navClass}>Activity</NavLink>
@@ -214,6 +216,14 @@ export default function Layout() {
       </nav>
 
       <div className="px-3 py-4 border-t border-gray-100">
+        <a
+          href="/help/hosting"
+          target="_blank"
+          rel="noreferrer"
+          className="block w-full text-left px-3 py-2 text-sm text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          Hosting guide
+        </a>
         <button
           onClick={() => signOut(auth)}
           className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"

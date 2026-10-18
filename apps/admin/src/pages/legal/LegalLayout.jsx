@@ -10,11 +10,13 @@ export default function LegalLayout({ title, updated, children }) {
         <h1 className="text-3xl font-bold text-gray-900 mt-4 mb-1">{title}</h1>
         <p className="text-xs text-gray-400 mb-8">Last updated {updated}</p>
         <div className="space-y-5 text-[15px] leading-relaxed text-gray-700">{children}</div>
-        <div className="mt-12 pt-6 border-t border-gray-100 flex gap-4 text-xs text-gray-400">
+        <div className="mt-12 pt-6 border-t border-gray-100 flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-400">
           <Link to="/privacy" className="hover:text-gray-700">Privacy</Link>
           <Link to="/terms" className="hover:text-gray-700">Terms</Link>
           <Link to="/guidelines" className="hover:text-gray-700">Community guidelines</Link>
           <Link to="/support" className="hover:text-gray-700">Support</Link>
+          <Link to="/help" className="hover:text-gray-700">How to play</Link>
+          <Link to="/help/hosting" className="hover:text-gray-700">Hosting</Link>
         </div>
       </div>
     </div>

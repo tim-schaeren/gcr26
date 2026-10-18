@@ -8,6 +8,7 @@ import {
 	StyleSheet,
 	KeyboardAvoidingView,
 	Platform,
+	Linking,
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import {
@@ -28,6 +29,7 @@ import {
 } from '@gcr26/shared';
 import { auth, db } from '../firebase';
 import DeleteAccountModal from '../components/DeleteAccountModal';
+import { LEGAL } from '../config';
 
 export default function JoinGameScreen({ name }: { name: string }) {
 	const [deleting, setDeleting] = useState(false);
@@ -115,6 +117,10 @@ export default function JoinGameScreen({ name }: { name: string }) {
 			</TouchableOpacity>
 
 			<View style={styles.accountRow}>
+				<TouchableOpacity onPress={() => Linking.openURL(LEGAL.help)}>
+					<Text style={styles.signOutText}>How to play</Text>
+				</TouchableOpacity>
+				<Text style={styles.signOutText}>·</Text>
 				<TouchableOpacity onPress={() => signOut(auth)}>
 					<Text style={styles.signOutText}>Sign out</Text>
 				</TouchableOpacity>

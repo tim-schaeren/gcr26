@@ -9,3 +9,4 @@ export * from './authErrors';
 export * from './teams';
 export * from './themes';
 export * from './icons';
+export * from './avatars';

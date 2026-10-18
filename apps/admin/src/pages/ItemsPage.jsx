@@ -5,24 +5,49 @@ import { SHOP_ITEMS, shopConfig } from '@gcr26/shared';
 import { db } from '../firebase';
 import Icon from '../components/Icon';
 
+const SETTING_LIMITS = {
+  durationMinutes: { min: 1, error: 'must be at least 1 minute' },
+  percent: { min: 1, max: 100, error: 'must be between 1 and 100' },
+  cap: { min: 1, error: 'must be at least 1' },
+};
+
 function ItemCard({ item, config, onSave, saving }) {
-  const [price, setPrice] = useState(String(config.price));
-  const [minutes, setMinutes] = useState(String(config.durationMinutes));
+  const settings = Object.entries(item.settings);
+  const [values, setValues] = useState(() => ({
+    price: String(config.price),
+    ...Object.fromEntries(settings.map(([key]) => [key, String(config[key])])),
+  }));
   const [error, setError] = useState(null);
 
-  const dirty =
-    price !== String(config.price) || minutes !== String(config.durationMinutes);
+  const dirty = values.price !== String(config.price)
+    || settings.some(([key]) => values[key] !== String(config[key]));
 
   function save() {
-    const parsedPrice = parseInt(price);
-    const parsedMinutes = parseInt(minutes);
-    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) return setError('Price must be 0 or more.');
-    if (item.hasDuration && (!Number.isFinite(parsedMinutes) || parsedMinutes <= 0)) {
-      return setError('Duration must be at least 1 minute.');
+    const price = parseInt(values.price);
+    if (!Number.isFinite(price) || price < 0) return setError('Price must be 0 or more.');
+    const patch = { price };
+    for (const [key, label] of settings) {
+      const n = parseInt(values[key]);
+      const { min, max, error: message } = SETTING_LIMITS[key];
+      if (!Number.isFinite(n) || n < min || (max && n > max)) return setError(`${label.replace(/ \(.*\)$/, '')} ${message}.`);
+      patch[key] = n;
     }
     setError(null);
-    onSave({ price: parsedPrice, durationMinutes: item.hasDuration ? parsedMinutes : 0 });
+    onSave(patch);
   }
+
+  const field = (key, label, min) => (
+    <div key={key}>
+      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+      <input
+        type="number"
+        min={min}
+        className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+        value={values[key]}
+        onChange={e => setValues(v => ({ ...v, [key]: e.target.value }))}
+      />
+    </div>
+  );
 
   return (
     <div className={`bg-white border rounded-lg p-5 ${config.enabled ? 'border-gray-200' : 'border-gray-100'}`}>
@@ -33,6 +58,9 @@ function ItemCard({ item, config, onSave, saving }) {
             <h2 className={`text-sm font-semibold ${config.enabled ? 'text-gray-900' : 'text-gray-400'}`}>
               {item.name}
             </h2>
+            {item.targetsTeam && (
+              <span className="text-[11px] text-gray-400">used on another team</span>
+            )}
             <button
               onClick={() => onSave({ enabled: !config.enabled })}
               className={`relative w-10 h-6 rounded-full transition-colors ml-auto ${config.enabled ? 'bg-gray-900' : 'bg-gray-200'}`}
@@ -45,29 +73,9 @@ function ItemCard({ item, config, onSave, saving }) {
 
           {config.enabled && (
             <>
-              <div className="flex items-end gap-3 mt-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Price (coins)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    value={price}
-                    onChange={e => setPrice(e.target.value)}
-                  />
-                </div>
-                {item.hasDuration && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Lasts (minutes)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-                      value={minutes}
-                      onChange={e => setMinutes(e.target.value)}
-                    />
-                  </div>
-                )}
+              <div className="flex flex-wrap items-end gap-3 mt-4">
+                {field('price', 'Price (coins)', 0)}
+                {settings.map(([key, label]) => field(key, label, SETTING_LIMITS[key].min))}
                 <button
                   onClick={save}
                   disabled={!dirty || saving}
@@ -114,7 +122,7 @@ export default function ItemsPage() {
     <div className="max-w-2xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Items</h1>
       <p className="text-sm text-gray-400 mb-6">
-        What teams can buy with their coins. Switching an item off hides it from the shop.
+        What teams can buy with their coins. Switching an item off hides it from the shop. Items used on another team are announced to everyone in the activity feed.
       </p>
 
       <div className="space-y-3">
@@ -122,7 +130,7 @@ export default function ItemsPage() {
           // Remounting when a stored value changes picks up another host's edit,
           // without an effect that would fight this host's typing
           <ItemCard
-            key={`${item.type}:${config[item.type].price}:${config[item.type].durationMinutes}`}
+            key={`${item.type}:${JSON.stringify(config[item.type])}`}
             item={item}
             config={config[item.type]}
             saving={saving === item.type}

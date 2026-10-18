@@ -26,6 +26,13 @@ export const ICON_NAMES = [
   'check',
   'chat-outline',
   'account-outline',
+  'egg-outline', // Avatar (temporary)
+  'radar',
+  'shield-outline',
+  'shield-check-outline',
+  'skull-outline',
+  'sack-percent',
+  'hand-coin-outline',
 ] as const;
 
 export type AppIcon = (typeof ICON_NAMES)[number];

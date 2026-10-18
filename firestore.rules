@@ -146,6 +146,13 @@ service cloud.firestore {
         allow delete: if isAuth() && (playerId == request.auth.uid || canManageGame(gameId));
       }
 
+      // Avatar (temporary, for the race of 24 Oct 2026): a picture per team per
+      // quest, set by hosts. Not secret, so anyone signed in may read.
+      match /avatars/{teamId} {
+        allow read:  if isAuth();
+        allow write: if canManageGame(gameId);
+      }
+
       // What only a player and the game's hosts may see: the player's last
       // position, for the live map, and their push token.
       match /private/{playerId} {
@@ -202,13 +209,15 @@ service cloud.firestore {
                         && request.resource.data.finishedAt == null);
       allow delete: if canManageGame(resource.data.gameId);
       // The team-member clause comes first so a player's own writes are decided
-      // without any document lookups at all
+      // without any document lookups at all. Curses and robberies (cursedUntil,
+      // robbedAt) are only ever set by the server, never by a team.
       allow update: if (isAuth()
                         && request.auth.uid in resource.data.memberIds
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt',
                                        'questProgress', 'coins', 'hintsRevealed',
-                                       'teamChatReadAt', 'activeCompassUntil']))
+                                       'teamChatReadAt', 'activeCompassUntil',
+                                       'activeRadarUntil', 'shields']))
                     // Joining needs a membership record; leaving never does, or a
                     // player a host added by hand could never remove themselves
                     || (hasJoined(resource.data.gameId) && joiningTeamSelf())

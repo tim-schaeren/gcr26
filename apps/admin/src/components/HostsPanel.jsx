@@ -1,56 +1,54 @@
 import { useState, useEffect } from 'react';
-import { collection, doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
+import { callApi } from '../utils/api';
 
-// Who may run this game. Platform admins can run every game without being listed.
-// Only admins can grant hosting, because finding a user by email needs the player list.
+// Who may run this game. Any host can add a co-host by email or remove one;
+// the server looks the email up, since hosts can't read anyone's account. A
+// game always keeps at least one host. Platform admins can run every game.
 export default function HostsPanel({ gameId, game, isAdmin, currentUserId }) {
-  const [users, setUsers] = useState([]);
+  const [hosts, setHosts] = useState([]);
   const [email, setEmail] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const hostIds = game?.hostIds ?? [];
+  const canManage = isAdmin || hostIds.includes(currentUserId);
 
+  // Names come from the server; refreshed whenever the list of hosts changes
   useEffect(() => {
-    if (!isAdmin) return;
-    return onSnapshot(collection(db, 'users'), snap =>
-      setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-  }, [isAdmin]);
+    if (!canManage) return;
+    callApi('/api/hosts', { gameId, action: 'list' })
+      .then(res => setHosts(res.hosts))
+      .catch(() => setHosts(hostIds.map(uid => ({ uid, name: uid === currentUserId ? 'You' : 'A host' }))));
+  }, [gameId, canManage, hostIds.join(',')]);
 
-  async function addHost() {
-    const wanted = email.trim().toLowerCase();
-    if (!wanted || busy) return;
-    const match = users.find(u => (u.email ?? '').toLowerCase() === wanted);
-    if (!match) {
-      setError('No player with that email. They need an account first.');
-      return;
-    }
+  async function run(body) {
     setBusy(true);
     setError(null);
     try {
-      await updateDoc(doc(db, 'games', gameId), { hostIds: arrayUnion(match.id) });
-      setEmail('');
+      const res = await callApi('/api/hosts', { gameId, ...body });
+      setHosts(res.hosts);
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
-  async function removeHost(uid) {
-    await updateDoc(doc(db, 'games', gameId), { hostIds: arrayRemove(uid) });
+  async function addHost() {
+    if (!email.trim() || busy) return;
+    if (await run({ action: 'add', email })) setEmail('');
   }
-
-  const nameFor = uid => {
-    const user = users.find(u => u.id === uid);
-    if (user) return user.name || user.email || uid;
-    return uid === currentUserId ? 'You' : uid;
-  };
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
       <h2 className="text-sm font-semibold text-gray-900 mb-1">Hosts</h2>
       <p className="text-xs text-gray-400 mb-3">
-        Hosts run this game: quests, teams, coins and the activity board. Platform admins can run every game.
+        Hosts run this game: quests, teams, coins and the activity board. Add a co-host by
+        the email they signed up with.
       </p>
 
       {hostIds.length === 0 ? (
@@ -59,12 +57,13 @@ export default function HostsPanel({ gameId, game, isAdmin, currentUserId }) {
         </p>
       ) : (
         <div className="space-y-1 mb-3">
-          {hostIds.map(uid => (
+          {hosts.map(({ uid, name }) => (
             <div key={uid} className="flex items-center justify-between text-sm text-gray-700">
-              <span>{nameFor(uid)}{uid === currentUserId ? ' (you)' : ''}</span>
-              {isAdmin && (
+              <span>{name}{uid === currentUserId ? ' (you)' : ''}</span>
+              {canManage && hosts.length > 1 && (
                 <button
-                  onClick={() => removeHost(uid)}
+                  onClick={() => run({ action: 'remove', uid })}
+                  disabled={busy}
                   className="text-xs text-gray-300 hover:text-red-500 transition-colors"
                 >
                   Remove
@@ -75,7 +74,7 @@ export default function HostsPanel({ gameId, game, isAdmin, currentUserId }) {
         </div>
       )}
 
-      {isAdmin && (
+      {canManage && (
         <>
           <div className="flex gap-2">
             <input
@@ -83,7 +82,7 @@ export default function HostsPanel({ gameId, game, isAdmin, currentUserId }) {
               value={email}
               onChange={e => { setEmail(e.target.value); setError(null); }}
               onKeyDown={e => e.key === 'Enter' && addHost()}
-              placeholder="player@example.com"
+              placeholder="cohost@example.com"
             />
             <button
               onClick={addHost}
@@ -94,7 +93,7 @@ export default function HostsPanel({ gameId, game, isAdmin, currentUserId }) {
             </button>
           </div>
           {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-          {!hostIds.includes(currentUserId) && (
+          {isAdmin && !hostIds.includes(currentUserId) && (
             <button
               onClick={() => updateDoc(doc(db, 'games', gameId), { hostIds: arrayUnion(currentUserId) })}
               className="text-xs text-gray-400 hover:text-gray-700 transition-colors mt-2"

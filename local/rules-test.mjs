@@ -347,6 +347,27 @@ await expect("CANNOT change a player's push token", false, () => updateDoc(priv(
 await as('playerA');
 await expect('deletes their private entry (leaving, account deletion)', true, () => deleteDoc(priv(people.playerA.uid)));
 
+// ── items: a team buys for itself; curses and robberies come from the server ─
+group('items');
+await as('playerA');
+await expect('buys a radar for the team', true, () => updateDoc(doc(db, 'teams', TEAM_A), { activeRadarUntil: Date.now() + 300000, coins: 5 }));
+await expect('buys a shield for the team', true, () => updateDoc(doc(db, 'teams', TEAM_A), { shields: 1 }));
+await expect('CANNOT curse a team by writing to it', false, () => updateDoc(doc(db, 'teams', TEAM_B), { cursedUntil: Date.now() + 120000 }));
+await expect('CANNOT lift its own curse', false, () => updateDoc(doc(db, 'teams', TEAM_A), { cursedUntil: 0 }));
+await expect('CANNOT reset its robbery cooldown', false, () => updateDoc(doc(db, 'teams', TEAM_A), { robbedAt: 0 }));
+await expect("CANNOT give itself another team's coins", false, () => updateDoc(doc(db, 'teams', TEAM_B), { coins: 0 }));
+
+// ── Avatar (temporary): hosts set pictures, players only look ─────────────
+group('avatars');
+const avatar = g => doc(db, 'games', g, 'avatars', TEAM_A);
+await as('host');
+await expect('sets an avatar picture in their game', true, () => setDoc(avatar(GAME), { [QUEST]: 'https://example.com/egg.png' }, { merge: true }));
+// (the admin tests above made this host a host of GAME_NO_HOSTS too)
+await expect('CANNOT set avatars in a game it does not host', false, () => setDoc(avatar(id('nevers')), { [QUEST]: 'https://example.com/x.png' }));
+await as('playerA');
+await expect("reads their team's avatar", true, () => getDoc(avatar(GAME)));
+await expect('CANNOT change their avatar', false, () => setDoc(avatar(GAME), { [QUEST]: 'https://example.com/mine.png' }, { merge: true }));
+
 let current = '';
 for (const r of results) {
   if (r.section !== current) { current = r.section; console.log(`\n── ${current} ──`); }

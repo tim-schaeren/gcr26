@@ -27,6 +27,11 @@ export interface Team {
   questProgress: QuestProgress | null;
   coins?: number;                            // team purse; absent means the game's startingCoins
   activeCompassUntil?: number;               // timestamp the bought compass runs out
+  activeRadarUntil?: number;                 // timestamp the bought radar runs out
+  shields?: number;                          // shields bought and not yet used up
+  cursedUntil?: number;                      // set by the server: frozen until then
+  cursedByName?: string;                     // the team that cast the curse
+  robbedAt?: number;                         // set by the server: starts the robbery cooldown
   hintsRevealed?: Record<string, number>;    // questId -> how many hints the team has paid for
 }
 
@@ -167,7 +172,7 @@ export interface Game {
   joinCode?: string;        // what players type to join
   themeId?: string;         // visual theme for players; see themes.ts
   hotlineNumber?: string;   // phone number teams can call when something goes wrong
-  shop?: Record<string, { enabled?: boolean; price?: number; durationMinutes?: number }>;
+  shop?: Record<string, { enabled?: boolean; price?: number; durationMinutes?: number; percent?: number; cap?: number }>;
   maxTeamSize?: number;     // optional soft limit shown in admin UI
   maxTeamSpreadMeters: number | null; // null = unlimited; blocks answer submission if exceeded
   startingCoins?: number;   // coins each team begins with (default 0)

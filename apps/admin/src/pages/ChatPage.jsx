@@ -124,7 +124,7 @@ export default function ChatPage() {
 				sentAt: Date.now(),
 			});
 			setDraft('');
-			await sendPushToTeam(openTeam.id, 'Message from the hosts', text);
+			await sendPushToTeam(gameId, openTeam.id, 'Message from the hosts', text);
 		} finally {
 			setSending(false);
 		}

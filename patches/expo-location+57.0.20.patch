@@ -1,0 +1,18 @@
+diff --git a/node_modules/expo-location/android/src/main/java/expo/modules/location/LocationModule.kt b/node_modules/expo-location/android/src/main/java/expo/modules/location/LocationModule.kt
+index b286ea2..4db2a3c 100644
+--- a/node_modules/expo-location/android/src/main/java/expo/modules/location/LocationModule.kt
++++ b/node_modules/expo-location/android/src/main/java/expo/modules/location/LocationModule.kt
+@@ -1073,9 +1073,11 @@ class LocationModule : Module(), SensorEventListener, ActivityEventListener {
+   override fun onSensorChanged(event: SensorEvent?) {
+     event ?: return
+     if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+-      mGravity = event.values
++      // Copied: Android may reuse the event's array for the next reading,
++      // which on some phones left both readings pointing at the same numbers
++      mGravity = event.values.clone()
+     } else if (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) {
+-      mGeomagnetic = event.values
++      mGeomagnetic = event.values.clone()
+     }
+     sendUpdate()
+   }

@@ -9,6 +9,7 @@ import {
 	StyleSheet,
 	Modal,
 	useWindowDimensions,
+	Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -32,6 +33,7 @@ import {
 } from '@gcr26/shared';
 import { auth, db } from '../firebase';
 import DeleteAccountModal from '../components/DeleteAccountModal';
+import { LEGAL } from '../config';
 import * as ui from '../theme/primitives';
 import { listen } from '../utils/listen';
 import { reportProblem } from '../utils/report';
@@ -295,6 +297,9 @@ export default function TeamPickerScreen({
 			<View style={styles.footer}>
 				<TouchableOpacity onPress={leaveGame} disabled={busy} hitSlop={8}>
 					<Text style={styles.leaveText}>Leave this game</Text>
+				</TouchableOpacity>
+				<TouchableOpacity onPress={() => Linking.openURL(LEGAL.help)} hitSlop={8}>
+					<Text style={styles.leaveText}>How to play</Text>
 				</TouchableOpacity>
 				<TouchableOpacity
 					onPress={() => reportProblem({ gameId, gameName: game?.name })}

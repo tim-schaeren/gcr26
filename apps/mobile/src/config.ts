@@ -6,6 +6,7 @@ export const LEGAL = {
 	terms: `${WEB_URL}/terms`,
 	guidelines: `${WEB_URL}/guidelines`,
 	support: `${WEB_URL}/support`,
+	help: `${WEB_URL}/help`,
 };
 
 // Where reports about a game, a host or a player go

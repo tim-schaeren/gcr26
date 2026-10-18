@@ -17,7 +17,12 @@ export type ActivityType =
   | 'admin_marked_solved'
   | 'admin_moved'
   | 'admin_finished'
-  | 'admin_unfinished';
+  | 'admin_unfinished'
+  // Written by the server when one team uses an item on another
+  | 'team_cursed'
+  | 'team_robbed'
+  | 'coins_donated'
+  | 'attack_blocked';
 
 export type ActivityVisibility = 'public' | 'team';
 
@@ -35,6 +40,10 @@ export interface ActivityEntry {
   itemName?: string;          // item_bought
   reason?: string;            // admin adjustment reason
   text?: string;              // admin note
+  itemType?: string;          // item_bought, attack_blocked: which item
+  targetTeamId?: string;      // the team an item was used on
+  targetTeamName?: string;
+  durationMinutes?: number;   // team_cursed
 }
 
 // Entries players write use deterministic ids, so two teammates acting at the
@@ -88,6 +97,16 @@ const ICONS: Record<ActivityType, IconName> = {
   admin_moved: 'wrench-outline',
   admin_finished: 'wrench-outline',
   admin_unfinished: 'wrench-outline',
+  team_cursed: 'skull-outline',
+  team_robbed: 'sack-percent',
+  coins_donated: 'hand-coin-outline',
+  attack_blocked: 'shield-check-outline',
+};
+
+const ITEM_ICONS: Record<string, IconName> = {
+  compass: 'compass-outline',
+  radar: 'radar',
+  shield: 'shield-outline',
 };
 
 function ordinal(n: number): string {
@@ -107,7 +126,14 @@ export function formatActivity(entry: ActivityEntry, viewerTeamId?: string | nul
   const mine = !!viewerTeamId && entry.teamId === viewerTeamId;
   const team = mine ? 'You' : entry.teamName ?? 'A team';
   const quest = entry.questTitle ? `“${entry.questTitle}”` : 'a quest';
-  const icon = ICONS[entry.type] ?? 'circle-small';
+  const icon =
+    (entry.type === 'item_bought' && entry.itemType && ITEM_ICONS[entry.itemType]) ||
+    ICONS[entry.type] ||
+    'circle-small';
+  // Items one team uses on another name both: "You", "you" or the team's name
+  const targetMine = !!viewerTeamId && entry.targetTeamId === viewerTeamId;
+  const target = targetMine ? 'you' : entry.targetTeamName ?? 'a team';
+  const coins = (n: number | undefined) => `${n ?? 0} coin${n === 1 ? '' : 's'}`;
 
   switch (entry.type) {
     case 'quest_solved': {
@@ -149,6 +175,20 @@ export function formatActivity(entry: ActivityEntry, viewerTeamId?: string | nul
       return { icon, text: 'The admins ended the game' };
     case 'admin_note':
       return { icon, text: entry.text ?? '' };
+    case 'team_cursed': {
+      const time = entry.durationMinutes ? ` for ${entry.durationMinutes} min` : '';
+      return { icon, text: `${team} cursed ${target}${time}` };
+    }
+    case 'team_robbed':
+      return { icon, text: `${team} robbed ${target} of ${coins(entry.amount)}` };
+    case 'coins_donated':
+      return { icon, text: `${team} gave ${target} ${coins(entry.amount)}` };
+    case 'attack_blocked': {
+      const owner = targetMine ? 'Your' : `${entry.targetTeamName ?? 'A team'}’s`;
+      const attacker = mine ? 'your' : `${entry.teamName ?? 'a team'}’s`;
+      const what = entry.itemType === 'robbery' ? 'robbery' : 'curse';
+      return { icon, text: `${owner} shield blocked ${attacker} ${what}` };
+    }
     case 'admin_marked_solved':
       return { icon, text: `Admins marked ${quest} solved for ${mine ? 'you' : team}` };
     case 'admin_moved':

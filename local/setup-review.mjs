@@ -109,9 +109,24 @@ await setDoc(gameRef, {
 });
 for (const { id, ...q } of QUESTS) await setDoc(doc(gameRef, 'quests', id), { ...q, isActive: true });
 
-// Reset: teams from earlier review sessions go, so every reviewer starts fresh
+// Reset: everything earlier review sessions left behind goes, so every
+// reviewer starts fresh — the same as resetting a game in the console
+async function clear(ref) {
+  const snap = await getDocs(ref);
+  for (const d of snap.docs) await deleteDoc(d.ref);
+  return snap.size;
+}
 const oldTeams = await getDocs(query(collection(db, 'teams'), where('gameId', '==', gameRef.id)));
-for (const t of oldTeams.docs) await deleteDoc(t.ref);
+let cleared = 0;
+for (const t of oldTeams.docs) {
+  cleared += await clear(collection(t.ref, 'coinLedger'));
+  await deleteDoc(t.ref);
+}
+for (const sub of ['activity', 'messages', 'attempts', 'private', 'players']) {
+  cleared += await clear(collection(gameRef, sub));
+}
+cleared += await clear(query(collection(db, 'trail'), where('gameId', '==', gameRef.id)));
+console.log(`Cleared ${oldTeams.size} teams and ${cleared} other entries from earlier reviews`);
 await signOut(auth);
 
 // The player account starts outside the game, so a reviewer goes through

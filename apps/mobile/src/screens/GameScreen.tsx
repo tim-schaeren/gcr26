@@ -11,8 +11,10 @@ import {
 	Platform,
 	Modal,
 	Animated,
+	Easing,
 	ScrollView,
 	Keyboard,
+	useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signOut } from 'firebase/auth';
@@ -39,6 +41,10 @@ import {
 	gameEconomy,
 	shopConfig,
 	compassMsLeft as compassMsLeftFor,
+	radarMsLeft as radarMsLeftFor,
+	curseMsLeft,
+	SHOP_ITEMS_BY_TYPE,
+	type ShopItemType,
 	teamCoins,
 	hintsRevealedFor,
 	formatActivity,
@@ -79,6 +85,9 @@ import ContentBlocks from '../components/ContentBlocks';
 import ShopSheet from '../components/ShopSheet';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import PermissionsIntro from '../components/PermissionsIntro';
+import AvatarButton from '../components/Avatar'; // Avatar (temporary)
+import Radar from '../components/Radar';
+import { callApi } from '../utils/api';
 import { LEGAL } from '../config';
 import Icon from '../theme/Icon';
 import { ThemeProvider, useTheme } from '../theme/ThemeContext';
@@ -99,6 +108,12 @@ interface Team {
 	hintsRevealed?: Record<string, number>;
 	teamChatReadAt?: number;
 	hostChatReadAt?: number;
+	color?: string;
+	activeCompassUntil?: number;
+	activeRadarUntil?: number;
+	shields?: number;
+	cursedUntil?: number;
+	cursedByName?: string;
 }
 
 interface Game {
@@ -121,6 +136,10 @@ interface Game {
 
 // Distance progress is pushed to the team doc at most once per this many meters
 const DISTANCE_SYNC_STEP_METERS = 20;
+
+// How far each new compass reading moves the arrow on Android (0–1): low
+// enough to calm a jittery magnetometer, high enough to follow a turn
+const HEADING_SMOOTHING = 0.2;
 
 function formatDuration(ms: number): string {
 	if (!ms || ms <= 0) return '—';
@@ -156,6 +175,41 @@ function formatCountdown(ms: number): string {
 
 type SheetTab = 'activity' | 'chat' | 'leaderboard';
 
+// Box widths as a share of the font size. Each character sits in a box of
+// its own: the display fonts have no fixed-width digits, so a "1" would
+// otherwise be narrower than an "8" and the clock would wobble every second.
+const DIGIT_WIDTH = 0.66;
+const COLON_WIDTH = 0.32;
+
+// A clock that keeps its size: the font size comes from the screen width
+// once, rather than being re-fitted to every new reading
+function Countdown({ ms }: { ms: number }) {
+	const styles = useStyles();
+	const { width } = useWindowDimensions();
+	const text = formatCountdown(ms);
+	const units = 6 * DIGIT_WIDTH + 2 * COLON_WIDTH;
+	const fontSize = Math.min(72, Math.floor((width - 64) / units));
+	return (
+		<View style={styles.countdownRow}>
+			{text.split('').map((char, i) => (
+				<Text
+					key={i}
+					style={[
+						styles.countdown,
+						{
+							fontSize,
+							lineHeight: Math.round(fontSize * 1.2),
+							width: fontSize * (char === ':' ? COLON_WIDTH : DIGIT_WIDTH),
+						},
+					]}
+				>
+					{char}
+				</Text>
+			))}
+		</View>
+	);
+}
+
 // ─── Sub-views ────────────────────────────────────────────────────────────────
 
 function WaitingView({ game, now }: { game: Game; now: number }) {
@@ -166,9 +220,7 @@ function WaitingView({ game, now }: { game: Game; now: number }) {
 			<Text style={styles.label}>GET READY</Text>
 			<Text style={styles.gameName}>{game.name}</Text>
 			<Text style={styles.countdownLabel}>starts in</Text>
-			<Text style={styles.countdown} numberOfLines={1} adjustsFontSizeToFit>
-				{formatCountdown(ms)}
-			</Text>
+			<Countdown ms={ms} />
 		</View>
 	);
 }
@@ -189,11 +241,13 @@ function ScrollContainer({ children }: { children: ReactNode }) {
 function CompassArrow({
 	bearing,
 	heading,
+	uncalibrated,
 	distance,
 	msLeft,
 }: {
 	bearing: number;
 	heading: number | null;
+	uncalibrated: boolean;
 	distance: number | null;
 	msLeft: number;
 }) {
@@ -202,14 +256,37 @@ function CompassArrow({
 	// With a device heading the arrow points the real way; without one it still
 	// shows the bearing, just relative to north
 	const rotation = heading === null ? bearing : bearing - heading;
+	// The angle keeps counting past 360 so the arrow always turns the shorter
+	// way. Android glides between readings; iOS readings are already smooth.
+	const angle = useRef(new Animated.Value(rotation)).current;
+	const lastAngle = useRef(rotation);
+	useEffect(() => {
+		const delta = ((((rotation - lastAngle.current) % 360) + 540) % 360) - 180;
+		const next = lastAngle.current + delta;
+		lastAngle.current = next;
+		if (Platform.OS === 'android') {
+			Animated.timing(angle, {
+				toValue: next,
+				duration: 200,
+				easing: Easing.out(Easing.quad),
+				useNativeDriver: true,
+			}).start();
+		} else {
+			angle.setValue(next);
+		}
+	}, [rotation]);
+	const rotate = angle.interpolate({
+		inputRange: [-360, 360],
+		outputRange: ['-360deg', '360deg'],
+	});
 	const total = Math.ceil(msLeft / 1000);
 	const left = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 	return (
 		<View style={styles.compassWrap}>
 			<View style={styles.compassDial}>
-				<View style={{ transform: [{ rotate: `${rotation}deg` }] }}>
+				<Animated.View style={{ transform: [{ rotate }] }}>
 					<Icon name="navigation" size={48} color={colors.accent} />
-				</View>
+				</Animated.View>
 			</View>
 			{distance !== null && (
 				<Text style={styles.compassDistance}>
@@ -219,6 +296,11 @@ function CompassArrow({
 			<Text style={styles.compassMeta}>
 				{heading === null ? 'from north · ' : ''}compass {left}
 			</Text>
+			{uncalibrated && (
+				<Text style={styles.compassHint}>
+					Move your phone in a figure 8 to calibrate the compass
+				</Text>
+			)}
 		</View>
 	);
 }
@@ -228,9 +310,13 @@ function NavigationView({
 	distance,
 	bearing,
 	heading,
+	headingUncalibrated,
 	compassMsLeft,
+	radarMsLeft,
 }: {
 	quest: Quest;
+	headingUncalibrated: boolean;
+	radarMsLeft: number;
 	distance: number | null;
 	bearing: number | null;
 	heading: number | null;
@@ -250,9 +336,14 @@ function NavigationView({
 				<CompassArrow
 					bearing={bearing}
 					heading={heading}
+					uncalibrated={headingUncalibrated}
 					distance={distance}
 					msLeft={compassMsLeft}
 				/>
+			)}
+			{/* The compass says more, so the radar steps aside while both run */}
+			{radarMsLeft > 0 && compassMsLeft <= 0 && (
+				<Radar distance={distance} msLeft={radarMsLeft} />
 			)}
 		</ScrollContainer>
 	);
@@ -363,13 +454,9 @@ function TimerView({
 			<Text style={styles.countdownLabel}>
 				{done ? 'time is up' : 'continue in'}
 			</Text>
-			<Text
-				style={[styles.countdown, styles.timerCountdown]}
-				numberOfLines={1}
-				adjustsFontSizeToFit
-			>
-				{formatCountdown(remainingMs)}
-			</Text>
+			<View style={styles.timerCountdown}>
+				<Countdown ms={remainingMs} />
+			</View>
 			<ContinueButton
 				disabled={!done || submitting}
 				label="Continue"
@@ -996,6 +1083,28 @@ function SpreadOverlay() {
 	);
 }
 
+// A cursed team is frozen: no hint, no answers, no shop, and walking doesn't
+// count, until the curse wears off
+function CursedView({ by, msLeft }: { by: string; msLeft: number }) {
+	const styles = useStyles();
+	const { colors } = useTheme();
+	const total = Math.ceil(msLeft / 1000);
+	return (
+		<View style={styles.container}>
+			<View style={styles.finishedIcon}>
+				<Icon name="skull-outline" size={96} color={colors.text} />
+			</View>
+			<Text style={styles.finishedHeading}>Cursed!</Text>
+			<Text style={styles.finishedSub}>by {by}</Text>
+			<Countdown ms={total * 1000} />
+			<Text style={[styles.message, { marginTop: 24 }]}>
+				No hint, no answers and no shop until it wears off. Steps you take
+				now don't count.
+			</Text>
+		</View>
+	);
+}
+
 function LocationDeniedView() {
 	const styles = useStyles();
 	return (
@@ -1133,6 +1242,13 @@ function ProfileSheet({
 						<Text style={styles.sheetRowText}>Sign out</Text>
 					</TouchableOpacity>
 
+					<TouchableOpacity
+						style={styles.sheetRow}
+						onPress={() => Linking.openURL(LEGAL.help)}
+					>
+						<Text style={styles.sheetRowText}>How to play</Text>
+					</TouchableOpacity>
+
 					<TouchableOpacity style={styles.sheetRow} onPress={onReport}>
 						<Text style={styles.sheetRowText}>Report a problem</Text>
 					</TouchableOpacity>
@@ -1202,8 +1318,9 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	const [introState, setIntroState] = useState<'unknown' | 'show' | 'done'>(
 		'unknown',
 	);
-	const [buyingItem, setBuyingItem] = useState(false);
+	const [buyingItem, setBuyingItem] = useState<ShopItemType | null>(null);
 	const [heading, setHeading] = useState<number | null>(null);
+	const [headingUncalibrated, setHeadingUncalibrated] = useState(false);
 
 	const { profile } = useUser();
 	const insets = useSafeAreaInsets();
@@ -1626,6 +1743,8 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		!game.pausedAt &&
 		!team.finishedAt &&
 		now >= game.startDateTime;
+	const cursedLeft = curseMsLeft(team, now);
+	const cursed = cursedLeft > 0;
 
 	const distanceToQuest =
 		coords != null && quest?.location
@@ -1651,8 +1770,12 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		unlocked =
 			!!progress?.unlockedAt || walkedMeters >= (quest.distanceMeters ?? 0);
 
+	// Distance walked while cursed doesn't count
 	const trackingDistance =
-		gameRunning && quest?.trigger === 'distance' && !progress?.unlockedAt;
+		gameRunning &&
+		!cursed &&
+		quest?.trigger === 'distance' &&
+		!progress?.unlockedAt;
 
 	// Plain writes from the local snapshot (not transactions) so progress still queues while offline.
 	// Concurrent writes from teammates only differ by seconds/meters, so last-write-wins is fine.
@@ -1682,14 +1805,15 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	// Record when timer/info quests unlock so the countdown is shared and survives leaving the fence
 	const unlockPendingRef = useRef<string | null>(null);
 	useEffect(() => {
-		if (!quest || !gameRunning || !unlocked || progress?.unlockedAt) return;
+		if (!quest || !gameRunning || cursed || !unlocked || progress?.unlockedAt)
+			return;
 		if (quest.task === 'answer' || quest.trigger === 'distance') return;
 		if (unlockPendingRef.current === quest.id) return;
 		unlockPendingRef.current = quest.id;
 		updateQuestProgress(quest.id, { unlock: true }).catch(() => {
 			unlockPendingRef.current = null;
 		});
-	}, [quest?.id, gameRunning, unlocked, progress?.unlockedAt]);
+	}, [quest?.id, gameRunning, cursed, unlocked, progress?.unlockedAt]);
 
 	// Start/stop the persistent distance tracker (also fed by the background location task)
 	useEffect(() => {
@@ -1731,18 +1855,43 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	const shop = shopConfig(game);
 	const coins = teamCoins(team, economy);
 	const compassLeft = compassMsLeftFor(team, now);
+	const radarLeft = radarMsLeftFor(team, now);
 
 	// The magnetometer only runs while a compass is active, to spare the battery
 	useEffect(() => {
 		if (compassLeft <= 0) {
 			setHeading(null);
+			setHeadingUncalibrated(false);
 			return;
 		}
 		let sub: Location.LocationSubscription | null = null;
 		let cancelled = false;
-		Location.watchHeadingAsync((h) =>
-			setHeading(h.trueHeading >= 0 ? h.trueHeading : h.magHeading),
-		)
+		// Android hands over the magnetometer's raw readings, which jitter on
+		// cheaper phones; iOS smooths its heading itself. The average is taken of
+		// directions, not numbers, so it stays right across north (359° → 1°).
+		const smoothed = { x: 0, y: 0, started: false };
+		Location.watchHeadingAsync((h) => {
+			// Both platforms report 0–3 (Expo maps iOS's degrees onto Android's
+			// scale); 1 is low, 0 unreliable
+			setHeadingUncalibrated(h.accuracy <= 1);
+			const raw = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
+			if (Platform.OS !== 'android') {
+				setHeading(raw);
+				return;
+			}
+			const r = (raw * Math.PI) / 180;
+			if (!smoothed.started) {
+				smoothed.x = Math.cos(r);
+				smoothed.y = Math.sin(r);
+				smoothed.started = true;
+			} else {
+				smoothed.x += (Math.cos(r) - smoothed.x) * HEADING_SMOOTHING;
+				smoothed.y += (Math.sin(r) - smoothed.y) * HEADING_SMOOTHING;
+			}
+			setHeading(
+				((Math.atan2(smoothed.y, smoothed.x) * 180) / Math.PI + 360) % 360,
+			);
+		})
 			.then((s) => {
 				if (cancelled) s.remove();
 				else sub = s;
@@ -1776,35 +1925,97 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		}
 	}
 
-	function buyCompass() {
-		if (!team || !game || buyingItem) return;
-		if (coins < shop.compass.price || compassLeft > 0) return;
-		setBuyingItem(true);
-		const until = Date.now() + shop.compass.durationMinutes * 60000;
+	// Why each item can't be bought right now, if it can't. Nothing is for
+	// sale once a team has finished, or while it is cursed. The compass and
+	// radar only have a job while the team is still looking for a place.
+	const otherTeams = allTeams.filter((t) => t.id !== team?.id);
+	const shopClosed = !team
+		? 'Not on a team'
+		: team.finishedAt
+			? 'Your race is over'
+			: cursed
+				? 'You’re cursed'
+				: !gameRunning
+					? 'The shop opens while the race is running'
+					: null;
+	const findingBlocked =
+		quest?.trigger !== 'location' || !quest?.location
+			? 'Nothing to point at on this quest'
+			: unlocked
+				? 'You’re already there'
+				: null;
+	const itemBlocked: Partial<Record<ShopItemType, string | null>> = {
+		compass: shopClosed ?? findingBlocked,
+		radar: shopClosed ?? findingBlocked,
+		shield: shopClosed,
+		curse: shopClosed ?? (otherTeams.length ? null : 'No other teams yet'),
+		robbery: shopClosed ?? (otherTeams.length ? null : 'No other teams yet'),
+		donate: shopClosed ?? (otherTeams.length ? null : 'No other teams yet'),
+	};
+	const itemRunning: Partial<Record<ShopItemType, number>> = {
+		compass: compassLeft,
+		radar: radarLeft,
+	};
+
+	// Items for your own team are written here, like hints: offline-friendly,
+	// and private to the team, so rivals don't see what you buy
+	function buyForTeam(type: ShopItemType) {
+		if (!team || !game || buyingItem || itemBlocked[type]) return;
+		const price = shop[type].price;
+		if (coins < price || (itemRunning[type] ?? 0) > 0) return;
+		setBuyingItem(type);
+		const at = Date.now();
+		const until = at + shop[type].durationMinutes * 60000;
+		const change: Record<string, unknown> = { coins: coins - price };
+		if (type === 'compass') change.activeCompassUntil = until;
+		if (type === 'radar') change.activeRadarUntil = until;
+		if (type === 'shield') change.shields = (team.shields ?? 0) + 1;
 		const batch = writeBatch(db);
-		batch.update(doc(db, 'teams', team.id), {
-			coins: coins - shop.compass.price,
-			activeCompassUntil: until,
+		batch.update(doc(db, 'teams', team.id), change);
+		batch.set(doc(db, 'games', game.id, 'activity', `${team.id}_${type}_${at}`), {
+			type: 'item_bought',
+			at,
+			visibility: 'team',
+			teamId: team.id,
+			teamName: team.name,
+			itemType: type,
+			itemName: `a ${SHOP_ITEMS_BY_TYPE[type].name.toLowerCase()}`,
+			amount: price,
 		});
-		// Private to the team, like hints: rivals shouldn't see what you're buying
-		batch.set(
-			doc(db, 'games', game.id, 'activity', `${team.id}_compass_${until}`),
-			{
-				type: 'item_bought',
-				at: Date.now(),
-				visibility: 'team',
-				teamId: team.id,
-				teamName: team.name,
-				itemName: 'a compass',
-				amount: shop.compass.price,
-			},
-		);
 		batch
 			.commit()
 			.catch(() => {})
-			.finally(() => setBuyingItem(false));
-		// Back to the hint, where the arrow now points the way
-		setShopOpen(false);
+			.finally(() => setBuyingItem(null));
+		// Back to the hint, where the arrow or the radar now helps
+		if (type === 'compass' || type === 'radar') setShopOpen(false);
+	}
+
+	// Items used on another team go through the server, which may change a
+	// team other than your own
+	async function useOnTeam(
+		type: ShopItemType,
+		targetTeamId: string,
+		amount?: number,
+	): Promise<string> {
+		if (!game) throw new Error('No game');
+		setBuyingItem(type);
+		try {
+			const res = await callApi<{
+				outcome: 'cursed' | 'robbed' | 'blocked' | 'donated';
+				targetTeamName: string;
+				amount: number | null;
+			}>('/api/use-item', { gameId: game.id, item: type, targetTeamId, amount });
+			const n = res.amount ?? 0;
+			const coinsText = `${n} coin${n === 1 ? '' : 's'}`;
+			return {
+				cursed: `${res.targetTeamName} is cursed for ${shop.curse.durationMinutes} min.`,
+				robbed: n > 0 ? `You stole ${coinsText} from ${res.targetTeamName}.` : `${res.targetTeamName} had nothing to steal.`,
+				blocked: `${res.targetTeamName} had a shield. It’s gone now, and so are your coins.`,
+				donated: `You gave ${res.targetTeamName} ${coinsText}.`,
+			}[res.outcome];
+		} finally {
+			setBuyingItem(null);
+		}
 	}
 	const hintsRevealed = quest ? hintsRevealedFor(team, quest.id) : 0;
 
@@ -1913,6 +2124,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			!team ||
 			!game ||
 			submitting ||
+			cursed ||
 			!answer.trim() ||
 			spreadTooLarge
 		)
@@ -1972,6 +2184,10 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		if (game.endedAt) return <EndedView game={game} />;
 		if (game.pausedAt) return <PausedView />;
 		if (now < game.startDateTime) return <WaitingView game={game} now={now} />;
+		if (cursed)
+			return (
+				<CursedView by={team.cursedByName ?? 'another team'} msLeft={cursedLeft} />
+			);
 		if (team.finishedAt)
 			return (
 				<FinishedView
@@ -2010,7 +2226,9 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 							: null
 					}
 					heading={heading}
+					headingUncalibrated={headingUncalibrated}
 					compassMsLeft={compassLeft}
+					radarMsLeft={radarLeft}
 				/>
 			);
 		}
@@ -2090,6 +2308,12 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 								color={theme.colors.onSurface}
 							/>
 						)}
+						{radarLeft > 0 && (
+							<Icon name="radar" size={16} color={theme.colors.onSurface} />
+						)}
+						{(team.shields ?? 0) > 0 && (
+							<Icon name="shield-outline" size={16} color={theme.colors.onSurface} />
+						)}
 					</TouchableOpacity>
 				)}
 				<TouchableOpacity
@@ -2108,14 +2332,28 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 					top={insets.top + 8}
 					onPress={() => setProfileOpen(true)}
 				/>
+				{/* Avatar (temporary) */}
+				{team && game && (
+					<AvatarButton
+						gameId={game.id}
+						teamId={team.id}
+						questOrder={game.questOrder}
+						currentQuestId={team.currentQuestId}
+						finished={!!team.finishedAt}
+						top={insets.top + 8 + 36 + 10}
+					/>
+				)}
 				<ShopSheet
 					visible={shopOpen}
 					onClose={() => setShopOpen(false)}
 					shop={shop}
 					coins={coins}
-					compassMsLeft={compassLeft}
-					compassUseful={quest?.trigger === 'location' && !!quest?.location}
-					onBuyCompass={buyCompass}
+					shields={team?.shields ?? 0}
+					running={itemRunning}
+					blocked={itemBlocked}
+					targets={otherTeams}
+					onBuyForTeam={buyForTeam}
+					onUseOnTeam={useOnTeam}
 					buying={buyingItem}
 				/>
 				<ProfileSheet
@@ -2213,10 +2451,14 @@ function makeStyles(t: Theme) {
 			marginTop: 40,
 			marginBottom: 8,
 		},
+		countdownRow: {
+			flexDirection: 'row',
+			justifyContent: 'center',
+		},
 		countdown: {
 			...ui.heading(t, 72),
-			fontVariant: ['tabular-nums'],
-			letterSpacing: 2,
+			letterSpacing: 0,
+			textAlign: 'center',
 		},
 
 		// Navigation
@@ -2459,6 +2701,18 @@ function makeStyles(t: Theme) {
 			fontWeight: '600',
 			color: c.text,
 			marginTop: 12,
+		},
+		compassHint: {
+			fontSize: 14,
+			fontWeight: '600',
+			color: c.danger,
+			backgroundColor: c.surface,
+			borderRadius: t.shape.radius,
+			overflow: 'hidden',
+			paddingHorizontal: 12,
+			paddingVertical: 6,
+			marginTop: 10,
+			textAlign: 'center',
 		},
 		compassMeta: {
 			fontSize: 14,

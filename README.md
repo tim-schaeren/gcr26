@@ -41,6 +41,39 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, the local Firebas
 
 Deploys automatically on every push to `main`. Build config is in `netlify.toml`.
 
+### Server functions
+
+`netlify/functions/` holds what a host's console or a player's app may not do
+by itself, deployed with the site:
+
+| Path               | Does                                                                 |
+| ------------------ | -------------------------------------------------------------------- |
+| `/api/use-item`    | Curse, Robbery and Donate: items one team uses on another             |
+| `/api/hosts`       | A host adds or removes co-hosts by email                             |
+| `/api/send-push`   | A host's push to the game's players                                  |
+
+They run with Firebase admin access, which bypasses the security rules, so
+each one checks the caller's Firebase sign-in itself. They need the
+service account key in the Netlify site's environment as
+`FIREBASE_SERVICE_ACCOUNT` (the whole JSON, scoped to Functions). Without it
+they answer with an error and nothing else breaks.
+
+Locally they run against the emulators:
+
+```bash
+node local/functions-dev.mjs     # serves them on :8888; the console's dev server forwards /api
+node local/functions-test.mjs    # checks them end to end (after seed-players and seed-demo)
+```
+
+For the app on a phone, set `EXPO_PUBLIC_API_URL=http://<LAN IP>:8888` in
+`apps/mobile/.env`, next to `EXPO_PUBLIC_EMULATOR_HOST`.
+
+### Patched dependencies
+
+`patches/` holds fixes to third-party packages, applied by `patch-package` after
+every `npm install`. `expo-location` copies Android sensor readings instead of
+keeping a reference to them; on some phones the compass froze without it.
+
 ### Mobile (iOS)
 
 Builds are done locally using EAS for credential management. A single command builds and submits to TestFlight:
@@ -155,6 +188,7 @@ See `packages/shared/src/types.ts` for the full data model. Collections:
 | `games/{id}/quests`           | Quests scoped to a game; order stored as `questOrder` on the game  |
 | `games/{id}/players`          | Who joined, by name — every player in the game can read it         |
 | `games/{id}/private`          | Each player's last position and push token — only they and the hosts read it |
+| `games/{id}/avatars`          | Avatar (temporary, race of 24 Oct 2026): a picture per team per quest |
 | `games/{id}/activity`         | The bulletin board; entries are `public` or `team`-private         |
 | `games/{id}/messages`         | Chat, one thread per team, between that team and the hosts         |
 | `games/{id}/attempts`         | Rejected answers — hosts only, never readable by players           |

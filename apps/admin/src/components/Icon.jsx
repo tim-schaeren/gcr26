@@ -24,6 +24,13 @@ import {
   mdiCheck,
   mdiChatOutline,
   mdiAccountOutline,
+  mdiEggOutline,
+  mdiRadar,
+  mdiShieldOutline,
+  mdiShieldCheckOutline,
+  mdiSkullOutline,
+  mdiSackPercent,
+  mdiHandCoinOutline,
   mdiPencilOutline,
 } from '@mdi/js';
 
@@ -55,6 +62,13 @@ const PATHS = {
   'check': mdiCheck,
   'chat-outline': mdiChatOutline,
   'account-outline': mdiAccountOutline,
+  'egg-outline': mdiEggOutline,
+  'radar': mdiRadar,
+  'shield-outline': mdiShieldOutline,
+  'shield-check-outline': mdiShieldCheckOutline,
+  'skull-outline': mdiSkullOutline,
+  'sack-percent': mdiSackPercent,
+  'hand-coin-outline': mdiHandCoinOutline,
   'pencil-outline': mdiPencilOutline,
 };
 

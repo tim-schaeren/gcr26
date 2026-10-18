@@ -15,6 +15,9 @@ import PrivacyPage from './pages/legal/PrivacyPage';
 import TermsPage from './pages/legal/TermsPage';
 import GuidelinesPage from './pages/legal/GuidelinesPage';
 import SupportPage from './pages/legal/SupportPage';
+import PlayerHelpPage from './pages/help/PlayerHelpPage';
+import HostHelpPage from './pages/help/HostHelpPage';
+import AvatarsPage from './pages/AvatarsPage'; // Avatar (temporary)
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -45,6 +48,8 @@ export default function App() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/guidelines" element={<GuidelinesPage />} />
         <Route path="/support" element={<SupportPage />} />
+        <Route path="/help" element={<PlayerHelpPage />} />
+        <Route path="/help/hosting" element={<HostHelpPage />} />
         <Route
           path="/login"
           element={user ? <Navigate to="/games" replace /> : <LoginPage />}
@@ -66,6 +71,8 @@ export default function App() {
           <Route path="games/:gameId/activity" element={<ActivityPage />} />
           <Route path="games/:gameId/chat" element={<ChatPage />} />
           <Route path="games/:gameId/live-map" element={<LiveMapPage />} />
+          {/* Avatar (temporary) */}
+          <Route path="games/:gameId/avatars" element={<AvatarsPage />} />
           <Route path="games/:gameId/game" element={<GamePage />} />
           <Route path="players" element={<PlayersPage />} />
         </Route>
