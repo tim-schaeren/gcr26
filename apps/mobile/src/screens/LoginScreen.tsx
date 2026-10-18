@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { authErrorMessage } from '@gcr26/shared';
 import { auth } from '../firebase';
 import SignUpModal from '../components/SignUpModal';
 
@@ -25,7 +26,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-    } catch (e: any) {
+    } catch (e) {
       Alert.alert('Sign in failed', 'Invalid email or password.');
     } finally {
       setLoading(false);

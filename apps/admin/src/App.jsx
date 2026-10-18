@@ -1,6 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import { auth } from './firebase';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/LoginPage';
 import Layout from './components/Layout';
@@ -13,9 +11,12 @@ import ChatPage from './pages/ChatPage';
 import ItemsPage from './pages/ItemsPage';
 import LiveMapPage from './pages/LiveMapPage';
 import GamePage from './pages/GamePage';
+import PrivacyPage from './pages/legal/PrivacyPage';
+import TermsPage from './pages/legal/TermsPage';
+import GuidelinesPage from './pages/legal/GuidelinesPage';
 
 function ProtectedRoute({ children }) {
-  const { user, isAdmin, isHost, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -26,22 +27,6 @@ function ProtectedRoute({ children }) {
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  // Platform admins run everything; hosts get in for the games they run.
-  // Signing out has to be reachable here, or the screen is a dead end.
-  if (!isAdmin && !isHost) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="text-gray-500">Your account doesn't host any games.</p>
-        <p className="text-xs text-gray-400">Signed in as {user.email}</p>
-        <button
-          onClick={() => signOut(auth)}
-          className="mt-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          Sign out
-        </button>
-      </div>
-    );
-  }
 
   return children;
 }
@@ -54,6 +39,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public: the stores require a reachable privacy policy */}
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/guidelines" element={<GuidelinesPage />} />
         <Route
           path="/login"
           element={user ? <Navigate to="/games" replace /> : <LoginPage />}

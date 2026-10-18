@@ -10,10 +10,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   TextInput as TextInputType,
+  Linking,
 } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
+import {
+  authErrorMessage,
+  emailLooksValid,
+  MIN_PASSWORD_LENGTH,
+} from '@gcr26/shared';
 import { auth, db } from '../firebase';
+import { LEGAL } from '../config';
 
 interface Props {
   visible: boolean;
@@ -25,6 +32,7 @@ export default function SignUpModal({ visible, onClose }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const emailRef = useRef<TextInputType>(null);
@@ -33,6 +41,18 @@ export default function SignUpModal({ visible, onClose }: Props) {
   async function handleSignUp() {
     if (!name.trim() || !email.trim() || !password) {
       setError('Please fill in all fields.');
+      return;
+    }
+    if (!emailLooksValid(email)) {
+      setError('That email address doesn\u2019t look right.');
+      return;
+    }
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Pick a password with at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return;
+    }
+    if (!accepted) {
+      setError('Please accept the terms to continue.');
       return;
     }
     setError('');
@@ -44,12 +64,14 @@ export default function SignUpModal({ visible, onClose }: Props) {
         email: email.trim(),
         isAdmin: false,
         teamId: null,
+        gameId: null,
         pushToken: null,
         createdAt: Date.now(),
+        acceptedTermsAt: Date.now(),
       });
       // auth state change will automatically navigate to HomeScreen
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(authErrorMessage(e));
       setLoading(false);
     }
   }
@@ -58,6 +80,7 @@ export default function SignUpModal({ visible, onClose }: Props) {
     setName('');
     setEmail('');
     setPassword('');
+    setAccepted(false);
     setError('');
     onClose();
   }
@@ -114,6 +137,34 @@ export default function SignUpModal({ visible, onClose }: Props) {
           onSubmitEditing={handleSignUp}
         />
 
+        <TouchableOpacity
+          style={styles.acceptRow}
+          onPress={() => setAccepted(a => !a)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.checkbox, accepted && styles.checkboxOn]}>
+            {accepted && <Text style={styles.checkboxTick}>✓</Text>}
+          </View>
+          <Text style={styles.acceptText}>
+            I agree to the{' '}
+            <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.terms)}>
+              terms
+            </Text>
+            ,{' '}
+            <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.privacy)}>
+              privacy policy
+            </Text>{' '}
+            and{' '}
+            <Text
+              style={styles.link}
+              onPress={() => Linking.openURL(LEGAL.guidelines)}
+            >
+              community guidelines
+            </Text>
+            .
+          </Text>
+        </TouchableOpacity>
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {loading ? (
@@ -156,6 +207,42 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 16,
     marginBottom: 12,
+  },
+  acceptRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 18,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxOn: {
+    backgroundColor: '#111',
+    borderColor: '#111',
+  },
+  checkboxTick: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  acceptText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 19,
+  },
+  link: {
+    color: '#111',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   error: {
     color: '#e33',

@@ -21,6 +21,7 @@ import {
 	doc,
 	collection,
 	onSnapshot,
+	deleteDoc,
 	updateDoc,
 	addDoc,
 	arrayUnion,
@@ -32,6 +33,7 @@ import {
 	limit,
 } from 'firebase/firestore';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -63,6 +65,9 @@ import {
 import { distanceMeters, bearingDegrees } from '../utils/geo';
 import ContentBlocks from '../components/ContentBlocks';
 import ShopSheet from '../components/ShopSheet';
+import DeleteAccountModal from '../components/DeleteAccountModal';
+import PermissionsIntro from '../components/PermissionsIntro';
+import { LEGAL } from '../config';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -180,12 +185,19 @@ function CompassArrow({
 	return (
 		<View style={styles.compassWrap}>
 			<View style={styles.compassDial}>
-				<Text style={[styles.compassArrow, { transform: [{ rotate: `${rotation}deg` }] }]}>
+				<Text
+					style={[
+						styles.compassArrow,
+						{ transform: [{ rotate: `${rotation}deg` }] },
+					]}
+				>
 					↑
 				</Text>
 			</View>
 			{distance !== null && (
-				<Text style={styles.compassDistance}>{Math.round(distance)} m away</Text>
+				<Text style={styles.compassDistance}>
+					{Math.round(distance)} m away
+				</Text>
 			)}
 			<Text style={styles.compassMeta}>
 				{heading === null ? 'from north · ' : ''}compass {left}
@@ -564,7 +576,8 @@ function ActivityList({
 			{entries.map((entry) => {
 				const { icon, text } = formatActivity(entry, viewerTeamId);
 				// A team's own actions aren't news to them, but what a host did to them is
-				const isNew = isNewsFor(entry, viewerTeamId) && entry.at > highlightSince;
+				const isNew =
+					isNewsFor(entry, viewerTeamId) && entry.at > highlightSince;
 				return (
 					<View
 						key={entry.id}
@@ -597,7 +610,8 @@ function HotlineBar({ number }: { number: string }) {
 			onPress={() => Linking.openURL(`tel:${number}`)}
 		>
 			<Text style={styles.hotlineBarText}>
-				Something wrong? <Text style={styles.hotlineBarLink}>Call the hosts</Text>
+				Something wrong?{' '}
+				<Text style={styles.hotlineBarLink}>Call the hosts</Text>
 			</Text>
 		</TouchableOpacity>
 	);
@@ -626,13 +640,16 @@ function ChatView({
 
 	// Keep the newest message in view, including when one arrives while reading
 	useEffect(() => {
-		const id = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+		const id = setTimeout(
+			() => scrollRef.current?.scrollToEnd({ animated: true }),
+			50,
+		);
 		return () => clearTimeout(id);
 	}, [messages.length]);
 
 	// "Seen" belongs on the last message of each side only, or the thread turns into noise
-	const lastMine = [...messages].reverse().find(m => !m.fromHost);
-	const lastTheirs = [...messages].reverse().find(m => m.fromHost);
+	const lastMine = [...messages].reverse().find((m) => !m.fromHost);
+	const lastTheirs = [...messages].reverse().find((m) => m.fromHost);
 
 	const insets = useSafeAreaInsets();
 	const [keyboardUp, setKeyboardUp] = useState(false);
@@ -688,12 +705,16 @@ function ChatView({
 									]}
 								>
 									<Text
-										style={m.fromHost ? styles.bubbleTextHost : styles.bubbleTextMine}
+										style={
+											m.fromHost ? styles.bubbleTextHost : styles.bubbleTextMine
+										}
 									>
 										{m.text}
 									</Text>
 									<Text
-										style={m.fromHost ? styles.bubbleMetaHost : styles.bubbleMetaMine}
+										style={
+											m.fromHost ? styles.bubbleMetaHost : styles.bubbleMetaMine
+										}
 									>
 										{m.fromHost ? 'Hosts' : m.authorName} ·{' '}
 										{formatActivityTime(m.sentAt)}
@@ -838,51 +859,53 @@ function LeaderboardModal({
 						hostReadAt={hostReadAt}
 					/>
 				) : (
-				<ScrollView
-					contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
-				>
-					{tab === 'activity' && (
-						<ActivityList
-							entries={activity}
-							viewerTeamId={currentTeamId}
-							highlightSince={highlightSince}
-						/>
-					)}
-					{tab === 'leaderboard' &&
-						sorted.map((t, i) => {
-							const isCurrent = t.id === currentTeamId;
-							const completed = t.completedQuestIds?.length ?? 0;
-							const duration = t.finishedAt
-								? t.finishedAt - game.startDateTime - totalPausedMs
-								: null;
-							const medalEmoji =
-								i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
-							return (
-								<View
-									key={t.id}
-									style={[styles.lbRow, isCurrent && styles.lbRowCurrent]}
-								>
-									<Text style={styles.lbRank}>{medalEmoji ?? `#${i + 1}`}</Text>
-									<View style={{ flex: 1 }}>
-										<Text
-											style={[
-												styles.lbTeamName,
-												isCurrent && styles.lbTeamNameCurrent,
-											]}
-										>
-											{t.name}
-											{isCurrent ? ' (you)' : ''}
+					<ScrollView
+						contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+					>
+						{tab === 'activity' && (
+							<ActivityList
+								entries={activity}
+								viewerTeamId={currentTeamId}
+								highlightSince={highlightSince}
+							/>
+						)}
+						{tab === 'leaderboard' &&
+							sorted.map((t, i) => {
+								const isCurrent = t.id === currentTeamId;
+								const completed = t.completedQuestIds?.length ?? 0;
+								const duration = t.finishedAt
+									? t.finishedAt - game.startDateTime - totalPausedMs
+									: null;
+								const medalEmoji =
+									i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+								return (
+									<View
+										key={t.id}
+										style={[styles.lbRow, isCurrent && styles.lbRowCurrent]}
+									>
+										<Text style={styles.lbRank}>
+											{medalEmoji ?? `#${i + 1}`}
 										</Text>
-										<Text style={styles.lbDetail}>
-											{duration !== null
-												? `Finished · ${formatDuration(duration)}`
-												: `${completed} / ${totalQuests} quests`}
-										</Text>
+										<View style={{ flex: 1 }}>
+											<Text
+												style={[
+													styles.lbTeamName,
+													isCurrent && styles.lbTeamNameCurrent,
+												]}
+											>
+												{t.name}
+												{isCurrent ? ' (you)' : ''}
+											</Text>
+											<Text style={styles.lbDetail}>
+												{duration !== null
+													? `Finished · ${formatDuration(duration)}`
+													: `${completed} / ${totalQuests} quests`}
+											</Text>
+										</View>
 									</View>
-								</View>
-							);
-						})}
-				</ScrollView>
+								);
+							})}
+					</ScrollView>
 				)}
 			</KeyboardAvoidingView>
 		</Modal>
@@ -957,12 +980,19 @@ function ProfileButton({
 function ProfileSheet({
 	visible,
 	name,
+	onLeaveGame,
+	leaving,
+	onDeleteAccount,
 	onClose,
 }: {
 	visible: boolean;
 	name: string;
+	onLeaveGame: () => void;
+	leaving: boolean;
+	onDeleteAccount: () => void;
 	onClose: () => void;
 }) {
+	const [confirmingLeave, setConfirmingLeave] = useState(false);
 	return (
 		<Modal
 			visible={visible}
@@ -979,11 +1009,56 @@ function ProfileSheet({
 				<View style={styles.sheet}>
 					<View style={styles.sheetHandle} />
 					<Text style={styles.sheetName}>{name}</Text>
+
+					{confirmingLeave ? (
+						<View style={styles.sheetRow}>
+							<Text style={styles.sheetConfirmText}>
+								Leave this game? Your team keeps its progress, and you can
+								rejoin with the invite code.
+							</Text>
+							<View style={styles.sheetConfirmRow}>
+								<TouchableOpacity
+									onPress={() => setConfirmingLeave(false)}
+									style={styles.sheetCancel}
+								>
+									<Text style={styles.sheetCancelText}>Cancel</Text>
+								</TouchableOpacity>
+								<TouchableOpacity
+									onPress={onLeaveGame}
+									disabled={leaving}
+									style={[styles.sheetLeave, leaving && { opacity: 0.4 }]}
+								>
+									<Text style={styles.sheetLeaveText}>
+										{leaving ? 'Leaving…' : 'Leave game'}
+									</Text>
+								</TouchableOpacity>
+							</View>
+						</View>
+					) : (
+						<TouchableOpacity
+							style={styles.sheetRow}
+							onPress={() => setConfirmingLeave(true)}
+						>
+							<Text style={styles.sheetRowText}>Leave game</Text>
+						</TouchableOpacity>
+					)}
+
 					<TouchableOpacity
 						style={styles.sheetRow}
 						onPress={() => signOut(auth)}
 					>
-						<Text style={styles.sheetRowDestructive}>Sign Out</Text>
+						<Text style={styles.sheetRowText}>Sign out</Text>
+					</TouchableOpacity>
+
+					<TouchableOpacity
+						style={styles.sheetRow}
+						onPress={() => Linking.openURL(LEGAL.privacy)}
+					>
+						<Text style={styles.sheetRowText}>Privacy &amp; terms</Text>
+					</TouchableOpacity>
+
+					<TouchableOpacity style={styles.sheetRow} onPress={onDeleteAccount}>
+						<Text style={styles.sheetRowDestructive}>Delete account</Text>
 					</TouchableOpacity>
 				</View>
 			</View>
@@ -1034,6 +1109,12 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	const [draft, setDraft] = useState('');
 	const [sendingMessage, setSendingMessage] = useState(false);
 	const [shopOpen, setShopOpen] = useState(false);
+	const [leavingGame, setLeavingGame] = useState(false);
+	const [deletingAccount, setDeletingAccount] = useState(false);
+	// Permission prompts wait behind an explainer, so they arrive with a reason
+	const [introState, setIntroState] = useState<'unknown' | 'show' | 'done'>(
+		'unknown',
+	);
 	const [buyingItem, setBuyingItem] = useState(false);
 	const [heading, setHeading] = useState<number | null>(null);
 
@@ -1154,7 +1235,9 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		const newest = messages[messages.length - 1].sentAt;
 		if (newest > chatSeenAt) {
 			setChatSeenAt(newest);
-			AsyncStorage.setItem(`chatSeen:${game.id}`, String(newest)).catch(() => {});
+			AsyncStorage.setItem(`chatSeen:${game.id}`, String(newest)).catch(
+				() => {},
+			);
 		}
 		// Shared marker, so the hosts can see their message was read
 		if (team && (team.teamChatReadAt ?? 0) < newest) {
@@ -1180,7 +1263,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		addDoc(collection(db, 'games', game.id, 'messages'), {
 			teamId: team.id,
 			authorId: auth.currentUser?.uid ?? '',
-			authorName: profile?.name ?? 'A player',
+			authorName: profile?.name ?? 'A nameless player',
 			fromHost: false,
 			text,
 			sentAt: Date.now(),
@@ -1239,8 +1322,35 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		);
 	}, [game?.id, currentQuestId]);
 
+	useEffect(() => {
+		AsyncStorage.getItem('permissionsIntro:v1')
+			.then((seen) => setIntroState(seen ? 'done' : 'show'))
+			.catch(() => setIntroState('show'));
+	}, []);
+
+	async function finishIntro(grantNow: boolean) {
+		setIntroState('done');
+		AsyncStorage.setItem('permissionsIntro:v1', String(Date.now())).catch(
+			() => {},
+		);
+		if (!grantNow) return;
+		// Notifications are asked for here rather than at app launch, so the
+		// prompt follows the explanation of what they are for
+		try {
+			const { status } = await Notifications.requestPermissionsAsync();
+			const uid = auth.currentUser?.uid;
+			if (status === 'granted' && uid) {
+				const token = (await Notifications.getExpoPushTokenAsync()).data;
+				await updateDoc(doc(db, 'users', uid), { pushToken: token });
+			}
+		} catch {
+			// Push is optional; the game works without it
+		}
+	}
+
 	// Location — watch position, write lastLocation + trail to Firestore (throttled)
 	useEffect(() => {
+		if (introState !== 'done') return;
 		let sub: Location.LocationSubscription | null = null;
 		(async () => {
 			const { status } = await Location.requestForegroundPermissionsAsync();
@@ -1328,7 +1438,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		return () => {
 			sub?.remove();
 		};
-	}, [team?.id, game?.id]);
+	}, [team?.id, game?.id, introState]);
 
 	// Team member locations — for spread check
 	useEffect(() => {
@@ -1499,8 +1609,10 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		}
 		let sub: Location.LocationSubscription | null = null;
 		let cancelled = false;
-		Location.watchHeadingAsync(h => setHeading(h.trueHeading >= 0 ? h.trueHeading : h.magHeading))
-			.then(s => {
+		Location.watchHeadingAsync((h) =>
+			setHeading(h.trueHeading >= 0 ? h.trueHeading : h.magHeading),
+		)
+			.then((s) => {
 				if (cancelled) s.remove();
 				else sub = s;
 			})
@@ -1510,6 +1622,27 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			sub?.remove();
 		};
 	}, [compassLeft > 0]);
+
+	// Leaving takes this player out of the team but leaves the team's progress
+	// alone — it belongs to the team, not to any one member
+	async function leaveGame() {
+		const uid = auth.currentUser?.uid;
+		if (!uid || !team || leavingGame) return;
+		setLeavingGame(true);
+		try {
+			await updateDoc(doc(db, 'teams', team.id), {
+				memberIds: (team.memberIds ?? []).filter((id) => id !== uid),
+			});
+			await updateDoc(doc(db, 'users', uid), { teamId: null, gameId: null });
+			if (game) {
+				await deleteDoc(doc(db, 'games', game.id, 'players', uid)).catch(
+					() => {},
+				);
+			}
+		} catch {
+			setLeavingGame(false);
+		}
+	}
 
 	function buyCompass() {
 		if (!team || !game || buyingItem) return;
@@ -1731,7 +1864,12 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 					distance={distanceToQuest}
 					bearing={
 						coords && quest.location
-							? bearingDegrees(coords.lat, coords.lng, quest.location.lat, quest.location.lng)
+							? bearingDegrees(
+									coords.lat,
+									coords.lng,
+									quest.location.lat,
+									quest.location.lng,
+								)
 							: null
 					}
 					heading={heading}
@@ -1832,7 +1970,21 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			<ProfileSheet
 				visible={profileOpen}
 				name={userName}
+				onLeaveGame={leaveGame}
+				leaving={leavingGame}
+				onDeleteAccount={() => {
+					setProfileOpen(false);
+					setDeletingAccount(true);
+				}}
 				onClose={() => setProfileOpen(false)}
+			/>
+			<DeleteAccountModal
+				visible={deletingAccount}
+				onClose={() => setDeletingAccount(false)}
+			/>
+			<PermissionsIntro
+				visible={introState === 'show'}
+				onContinue={() => finishIntro(true)}
 			/>
 			{game && (
 				<LeaderboardModal
@@ -2463,6 +2615,43 @@ const styles = StyleSheet.create({
 		paddingVertical: 16,
 		borderTopWidth: 1,
 		borderTopColor: '#f3f4f6',
+	},
+	sheetRowText: {
+		fontSize: 16,
+		color: '#111',
+	},
+	sheetConfirmText: {
+		fontSize: 14,
+		color: '#666',
+		lineHeight: 20,
+	},
+	sheetConfirmRow: {
+		flexDirection: 'row',
+		gap: 10,
+		marginTop: 12,
+	},
+	sheetCancel: {
+		paddingVertical: 10,
+		paddingHorizontal: 16,
+		borderRadius: 10,
+		borderWidth: 1.5,
+		borderColor: '#e5e7eb',
+	},
+	sheetCancelText: {
+		fontSize: 15,
+		fontWeight: '600',
+		color: '#111',
+	},
+	sheetLeave: {
+		paddingVertical: 10,
+		paddingHorizontal: 16,
+		borderRadius: 10,
+		backgroundColor: '#ef4444',
+	},
+	sheetLeaveText: {
+		fontSize: 15,
+		fontWeight: '600',
+		color: '#fff',
 	},
 	sheetRowDestructive: {
 		fontSize: 16,

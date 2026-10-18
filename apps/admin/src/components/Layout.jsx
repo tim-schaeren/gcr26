@@ -5,6 +5,7 @@ import {
   collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { generateJoinCode } from '@gcr26/shared';
 import { useAuth } from '../hooks/useAuth';
 import GameForm from './GameForm';
 
@@ -106,8 +107,12 @@ export default function Layout() {
     setSaving(true);
     try {
       if (editingGame === 'new') {
-        // Whoever creates a game hosts it
-        const ref = await addDoc(collection(db, 'games'), { ...data, hostIds: [user.uid] });
+        // Whoever creates a game hosts it, and it needs a code for players to join with
+        const ref = await addDoc(collection(db, 'games'), {
+          ...data,
+          hostIds: [user.uid],
+          joinCode: generateJoinCode(),
+        });
         navigate(`/games/${ref.id}/quests`);
       } else {
         await updateDoc(doc(db, 'games', editingGame.id), data);
@@ -260,7 +265,26 @@ export default function Layout() {
         {/* Main content */}
         <main className="flex-1 overflow-hidden flex">
           <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-            <Outlet />
+            {games.length === 0 ? (
+              // First run: a new host has nowhere to go until a game exists
+              <div className="max-w-md mx-auto mt-16 text-center">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  Welcome to Grand City Race
+                </h1>
+                <p className="text-sm text-gray-500 mb-6">
+                  Create a game, add some quests, and share its invite code with
+                  your players. They join from the app with that code.
+                </p>
+                <button
+                  onClick={() => setEditingGame('new')}
+                  className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+                >
+                  Create your first game
+                </button>
+              </div>
+            ) : (
+              <Outlet />
+            )}
           </div>
         </main>
       </div>

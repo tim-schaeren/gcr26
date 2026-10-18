@@ -5,6 +5,7 @@ export interface User {
   name: string;
   email: string;
   isAdmin: boolean;
+  gameId?: string | null;     // the game they joined, before picking a team
   teamId: string | null;
   pushToken: string | null;   // Expo push token for notifications
   createdAt: number;          // Unix timestamp
@@ -163,6 +164,7 @@ export interface Game {
   cityCoordinates: GeoPoint;
   questOrder: string[];     // ordered list of quest IDs (subcollection)
   hostIds?: string[];       // users who may run this game; platform admins can run every game
+  joinCode?: string;        // what players type to join
   hotlineNumber?: string;   // phone number teams can call when something goes wrong
   shop?: Record<string, { enabled?: boolean; price?: number; durationMinutes?: number }>;
   maxTeamSize?: number;     // optional soft limit shown in admin UI
@@ -173,6 +175,16 @@ export interface Game {
   pausedAt: number | null;  // timestamp when game was paused; null = not paused
   totalPausedMs: number;    // accumulated pause duration in ms (updated on resume)
   endedAt: number | null;   // timestamp when admin ended the game; null = not ended
+}
+
+// ─── Game membership ──────────────────────────────────────────────────────────
+
+// games/{gameId}/players/{uid}: who has joined, so a host can see their own
+// players without being able to read the whole platform's user list
+export interface GamePlayer {
+  id: string;        // the user's uid
+  name: string;
+  joinedAt: number;
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────

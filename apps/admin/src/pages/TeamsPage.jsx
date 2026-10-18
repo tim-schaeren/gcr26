@@ -8,7 +8,14 @@ import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
   useDroppable, useDraggable,
 } from '@dnd-kit/core';
-import { gameEconomy, teamCoins, normalizeQuest } from '@gcr26/shared';
+import {
+  gameEconomy,
+  teamCoins,
+  normalizeQuest,
+  TEAM_COLORS,
+  MAX_TEAMS_PER_GAME,
+} from '@gcr26/shared';
+import { useAuth } from '../hooks/useAuth';
 import { db, auth } from '../firebase';
 import CoinAdjustModal from '../components/CoinAdjustModal';
 import TeamProgressModal from '../components/TeamProgressModal';
@@ -140,11 +147,10 @@ function DroppableTeamCard({ team, members, maxTeamSize, coins, onRemove, onEdit
   );
 }
 
-const DEFAULT_COLORS = ['#e11d48','#2563eb','#16a34a','#d97706','#7c3aed','#0891b2','#be185d','#ea580c'];
 
 function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
   const [name, setName] = useState(team?.name ?? '');
-  const [color, setColor] = useState(team?.color ?? DEFAULT_COLORS[0]);
+  const [color, setColor] = useState(team?.color ?? TEAM_COLORS[0]);
   const [confirming, setConfirming] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
 
@@ -191,7 +197,7 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
               <div className="flex flex-wrap gap-2 mb-2">
-                {DEFAULT_COLORS.map(c => (
+                {TEAM_COLORS.map(c => (
                   <button
                     key={c}
                     onClick={() => setColor(c)}
@@ -267,11 +273,13 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
 
 export default function TeamsPage() {
   const { gameId } = useParams();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const { state } = useLocation();
   const [game, setGame] = useState(null);
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
+  const [members, setMembers] = useState([]);
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
   const [activeId, setActiveId] = useState(null);
@@ -308,11 +316,22 @@ export default function TeamsPage() {
     });
   }, [gameId]);
 
+  // Platform admins can read every user; a host can't, and doesn't need to —
+  // the game's own membership documents name the players who joined it.
   useEffect(() => {
+    if (!isAdmin) return;
     return onSnapshot(collection(db, 'users'), snap => {
       setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-  }, []);
+  }, [isAdmin]);
+
+  useEffect(() => {
+    return onSnapshot(
+      collection(db, 'games', gameId, 'players'),
+      snap => setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      () => setMembers([]),
+    );
+  }, [gameId]);
 
   // Scroll to + briefly highlight a team when arriving from leaderboard/players
   useEffect(() => {
@@ -326,9 +345,18 @@ export default function TeamsPage() {
     }
   }, [state?.highlightTeamId, teams.length]);
 
-  const userMap = Object.fromEntries(users.map(u => [u.id, u]));
-  const teamIds = new Set(teams.map(t => t.id));
-  const unassigned = users.filter(u => !u.isAdmin && (!u.teamId || !teamIds.has(u.teamId)));
+  // Everyone this page knows about: players who joined with the invite code,
+  // plus — for admins — users already on a team, which covers games whose
+  // players were assigned by hand before invite codes existed.
+  const assignedIds = new Set(teams.flatMap(t => t.memberIds ?? []));
+  const people = [
+    ...members.map(m => ({ id: m.id, name: m.name })),
+    ...users
+      .filter(u => !u.isAdmin && (assignedIds.has(u.id) || u.gameId === gameId))
+      .map(u => ({ id: u.id, name: u.name })),
+  ];
+  const userMap = Object.fromEntries(people.map(p => [p.id, p]));
+  const unassigned = Object.values(userMap).filter(p => !assignedIds.has(p.id));
   const activeUser = activeId ? userMap[activeId] : null;
 
   function handleDragStart({ active }) {
@@ -343,9 +371,9 @@ export default function TeamsPage() {
     const targetTeam = teams.find(t => t.id === over.id);
     if (!user || !targetTeam) return;
 
-    const sourceTeam = user.teamId && teamIds.has(user.teamId)
-      ? teams.find(t => t.id === user.teamId)
-      : null;
+    // Membership lives on the team, so read it from there rather than from the
+    // player record, which a host can't always see
+    const sourceTeam = teams.find(t => (t.memberIds ?? []).includes(user.id)) ?? null;
 
     if (sourceTeam?.id === targetTeam.id) return;
 
@@ -353,10 +381,8 @@ export default function TeamsPage() {
     if (game?.maxTeamSize && targetMembers.length >= game.maxTeamSize) return;
 
     // Optimistic update: reflect the move immediately so there's no snap-back
-    // while we wait for the Firestore round-trip.
-    setUsers(prev => prev.map(u =>
-      u.id === user.id ? { ...u, teamId: targetTeam.id } : u
-    ));
+    // while we wait for the Firestore round-trip. Team membership is what the
+    // page renders from, so updating teams is enough.
     setTeams(prev => prev.map(t => {
       if (t.id === targetTeam.id) {
         return { ...t, memberIds: [...new Set([...(t.memberIds ?? []), user.id])] };

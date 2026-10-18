@@ -14,7 +14,7 @@ import {
 } from 'firebase/auth';
 import {
   getFirestore, connectFirestoreEmulator, doc, setDoc, updateDoc, addDoc, getDoc,
-  getDocs, collection, query, where, orderBy, documentId, writeBatch,
+  getDocs, collection, query, where, orderBy, documentId, writeBatch, deleteDoc,
 } from 'firebase/firestore';
 
 const PROJECT = 'rules-test';
@@ -86,7 +86,8 @@ for (const [key, person] of Object.entries(people)) {
   await seed(`users/${person.uid}`, fields);
 }
 
-await seed(`games/${GAME}`, { name: S('Hosted game'), hostIds: ARR([S(people.host.uid)]), questOrder: ARR([S(QUEST), S('q2')]) });
+const JOIN_CODE = 'B7EKQ8';
+await seed(`games/${GAME}`, { name: S('Hosted game'), hostIds: ARR([S(people.host.uid)]), joinCode: S(JOIN_CODE), questOrder: ARR([S(QUEST), S('q2')]) });
 await seed(`games/${GAME_NO_HOSTS}`, { name: S('Game with no hostIds'), questOrder: ARR([]) });
 await seed(`teams/${TEAM_A}`, {
   name: S('Team A'), gameId: S(GAME), memberIds: ARR([S(people.playerA.uid), S(people.mateA.uid)]),
@@ -187,6 +188,69 @@ await expect('cannot forge the host read marker', false, () => updateDoc(doc(db,
 await expect('cannot sneak a rename in with an allowed field', false, () => updateDoc(doc(db, 'teams', TEAM_A), { coins: 1, name: 'hax' }));
 await expect('cannot read the trail', false, async () =>
   (await getDocs(query(collection(db, 'trail'), where('gameId', '==', GAME)))).docs.length);
+
+// ── self-service: joining a game by code, then a team ──────────────────────
+group('self-service');
+await as('outsider');
+const OUTSIDER = people.outsider.uid;
+await expect('finds a game by its invite code', true, async () =>
+  (await getDocs(query(collection(db, 'games'), where('joinCode', '==', JOIN_CODE)))).docs.length);
+await expect('joins the game (own membership doc)', true, () =>
+  setDoc(doc(db, 'games', GAME, 'players', OUTSIDER), { id: OUTSIDER, name: 'outsider', joinedAt: Date.now() }));
+await expect('CANNOT join as somebody else', false, () =>
+  setDoc(doc(db, 'games', GAME, 'players', people.playerB.uid), { id: people.playerB.uid, name: 'not me', joinedAt: Date.now() }));
+await expect('records the game on their own profile', true, () =>
+  updateDoc(doc(db, 'users', OUTSIDER), { gameId: GAME }));
+await expect('starts a team in a game they joined', true, () =>
+  setDoc(doc(db, 'teams', id('newteam')), {
+    name: 'The Newcomers', color: '#111', gameId: GAME, memberIds: [OUTSIDER],
+    score: 0, coins: 0, currentQuestId: null, completedQuestIds: [], finishedAt: null, questProgress: null,
+  }));
+await expect('CANNOT start a team with somebody else in it', false, () =>
+  setDoc(doc(db, 'teams', id('forgedteam')), {
+    name: 'Forged', color: '#111', gameId: GAME, memberIds: [OUTSIDER, people.playerB.uid],
+    score: 0, coins: 0, currentQuestId: null, completedQuestIds: [], finishedAt: null, questProgress: null,
+  }));
+await expect('CANNOT start a team in a game they never joined', false, () =>
+  setDoc(doc(db, 'teams', id('otherteam')), {
+    name: 'Nope', color: '#111', gameId: GAME_NO_HOSTS, memberIds: [OUTSIDER],
+    score: 0, coins: 0, currentQuestId: null, completedQuestIds: [], finishedAt: null, questProgress: null,
+  }));
+await expect('CANNOT start a team mid-race with progress already on it', false, () =>
+  setDoc(doc(db, 'teams', id('cheatteam')), {
+    name: 'Head start', color: '#111', gameId: GAME, memberIds: [OUTSIDER],
+    score: 0, coins: 0, currentQuestId: null, completedQuestIds: [QUEST], finishedAt: null, questProgress: null,
+  }));
+await expect('joins an existing team by adding only themselves', true, () =>
+  updateDoc(doc(db, 'teams', TEAM_B), { memberIds: [people.playerB.uid, OUTSIDER] }));
+await expect('CANNOT add somebody else to a team', false, () =>
+  updateDoc(doc(db, 'teams', TEAM_A), { memberIds: [people.playerA.uid, people.mateA.uid, people.playerB.uid] }));
+await expect('CANNOT rename a team while joining it', false, () =>
+  updateDoc(doc(db, 'teams', TEAM_A), { memberIds: [people.playerA.uid, people.mateA.uid, OUTSIDER], name: 'hax' }));
+await expect('leaves a team by removing only themselves', true, () =>
+  updateDoc(doc(db, 'teams', TEAM_B), { memberIds: [people.playerB.uid] }));
+await expect('CANNOT remove somebody else from a team', false, () =>
+  updateDoc(doc(db, 'teams', TEAM_B), { memberIds: [] }));
+await expect('leaves the game (deletes own membership)', true, () =>
+  deleteDoc(doc(db, 'games', GAME, 'players', OUTSIDER)));
+
+// ── account deletion: a person can erase themselves, and only themselves ───
+group('account deletion');
+await as('mateA');
+const MATE = people.mateA.uid;
+await seed(`trail/own_${tag}`, { userId: S(MATE), teamId: S(TEAM_A), gameId: S(GAME), lat: { doubleValue: 1 }, lng: { doubleValue: 2 }, t: I(1) });
+await seed(`games/${GAME}/messages/mine_${tag}`, { teamId: S(TEAM_A), authorId: S(MATE), authorName: S('Mate'), fromHost: B(false), text: S('mine'), sentAt: I(9) });
+await expect('reads their own trail points', true, async () =>
+  (await getDocs(query(collection(db, 'trail'), where('userId', '==', MATE)))).docs.length);
+await expect("CANNOT read someone else's trail", false, async () =>
+  (await getDocs(query(collection(db, 'trail'), where('userId', '==', people.playerA.uid)))).docs.length);
+await expect('deletes their own trail point', true, () => deleteDoc(doc(db, 'trail', `own_${tag}`)));
+await expect('deletes their own chat message', true, () => deleteDoc(doc(db, 'games', GAME, 'messages', `mine_${tag}`)));
+await expect("CANNOT delete someone else's chat message", false, () => deleteDoc(doc(db, 'games', GAME, 'messages', 'mA')));
+await expect('takes themselves off their team', true, () =>
+  updateDoc(doc(db, 'teams', TEAM_A), { memberIds: [people.playerA.uid] }));
+await expect("CANNOT delete another person's profile", false, () => deleteDoc(doc(db, 'users', people.playerB.uid)));
+await expect('deletes their own profile', true, () => deleteDoc(doc(db, 'users', MATE)));
 
 group('rival team');
 await as('playerB');

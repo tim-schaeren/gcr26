@@ -10,6 +10,7 @@ import { sendPushToPlayers } from '../utils/push';
 import { logActivity, clearActivity, clearAttempts } from '../utils/activity';
 import { useAuth } from '../hooks/useAuth';
 import HostsPanel from '../components/HostsPanel';
+import JoinCodePanel from '../components/JoinCodePanel';
 
 function getStatus(game) {
   if (!game) return null;
@@ -158,6 +159,8 @@ export default function GamePage() {
           <p className="text-xs text-red-500">Ended at {formatDateTime(game.endedAt)}</p>
         )}
       </div>
+
+      <JoinCodePanel gameId={gameId} game={game} />
 
       <HostsPanel gameId={gameId} game={game} isAdmin={isAdmin} currentUserId={user?.uid} />
 

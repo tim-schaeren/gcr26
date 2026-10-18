@@ -35,6 +35,32 @@ service cloud.firestore {
       return isAuth() && exists(myUserPath()) ? myUserData().get('teamId', null) : null;
     }
 
+    // Has this user joined the game? Joining writes a membership document,
+    // which is what lets them create or join a team in it.
+    function hasJoined(gameId) {
+      return isAuth()
+        && exists(/databases/$(database)/documents/games/$(gameId)/players/$(request.auth.uid));
+    }
+
+    // A player may add or remove only themselves from a team's member list
+    function joiningTeamSelf() {
+      return isAuth()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+        && !(request.auth.uid in resource.data.memberIds)
+        && request.auth.uid in request.resource.data.memberIds
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+        && resource.data.memberIds.hasOnly(request.resource.data.memberIds);
+    }
+
+    function leavingTeamSelf() {
+      return isAuth()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+        && request.auth.uid in resource.data.memberIds
+        && !(request.auth.uid in request.resource.data.memberIds)
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+        && request.resource.data.memberIds.hasOnly(resource.data.memberIds);
+    }
+
     // A gameplay entry a player may write for their own team
     function isOwnGameplayEntry() {
       return isAuth()
@@ -64,7 +90,8 @@ service cloud.firestore {
       allow update: if isAdmin()
                     || (request.auth.uid == uid
                         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']));
-      allow delete: if isAdmin();
+      // Deleting your own account is a requirement of both app stores
+      allow delete: if isAdmin() || request.auth.uid == uid;
     }
 
     // Games + nested quests: authenticated users read; admins write
@@ -88,7 +115,26 @@ service cloud.firestore {
                         && request.resource.data.authorId == request.auth.uid
                         && request.resource.data.fromHost == false
                       ) || canManageGame(gameId);
-        allow update, delete: if canManageGame(gameId);
+        allow update: if canManageGame(gameId);
+        // Authors may delete their own messages, which is how account deletion
+        // clears what a person wrote
+        allow delete: if canManageGame(gameId)
+                      || (isAuth() && resource.data.authorId == request.auth.uid);
+      }
+
+      // Who has joined this game. A player writes their own entry when they
+      // enter the invite code; hosts read them all, which is how a host sees
+      // their players without access to the platform's whole user list.
+      match /players/{playerId} {
+        // Players in the same game can see each other's names, which is how the
+        // team picker shows who is already on a team before you join it
+        allow read:   if isAuth() && (playerId == request.auth.uid
+                                      || hasJoined(gameId)
+                                      || canManageGame(gameId));
+        allow create: if isAuth() && playerId == request.auth.uid
+                      && request.resource.data.id == request.auth.uid;
+        allow update: if isAuth() && playerId == request.auth.uid;
+        allow delete: if isAuth() && (playerId == request.auth.uid || canManageGame(gameId));
       }
 
       // Wrong answers: teams write their own, only hosts read them. Teams must not
@@ -123,7 +169,13 @@ service cloud.firestore {
     // Team members may update only the quest progress fields
     match /teams/{id} {
       allow read:   if isAuth();
-      allow create: if canManageGame(request.resource.data.gameId);
+      // A player who has joined the game may start a team, with themselves in it
+      allow create: if canManageGame(request.resource.data.gameId)
+                    || (hasJoined(request.resource.data.gameId)
+                        && request.resource.data.memberIds == [request.auth.uid]
+                        && request.resource.data.completedQuestIds == []
+                        && request.resource.data.currentQuestId == null
+                        && request.resource.data.finishedAt == null);
       allow delete: if canManageGame(resource.data.gameId);
       // The team-member clause comes first so a player's own writes are decided
       // without any document lookups at all
@@ -133,6 +185,10 @@ service cloud.firestore {
                              .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt',
                                        'questProgress', 'coins', 'hintsRevealed',
                                        'teamChatReadAt', 'activeCompassUntil']))
+                    // Joining needs a membership record; leaving never does, or a
+                    // player a host added by hand could never remove themselves
+                    || (hasJoined(resource.data.gameId) && joiningTeamSelf())
+                    || leavingTeamSelf()
                     || canManageGame(resource.data.gameId);
 
       // Coin ledger: a record of admin adjustments; players may read their own team's history
@@ -163,7 +219,10 @@ service cloud.firestore {
     // Location trail: players write their own points; only admins read
     match /trail/{trailId} {
       allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
-      allow read:   if canManageGame(resource.data.gameId);
+      allow read:   if canManageGame(resource.data.gameId)
+                    || (isAuth() && resource.data.userId == request.auth.uid);
+      // Someone deleting their account takes their location history with them
+      allow delete: if isAuth() && resource.data.userId == request.auth.uid;
     }
 
     // Registrations: anyone can submit; only admins manage them

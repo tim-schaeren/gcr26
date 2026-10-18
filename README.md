@@ -87,12 +87,41 @@ The signing keystore is managed by EAS. It is the upload key for the Play listin
 Rules live in `firestore.rules`. Deploy with:
 
 ```bash
-firebase deploy --only firestore:rules
+firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-### Admin user
+Rules carry most of the game's integrity — who may run a game, what a player may
+write about their own team, and which teams can see each other's business — so
+they have a test suite. Run it against a throwaway project on its own ports,
+leaving your dev data alone:
 
-To grant admin access to a user in production, set `isAdmin: true` on their document in the `users` collection via the [Firebase Console](https://console.firebase.google.com/project/gcr26-d76cc/firestore/data/users).
+```bash
+firebase emulators:start --project rules-test --config firebase.rules-test.json
+node local/rules-test.mjs
+```
+
+It covers a platform admin, a host, a player, a rival team and an outsider,
+including a player whose profile predates some fields. Add a case whenever you
+touch the rules.
+
+### Roles
+
+Two separate things:
+
+- **Platform admin** — `isAdmin: true` on a user document, set via the
+  [Firebase Console](https://console.firebase.google.com/project/gcr26-d76cc/firestore/data/users).
+  Runs every game and is the only role that can read the whole player list.
+- **Host** — listed in a game's `hostIds`. Runs that game and sees nothing of
+  any other. Whoever creates a game becomes its host, so anyone who signs up on
+  the web console can host their own race.
+
+### How people get into a game
+
+A game has a `joinCode`, shown on its Game page in the console. Players enter it
+in the app, which writes a membership document at `games/{id}/players/{uid}` —
+that record is what lets them pick or start a team, and what lets a host see
+their own players without read access to every user on the platform. Players can
+leave a game, and delete their account, from the app.
 
 ### Data model
 
@@ -100,14 +129,27 @@ See `packages/shared/src/types.ts` for the full data model. Collections:
 
 | Collection                    | Description                                                   |
 | ----------------------------- | ------------------------------------------------------------- |
-| `users`                       | Firebase Auth users with team assignment and push token       |
-| `games`                       | Race events — multiple can be active simultaneously           |
-| `games/{id}/quests`           | Quests scoped to a game; order stored as `questOrder` on game |
-| `teams`                       | Race teams — belong to a game, have many members              |
-| `shopItems`                   | Items teams can buy with in-game currency                     |
-| `messages`                    | In-app chat                                                   |
-| `broadcasts`                  | Admin push notifications to all teams                         |
-| `settings`                    | Global config (sign-up open, hotline number)                  |
-| `registrations`               | Pre-game sign-up submissions (public write)                   |
+| Collection                    | Description                                                        |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `users`                       | Accounts: name, email, `gameId`, `teamId`, push token              |
+| `games`                       | Race events — `hostIds`, `joinCode`, coin and shop settings        |
+| `games/{id}/quests`           | Quests scoped to a game; order stored as `questOrder` on the game  |
+| `games/{id}/players`          | Who joined this game, so hosts can see their own players           |
+| `games/{id}/activity`         | The bulletin board; entries are `public` or `team`-private         |
+| `games/{id}/messages`         | Chat, one thread per team, between that team and the hosts         |
+| `games/{id}/attempts`         | Rejected answers — hosts only, never readable by players           |
+| `teams`                       | Teams: members, progress, coins, hints bought, active items        |
+| `teams/{id}/coinLedger`       | Why a host changed a team's balance                                |
+| `trail`                       | Location history during a game; hosts read, the owner can delete   |
+| `settings`                    | Global config (sign-up open)                                       |
+| `registrations`               | Pre-game sign-up submissions (public write)                        |
 
-User → Team → Game is the chain: a user belongs to one team, a team belongs to one game.
+User → Team → Game is the chain: a user belongs to one team, a team belongs to
+one game. A user may also have a `gameId` without a `teamId` — joined, but still
+picking a team.
+
+### Public pages
+
+The console also serves the pages the app stores require, with no sign-in:
+`/privacy`, `/terms` and `/guidelines`. The app links to them from sign-up and
+from a player's profile.
