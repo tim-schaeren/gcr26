@@ -6,6 +6,7 @@ import {
 	TouchableOpacity,
 	StyleSheet,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SHOP_ITEMS_BY_TYPE, type ShopConfig } from '@gcr26/shared';
 
 function formatLeft(ms: number): string {
@@ -34,6 +35,7 @@ export default function ShopSheet({
 	onBuyCompass: () => void;
 	buying: boolean;
 }) {
+	const insets = useSafeAreaInsets();
 	const { compass } = shop;
 	const affordable = coins >= compass.price;
 	const running = compassMsLeft > 0;
@@ -46,7 +48,7 @@ export default function ShopSheet({
 	return (
 		<Modal visible={visible} animationType="slide" onRequestClose={onClose}>
 			<View style={styles.wrap}>
-				<View style={styles.header}>
+				<View style={[styles.header, { paddingTop: insets.top + 12 }]}>
 					<Text style={styles.title}>Shop</Text>
 					<TouchableOpacity
 						onPress={onClose}

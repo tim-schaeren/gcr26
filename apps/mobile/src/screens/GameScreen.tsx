@@ -781,6 +781,7 @@ function LeaderboardModal({
 	teamReadAt: number;
 	hostReadAt: number;
 }) {
+	const insets = useSafeAreaInsets();
 	const sorted = [...allTeams].sort((a, b) => {
 		if (a.finishedAt && b.finishedAt) return a.finishedAt - b.finishedAt;
 		if (a.finishedAt) return -1;
@@ -798,7 +799,7 @@ function LeaderboardModal({
 				style={{ flex: 1, backgroundColor: '#fff' }}
 				behavior={Platform.OS === 'ios' ? 'padding' : undefined}
 			>
-				<View style={styles.lbHeader}>
+				<View style={[styles.lbHeader, { paddingTop: insets.top + 12 }]}>
 					<View style={styles.tabRow}>
 						{(['activity', 'chat', 'leaderboard'] as const).map((name) => (
 							<TouchableOpacity key={name} onPress={() => onTabChange(name)}>
@@ -938,14 +939,16 @@ function CelebrationOverlay({
 
 function ProfileButton({
 	name,
+	top,
 	onPress,
 }: {
 	name: string;
+	top: number;
 	onPress: () => void;
 }) {
 	const initial = name ? name[0].toUpperCase() : '?';
 	return (
-		<TouchableOpacity style={styles.profileButton} onPress={onPress}>
+		<TouchableOpacity style={[styles.profileButton, { top }]} onPress={onPress}>
 			<Text style={styles.profileButtonText}>{initial}</Text>
 		</TouchableOpacity>
 	);
@@ -1035,6 +1038,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	const [heading, setHeading] = useState<number | null>(null);
 
 	const { profile } = useUser();
+	const insets = useSafeAreaInsets();
 	const [profileOpen, setProfileOpen] = useState(false);
 
 	// Tick for countdown
@@ -1794,7 +1798,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			<CelebrationOverlay visible={celebrating} anim={celebrateAnim} />
 			{team && !game?.endedAt && (
 				<TouchableOpacity
-					style={styles.coinPill}
+					style={[styles.coinPill, { top: insets.top + 8 }]}
 					onPress={() => setShopOpen(true)}
 				>
 					<Text style={styles.coinPillText}>
@@ -1804,13 +1808,17 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 				</TouchableOpacity>
 			)}
 			<TouchableOpacity
-				style={styles.lbIconButton}
+				style={[styles.lbIconButton, { top: insets.top + 8 }]}
 				onPress={() => openSheet('activity')}
 			>
 				<Text style={styles.lbIconText}>≡</Text>
 				{hasUnreadActivity && <View style={styles.unreadDot} />}
 			</TouchableOpacity>
-			<ProfileButton name={userName} onPress={() => setProfileOpen(true)} />
+			<ProfileButton
+				name={userName}
+				top={insets.top + 8}
+				onPress={() => setProfileOpen(true)}
+			/>
 			<ShopSheet
 				visible={shopOpen}
 				onClose={() => setShopOpen(false)}
@@ -2164,7 +2172,7 @@ const styles = StyleSheet.create({
 	// Coin balance pill
 	coinPill: {
 		position: 'absolute',
-		top: 52,
+		top: 52, // replaced at render with the real safe-area inset
 		left: 16,
 		paddingHorizontal: 12,
 		height: 36,
@@ -2181,7 +2189,7 @@ const styles = StyleSheet.create({
 	// Leaderboard icon button (left of profile)
 	lbIconButton: {
 		position: 'absolute',
-		top: 52,
+		top: 52, // replaced at render with the real safe-area inset
 		right: 60,
 		width: 36,
 		height: 36,
@@ -2408,7 +2416,7 @@ const styles = StyleSheet.create({
 	// Profile button
 	profileButton: {
 		position: 'absolute',
-		top: 52,
+		top: 52, // replaced at render with the real safe-area inset
 		right: 16,
 		width: 36,
 		height: 36,

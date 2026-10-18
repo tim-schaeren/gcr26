@@ -29,3 +29,8 @@ apps/mobile/build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Service account keys — never commit. Broad on purpose: a stray
+# "play-service-account.json.json" slipped past a narrower pattern once.
+*service-account*.json
+*-adminsdk-*.json

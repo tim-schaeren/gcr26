@@ -17,14 +17,15 @@
       }
     },
     "android": {
-      "package": "com.gcr.app26",
+      "package": "com.gcrace.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,11 +35,12 @@
       [
         "expo-location",
         {
-          "isIosBackgroundLocationEnabled": true
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       "expo-status-bar",
-      "expo-splash-screen",
       [
         "expo-splash-screen",
         {
@@ -47,7 +49,6 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-build-properties",
       [
         "expo-build-properties",
         {

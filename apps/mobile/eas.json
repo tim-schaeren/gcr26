@@ -13,10 +13,19 @@
     },
     "preview": {
       "distribution": "store",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      }
     },
     "production": {
       "autoIncrement": true
+    },
+    "apk": {
+      "extends": "preview",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {
@@ -24,6 +33,10 @@
       "ios": {
         "appleId": "tim.schaeren@gmail.com",
         "ascAppId": "6760836695"
+      },
+      "android": {
+        "track": "internal",
+        "serviceAccountKeyPath": "./play-service-account.json"
       }
     },
     "production": {}
