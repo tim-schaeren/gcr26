@@ -101,14 +101,14 @@ export default function PlayerHelpPage() {
         that its compass needs this.
       </p>
 
-      <H2 id="menu">Activity, chat and the board</H2>
+      <H2 id="menu">Activity, chat and teams</H2>
       <p>The menu button at the top right opens three tabs:</p>
       <UL>
         <li><strong>Activity:</strong> every quest solved, by every team, as it happens. What
           your team buys and what your hosts give you are only shown to your team.</li>
         <li><strong>Chat:</strong> your team's conversation with the hosts. Other teams can't
           read it. If your hosts left a number, you can call them from here.</li>
-        <li><strong>Board:</strong> the standings.</li>
+        <li><strong>Teams:</strong> the standings.</li>
       </UL>
       <p>
         A red dot on the menu button means something new happened. Some races also give

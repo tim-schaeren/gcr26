@@ -4,6 +4,7 @@ import { WebView } from 'react-native-webview';
 import type { ContentBlock } from '@gcr26/shared';
 import Icon from '../theme/Icon';
 import { useTheme } from '../theme/ThemeContext';
+import { copy } from '@gcr26/shared';
 
 // YouTube rejects embeds without a referrer (error 153), so the player page gets an origin
 const EMBED_BASE_URL = 'https://gcr26.app/';
@@ -60,7 +61,7 @@ function YouTubeEmbed({ videoId }: { videoId: string }) {
         />
       </View>
       <TouchableOpacity style={styles.watchLink} onPress={() => Linking.openURL(watchUrl)}>
-        <Text style={[styles.caption, { color: t.colors.muted, marginTop: 0 }]}>Open in YouTube</Text>
+        <Text style={[styles.caption, { color: t.colors.muted, marginTop: 0 }]}>{copy.openInYouTube}</Text>
         <Icon name="open-in-new" size={13} color={t.colors.muted} />
       </TouchableOpacity>
     </View>

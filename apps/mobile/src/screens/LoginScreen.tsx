@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { authErrorMessage } from '@gcr26/shared';
+import { authErrorMessage, copy } from '@gcr26/shared';
 import { auth } from '../firebase';
 import SignUpModal from '../components/SignUpModal';
 
@@ -27,7 +27,7 @@ export default function LoginScreen() {
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
     } catch (e) {
-      Alert.alert('Sign in failed', 'Invalid email or password.');
+      Alert.alert(copy.login.failedTitle, copy.login.failedMessage);
     } finally {
       setLoading(false);
     }
@@ -39,11 +39,11 @@ export default function LoginScreen() {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Text style={styles.title}>GCR 2026</Text>
+        <Text style={styles.title}>{copy.login.title}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder={copy.login.email}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -55,7 +55,7 @@ export default function LoginScreen() {
         />
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder={copy.login.password}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -70,10 +70,10 @@ export default function LoginScreen() {
         ) : (
           <View style={styles.buttons}>
             <TouchableOpacity style={styles.primaryButton} onPress={handleSignIn}>
-              <Text style={styles.primaryButtonText}>Sign In</Text>
+              <Text style={styles.primaryButtonText}>{copy.login.signIn}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowSignUp(true)}>
-              <Text style={styles.secondaryButtonText}>Create Account</Text>
+              <Text style={styles.secondaryButtonText}>{copy.login.createAccount}</Text>
             </TouchableOpacity>
           </View>
         )}

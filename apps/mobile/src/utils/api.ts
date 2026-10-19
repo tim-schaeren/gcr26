@@ -1,5 +1,6 @@
 import { auth } from '../firebase';
 import { WEB_URL } from '../config';
+import { copy } from '@gcr26/shared';
 
 // The server functions live on the website. Against the local emulators they
 // run on this computer instead: set EXPO_PUBLIC_API_URL to that address.
@@ -9,7 +10,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL ?? WEB_URL;
 // own sentence ("Not enough coins"), ready to show.
 export async function callApi<T>(path: string, body: unknown): Promise<T> {
 	const user = auth.currentUser;
-	if (!user) throw new Error('Sign in first');
+	if (!user) throw new Error(copy.network.signInFirst);
 	const token = await user.getIdToken();
 	let res: Response;
 	try {
@@ -19,9 +20,9 @@ export async function callApi<T>(path: string, body: unknown): Promise<T> {
 			body: JSON.stringify(body),
 		});
 	} catch {
-		throw new Error('No connection. Try again.');
+		throw new Error(copy.network.noConnection);
 	}
 	const data = await res.json().catch(() => ({}));
-	if (!res.ok) throw new Error(data.error ?? 'Something went wrong. Try again.');
+	if (!res.ok) throw new Error(data.error ?? copy.network.somethingWrong);
 	return data as T;
 }

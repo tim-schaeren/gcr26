@@ -26,6 +26,7 @@ import {
 	JOIN_CODE_LENGTH,
 	normalizeJoinCode,
 	isValidJoinCode,
+	copy,
 } from '@gcr26/shared';
 import { auth, db } from '../firebase';
 import DeleteAccountModal from '../components/DeleteAccountModal';
@@ -50,12 +51,12 @@ export default function JoinGameScreen({ name }: { name: string }) {
 				query(collection(db, 'games'), where('joinCode', '==', code), limit(1)),
 			);
 			if (found.empty) {
-				setError("No game has that code. Check it with whoever's hosting.");
+				setError(copy.join.noGame);
 				return;
 			}
 			const game = found.docs[0];
 			if (game.data().endedAt) {
-				setError('That game has already finished.');
+				setError(copy.join.finished);
 				return;
 			}
 
@@ -70,7 +71,7 @@ export default function JoinGameScreen({ name }: { name: string }) {
 			batch.update(doc(db, 'users', uid), { gameId: game.id });
 			await batch.commit();
 		} catch {
-			setError("Couldn't join just now. Check your connection and try again.");
+			setError(copy.join.failed);
 		} finally {
 			setJoining(false);
 		}
@@ -81,10 +82,8 @@ export default function JoinGameScreen({ name }: { name: string }) {
 			style={styles.container}
 			behavior={Platform.OS === 'ios' ? 'padding' : undefined}
 		>
-			<Text style={styles.title}>Join a game</Text>
-			<Text style={styles.message}>
-				Enter the invite code from whoever is hosting your race.
-			</Text>
+			<Text style={styles.title}>{copy.join.title}</Text>
+			<Text style={styles.message}>{copy.join.intro}</Text>
 
 			<TextInput
 				style={[styles.codeInput, error ? styles.codeInputError : null]}
@@ -112,21 +111,21 @@ export default function JoinGameScreen({ name }: { name: string }) {
 				{joining ? (
 					<ActivityIndicator color="#fff" />
 				) : (
-					<Text style={styles.buttonText}>Join</Text>
+					<Text style={styles.buttonText}>{copy.join.button}</Text>
 				)}
 			</TouchableOpacity>
 
 			<View style={styles.accountRow}>
 				<TouchableOpacity onPress={() => Linking.openURL(LEGAL.help)}>
-					<Text style={styles.signOutText}>How to play</Text>
+					<Text style={styles.signOutText}>{copy.common.howToPlay}</Text>
 				</TouchableOpacity>
 				<Text style={styles.signOutText}>·</Text>
 				<TouchableOpacity onPress={() => signOut(auth)}>
-					<Text style={styles.signOutText}>Sign out</Text>
+					<Text style={styles.signOutText}>{copy.common.signOut}</Text>
 				</TouchableOpacity>
 				<Text style={styles.signOutText}>·</Text>
 				<TouchableOpacity onPress={() => setDeleting(true)}>
-					<Text style={styles.signOutText}>Delete account</Text>
+					<Text style={styles.signOutText}>{copy.common.deleteAccount}</Text>
 				</TouchableOpacity>
 			</View>
 

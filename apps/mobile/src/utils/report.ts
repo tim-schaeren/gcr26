@@ -1,5 +1,6 @@
 import { Linking } from 'react-native';
 import { CONTACT_EMAIL, LEGAL } from '../config';
+import { copy } from '@gcr26/shared';
 
 // Opens a pre-filled email to us about the game the player is in, so a
 // report arrives with what we need to find it. Without a mail app, the
@@ -10,15 +11,15 @@ export async function reportProblem(context: {
 	teamName?: string | null;
 }) {
 	const lines = [
-		'What happened?',
+		copy.report.whatHappened,
 		'',
 		'',
 		'',
-		'— Please keep the lines below, they help us find the game —',
-		`Game: ${context.gameName ?? 'unknown'} (${context.gameId ?? 'no id'})`,
-		...(context.teamName ? [`Team: ${context.teamName}`] : []),
+		copy.report.keepLines,
+		copy.report.game(context.gameName, context.gameId),
+		...(context.teamName ? [copy.report.team(context.teamName)] : []),
 	];
-	const subject = `Report: ${context.gameName ?? 'Grand City Race'}`;
+	const subject = copy.report.subject(context.gameName);
 	const url = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
 	try {
 		await Linking.openURL(url);

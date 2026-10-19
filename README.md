@@ -205,6 +205,16 @@ User → Team → Game is the chain: a user belongs to one team, a team belongs 
 one game. A user may also have a `gameId` without a `teamId` — joined, but still
 picking a team.
 
+### Copy
+
+Every word the player app shows lives in `packages/shared/src/copy/en.ts`,
+grouped by screen: buttons, messages, the activity feed, item names and
+descriptions, sign-in errors, and what the server functions say to players.
+Change wording there, not in the screens. Sentences with names or numbers are
+small functions; keep their `${...}` parts. A second language is a copy of the
+file (`de.ts`), which TypeScript checks for completeness. The console's copy
+isn't in it yet.
+
 ### Themes and icons
 
 A host picks a look per game in the console (`themeId` on the game): **Basic**

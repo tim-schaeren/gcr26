@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, Fragment } from 'react';
 import {
   Modal,
   View,
@@ -18,6 +18,7 @@ import {
   authErrorMessage,
   emailLooksValid,
   MIN_PASSWORD_LENGTH,
+	copy,
 } from '@gcr26/shared';
 import { auth, db } from '../firebase';
 import Icon from '../theme/Icon';
@@ -42,19 +43,19 @@ export default function SignUpModal({ visible, onClose }: Props) {
 
   async function handleSignUp() {
     if (!name.trim() || !email.trim() || !password) {
-      setError('Please fill in all fields.');
+      setError(copy.signUp.fillAll);
       return;
     }
     if (!emailLooksValid(email)) {
-      setError('That email address doesn\u2019t look right.');
+      setError(copy.signUp.badEmail);
       return;
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Pick a password with at least ${MIN_PASSWORD_LENGTH} characters.`);
+      setError(copy.signUp.shortPassword(MIN_PASSWORD_LENGTH));
       return;
     }
     if (!accepted) {
-      setError('Please accept the terms to continue.');
+      setError(copy.signUp.acceptTerms);
       return;
     }
     setError('');
@@ -102,15 +103,15 @@ export default function SignUpModal({ visible, onClose }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.title}>{copy.signUp.title}</Text>
           <TouchableOpacity onPress={handleClose} hitSlop={16}>
-            <Text style={styles.cancel}>Cancel</Text>
+            <Text style={styles.cancel}>{copy.common.cancel}</Text>
           </TouchableOpacity>
         </View>
 
         <TextInput
           style={styles.input}
-          placeholder="Your name"
+          placeholder={copy.signUp.name}
           value={name}
           onChangeText={setName}
           textContentType="name"
@@ -123,7 +124,7 @@ export default function SignUpModal({ visible, onClose }: Props) {
         <TextInput
           ref={emailRef}
           style={styles.input}
-          placeholder="Email"
+          placeholder={copy.signUp.email}
           value={email}
           onChangeText={setEmail}
           textContentType="emailAddress"
@@ -137,7 +138,7 @@ export default function SignUpModal({ visible, onClose }: Props) {
         <TextInput
           ref={passwordRef}
           style={styles.input}
-          placeholder="Password"
+          placeholder={copy.signUp.password}
           value={password}
           onChangeText={setPassword}
           textContentType="newPassword"
@@ -156,22 +157,19 @@ export default function SignUpModal({ visible, onClose }: Props) {
             {accepted && <Icon name="check" size={15} color="#fff" />}
           </View>
           <Text style={styles.acceptText}>
-            I agree to the{' '}
-            <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.terms)}>
-              terms
-            </Text>
-            ,{' '}
-            <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.privacy)}>
-              privacy policy
-            </Text>{' '}
-            and{' '}
-            <Text
-              style={styles.link}
-              onPress={() => Linking.openURL(LEGAL.guidelines)}
-            >
-              community guidelines
-            </Text>
-            .
+            {copy.signUp
+              .agree(
+                <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.terms)}>
+                  {copy.signUp.terms}
+                </Text>,
+                <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.privacy)}>
+                  {copy.signUp.privacy}
+                </Text>,
+                <Text style={styles.link} onPress={() => Linking.openURL(LEGAL.guidelines)}>
+                  {copy.signUp.guidelines}
+                </Text>,
+              )
+              .map((part, i) => <Fragment key={i}>{part}</Fragment>)}
           </Text>
         </TouchableOpacity>
 
@@ -181,7 +179,7 @@ export default function SignUpModal({ visible, onClose }: Props) {
           <ActivityIndicator size="large" style={{ marginTop: 24 }} />
         ) : (
           <TouchableOpacity style={styles.button} onPress={handleSignUp}>
-            <Text style={styles.buttonText}>Create Account</Text>
+            <Text style={styles.buttonText}>{copy.signUp.button}</Text>
           </TouchableOpacity>
         )}
       </KeyboardAvoidingView>

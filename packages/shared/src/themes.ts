@@ -1,3 +1,5 @@
+import { copy } from './copy';
+
 // Visual themes a host picks per game. Each is designed as a whole, which is
 // why hosts choose a preset rather than free colours: every role below was
 // chosen to stay legible against that theme's own background.
@@ -43,8 +45,8 @@ export interface Theme {
 
 const BASIC: Theme = {
   id: 'basic',
-  name: 'Basic',
-  description: 'Clean black on white.',
+  name: copy.themes.basic.name,
+  description: copy.themes.basic.description,
   colors: {
     background: '#ffffff',
     heading: '#111111',
@@ -75,8 +77,8 @@ const BASIC: Theme = {
 // text (12.9:1).
 const RETRO: Theme = {
   id: 'retro',
-  name: 'Retro',
-  description: 'Mid-century billboard: tangerine, cool blue, black cherry.',
+  name: copy.themes.retro.name,
+  description: copy.themes.retro.description,
   colors: {
     background: '#FF5C34',
     heading: '#D7EFFF',

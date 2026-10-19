@@ -8,6 +8,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import type { Theme } from '@gcr26/shared';
 import { useTheme } from '../theme/ThemeContext';
+import { copy } from '@gcr26/shared';
 
 const PING = require('../../assets/sounds/radar-ping.wav');
 const SIZE = 180;
@@ -145,9 +146,11 @@ export default function Radar({
 				<View style={styles.centre} />
 			</View>
 			<Text style={styles.distance}>
-				{distance === null ? 'Finding you…' : `${Math.round(distance)} m away`}
+				{distance === null
+					? copy.radar.finding
+					: copy.common.metersAway(Math.round(distance))}
 			</Text>
-			<Text style={styles.meta}>radar {left}</Text>
+			<Text style={styles.meta}>{copy.radar.meta(left)}</Text>
 		</View>
 	);
 }

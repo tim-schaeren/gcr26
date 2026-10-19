@@ -1,15 +1,16 @@
 // A host's push to their players: everyone in the game, or one team. Only the
 // game's hosts may send, and the tokens are looked up here, so the console
 // never sees them and nobody else can push through this.
+import { copy } from '@gcr26/shared';
 import { firebase, callerUid, canManageGame, handle, HttpError, pushToPlayers } from '../lib/server.mjs';
 
 export default (req) => handle(req, async ({ gameId, teamId, title, body }) => {
   const uid = await callerUid(req);
-  if (!gameId || !title) throw new HttpError(400, 'Bad request');
+  if (!gameId || !title) throw new HttpError(400, copy.server.badRequest);
   const { db } = firebase();
   const game = (await db.doc(`games/${gameId}`).get()).data();
-  if (!game) throw new HttpError(404, 'This game no longer exists');
-  if (!(await canManageGame(db, uid, game))) throw new HttpError(403, 'Only this game’s hosts can send push');
+  if (!game) throw new HttpError(404, copy.server.noGame);
+  if (!(await canManageGame(db, uid, game))) throw new HttpError(403, copy.server.pushHostsOnly);
 
   const teams = teamId
     ? [await db.doc(`teams/${teamId}`).get()].filter(t => t.exists && t.data().gameId === gameId)

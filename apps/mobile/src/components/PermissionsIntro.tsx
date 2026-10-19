@@ -12,6 +12,7 @@ import type { Theme } from '@gcr26/shared';
 import Icon from '../theme/Icon';
 import { useTheme } from '../theme/ThemeContext';
 import * as ui from '../theme/primitives';
+import { copy } from '@gcr26/shared';
 
 // Shown before the system prompts, so the permission dialogs arrive with a
 // reason attached rather than ambushing a player on first launch.
@@ -37,51 +38,40 @@ export default function PermissionsIntro({
 					{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
 				]}
 			>
-				<Text style={styles.title}>Before you start</Text>
+				<Text style={styles.title}>{copy.permissions.title}</Text>
 
 				<View style={styles.item}>
 					<View style={styles.itemTitleRow}>
 						<Icon name="map-marker-outline" size={20} color={colors.onSurface} />
-						<Text style={styles.itemTitle}>Location</Text>
+						<Text style={styles.itemTitle}>{copy.permissions.location}</Text>
 					</View>
 					{/* The app stores require this disclosure before the prompt, and
 					    Google Play requires its wording: what is collected, for which
 					    features, and that it happens when the app is closed or not in use */}
+					<Text style={styles.itemText}>{copy.permissions.locationWhat}</Text>
 					<Text style={styles.itemText}>
-						Grand City Race collects location data to unlock quests, measure how
-						far your team has walked, and show the hosts of your race where your
-						team is, even when the app is closed or not in use.
-					</Text>
-					<Text style={styles.itemText}>
-						This only happens while you are in a game, and your location is shared
-						with the hosts of that game and nobody else. Choosing{' '}
-						{Platform.OS === 'ios' ? '“Always”' : '“Allow all the time”'} keeps the
-						race going while your phone is in your pocket.
+						{copy.permissions.locationWho(
+							Platform.OS === 'ios'
+								? copy.permissions.alwaysIos
+								: copy.permissions.alwaysAndroid,
+						)}
 					</Text>
 				</View>
 
 				<View style={styles.item}>
 					<View style={styles.itemTitleRow}>
 						<Icon name="bell-outline" size={20} color={colors.onSurface} />
-						<Text style={styles.itemTitle}>Notifications</Text>
+						<Text style={styles.itemTitle}>{copy.permissions.notifications}</Text>
 					</View>
-					<Text style={styles.itemText}>
-						Used for announcements from your hosts and replies to your messages.
-						Nothing else.
-					</Text>
+					<Text style={styles.itemText}>{copy.permissions.notificationsWhat}</Text>
 				</View>
 
-				<Text style={styles.footnote}>
-					Your location is only collected during a game, and is deleted with your
-					account.
-				</Text>
+				<Text style={styles.footnote}>{copy.permissions.footnote}</Text>
 
 				<TouchableOpacity style={styles.button} onPress={onContinue}>
-					<Text style={styles.buttonText}>Got it</Text>
+					<Text style={styles.buttonText}>{copy.permissions.gotIt}</Text>
 				</TouchableOpacity>
-				<Text style={styles.footnote}>
-					You'll be asked for each permission next, and you can say no to either.
-				</Text>
+				<Text style={styles.footnote}>{copy.permissions.nextNote}</Text>
 			</ScrollView>
 		</Modal>
 	);

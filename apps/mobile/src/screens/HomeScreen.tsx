@@ -13,6 +13,7 @@ import { useUser } from '../hooks/useUser';
 import GameScreen from './GameScreen';
 import JoinGameScreen from './JoinGameScreen';
 import TeamPickerScreen from './TeamPickerScreen';
+import { copy } from '@gcr26/shared';
 
 const ADMIN_URL = 'https://grand-city-race.com';
 
@@ -36,7 +37,7 @@ export default function HomeScreen() {
 		return (
 			<TeamPickerScreen
 				gameId={profile.gameId}
-				name={profile?.name ?? 'A nameless player'}
+				name={profile?.name ?? copy.common.namelessPlayer}
 			/>
 		);
 	}
@@ -44,26 +45,26 @@ export default function HomeScreen() {
 	if (profile?.isAdmin) {
 		return (
 			<View style={styles.container}>
-				<Text style={styles.title}>GCR</Text>
-				<Text style={styles.heading}>Hey, Admin!</Text>
-				<Text style={styles.message}>Looking for the admin panel?</Text>
+				<Text style={styles.title}>{copy.adminHome.title}</Text>
+				<Text style={styles.heading}>{copy.adminHome.heading}</Text>
+				<Text style={styles.message}>{copy.adminHome.message}</Text>
 				<TouchableOpacity
 					style={styles.adminButton}
 					onPress={() => Linking.openURL(ADMIN_URL)}
 				>
-					<Text style={styles.adminButtonText}>Open Admin Panel</Text>
+					<Text style={styles.adminButtonText}>{copy.adminHome.open}</Text>
 				</TouchableOpacity>
 				<TouchableOpacity
 					style={styles.signOutButton}
 					onPress={() => signOut(auth)}
 				>
-					<Text style={styles.signOutText}>Sign Out</Text>
+					<Text style={styles.signOutText}>{copy.adminHome.signOut}</Text>
 				</TouchableOpacity>
 			</View>
 		);
 	}
 
-	return <JoinGameScreen name={profile?.name ?? 'A nameless player'} />;
+	return <JoinGameScreen name={profile?.name ?? copy.common.namelessPlayer} />;
 }
 
 const styles = StyleSheet.create({

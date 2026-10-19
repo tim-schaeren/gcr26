@@ -60,6 +60,7 @@ import {
 	type QuestHint,
 	type Theme,
 	themeFor,
+	copy,
 } from '@gcr26/shared';
 import { db, auth } from '../firebase';
 import {
@@ -146,24 +147,9 @@ function formatDuration(ms: number): string {
 	const h = Math.floor(ms / 3600000);
 	const m = Math.floor((ms % 3600000) / 60000);
 	const s = Math.floor((ms % 60000) / 1000);
-	if (h > 0)
-		return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
-	return `${m}m ${String(s).padStart(2, '0')}s`;
+	return copy.common.duration(h, m, s);
 }
 
-function ordinal(n: number): string {
-	if (n >= 11 && n <= 13) return `${n}th`;
-	switch (n % 10) {
-		case 1:
-			return `${n}st`;
-		case 2:
-			return `${n}nd`;
-		case 3:
-			return `${n}rd`;
-		default:
-			return `${n}th`;
-	}
-}
 
 function formatCountdown(ms: number): string {
 	if (ms <= 0) return '00:00:00';
@@ -217,9 +203,9 @@ function WaitingView({ game, now }: { game: Game; now: number }) {
 	const ms = game.startDateTime - now;
 	return (
 		<View style={styles.container}>
-			<Text style={styles.label}>GET READY</Text>
+			<Text style={styles.label}>{copy.waiting.getReady}</Text>
 			<Text style={styles.gameName}>{game.name}</Text>
-			<Text style={styles.countdownLabel}>starts in</Text>
+			<Text style={styles.countdownLabel}>{copy.waiting.startsIn}</Text>
 			<Countdown ms={ms} />
 		</View>
 	);
@@ -290,16 +276,14 @@ function CompassArrow({
 			</View>
 			{distance !== null && (
 				<Text style={styles.compassDistance}>
-					{Math.round(distance)} m away
+					{copy.common.metersAway(Math.round(distance))}
 				</Text>
 			)}
 			<Text style={styles.compassMeta}>
-				{heading === null ? 'from north · ' : ''}compass {left}
+				{copy.compass.meta(heading === null, left)}
 			</Text>
 			{uncalibrated && (
-				<Text style={styles.compassHint}>
-					Move your phone in a figure 8 to calibrate the compass
-				</Text>
+				<Text style={styles.compassHint}>{copy.compass.calibrate}</Text>
 			)}
 		</View>
 	);
@@ -325,7 +309,7 @@ function NavigationView({
 	const styles = useStyles();
 	return (
 		<ScrollContainer>
-			<Text style={styles.label}>FIND YOUR NEXT QUEST</Text>
+			<Text style={styles.label}>{copy.navigation.findNext}</Text>
 			<View style={styles.hintPanel}>
 				<ContentBlocks
 					blocks={quest.navigationHint}
@@ -355,7 +339,7 @@ function DistanceView({ quest, meters }: { quest: Quest; meters: number }) {
 	const fraction = target > 0 ? Math.min(meters / target, 1) : 1;
 	return (
 		<ScrollContainer>
-			<Text style={styles.label}>KEEP MOVING</Text>
+			<Text style={styles.label}>{copy.navigation.keepMoving}</Text>
 			{quest.navigationHint.length > 0 && (
 				<View style={styles.hintPanel}>
 					<ContentBlocks
@@ -372,7 +356,10 @@ function DistanceView({ quest, meters }: { quest: Quest; meters: number }) {
 						/>
 					</View>
 					<Text style={styles.distance}>
-						{Math.round(Math.min(meters, target))} / {Math.round(target)} m
+						{copy.navigation.walked(
+							Math.round(Math.min(meters, target)),
+							Math.round(target),
+						)}
 					</Text>
 				</>
 			)}
@@ -393,7 +380,7 @@ function QuestHeader({
 	return (
 		<>
 			<Text style={styles.questNumber}>
-				Quest {questNumber} of {totalQuests}
+				{copy.quest.number(questNumber, totalQuests)}
 			</Text>
 			<Text style={styles.questTitle}>{quest.title}</Text>
 			<ContentBlocks
@@ -452,14 +439,14 @@ function TimerView({
 				totalQuests={totalQuests}
 			/>
 			<Text style={styles.countdownLabel}>
-				{done ? 'time is up' : 'continue in'}
+				{done ? copy.quest.timeUp : copy.quest.continueIn}
 			</Text>
 			<View style={styles.timerCountdown}>
 				<Countdown ms={remainingMs} />
 			</View>
 			<ContinueButton
 				disabled={!done || submitting}
-				label="Continue"
+				label={copy.quest.continue}
 				onPress={onContinue}
 			/>
 		</ScrollContainer>
@@ -489,7 +476,7 @@ function InfoView({
 			/>
 			<ContinueButton
 				disabled={submitting}
-				label="Continue"
+				label={copy.quest.continue}
 				onPress={onContinue}
 			/>
 		</ScrollContainer>
@@ -517,7 +504,7 @@ function HintSection({
 		<View style={styles.hintSection}>
 			{hints.slice(0, revealed).map((hint, i) => (
 				<View key={i} style={styles.hintCard}>
-					<Text style={styles.hintLabel}>HINT {i + 1}</Text>
+					<Text style={styles.hintLabel}>{copy.hints.label(i + 1)}</Text>
 					<ContentBlocks blocks={hint.blocks} textStyle={styles.hintText} />
 				</View>
 			))}
@@ -532,8 +519,8 @@ function HintSection({
 				>
 					<Text style={styles.hintButtonText}>
 						{affordable
-							? `Reveal ${revealed > 0 ? 'another ' : 'a '}hint · ${cost} coins`
-							: `Not enough coins (${cost} needed)`}
+							? copy.hints.reveal(revealed > 0, cost)
+							: copy.hints.notEnough(cost)}
 					</Text>
 				</TouchableOpacity>
 			)}
@@ -587,7 +574,7 @@ function QuestView({
 						style={[styles.answerInput, wrong && styles.answerInputWrong]}
 						value={answer}
 						onChangeText={setAnswer}
-						placeholder="Your answer…"
+						placeholder={copy.quest.answer}
 						placeholderTextColor={colors.mutedOnSurface}
 						autoCorrect={false}
 						autoCapitalize="none"
@@ -607,7 +594,7 @@ function QuestView({
 				</View>
 
 				{wrong && (
-					<Text style={styles.wrongText}>That's not right — try again.</Text>
+					<Text style={styles.wrongText}>{copy.quest.wrong}</Text>
 				)}
 
 				<HintSection
@@ -646,14 +633,18 @@ function FinishedView({
 			<View style={styles.finishedIcon}>
 				<Icon name="flag-checkered" size={72} color={colors.text} />
 			</View>
-			<Text style={styles.finishedHeading}>You finished!</Text>
-			<Text style={styles.finishedPlacement}>{ordinal(rank)} place</Text>
+			<Text style={styles.finishedHeading}>{copy.finished.heading}</Text>
+			<Text style={styles.finishedPlacement}>
+				{copy.finished.placement(rank)}
+			</Text>
 			<Text style={styles.finishedSub}>{formatDuration(duration)}</Text>
 			<TouchableOpacity
 				style={styles.leaderboardButton}
 				onPress={onLeaderboard}
 			>
-				<Text style={styles.leaderboardButtonText}>See leaderboard</Text>
+				<Text style={styles.leaderboardButtonText}>
+					{copy.finished.seeLeaderboard}
+				</Text>
 				<Icon name="arrow-right" size={18} color={colors.text} />
 			</TouchableOpacity>
 		</View>
@@ -668,10 +659,8 @@ function PausedView() {
 			<View style={styles.finishedIcon}>
 				<Icon name="pause-circle-outline" size={96} color={colors.text} />
 			</View>
-			<Text style={styles.finishedHeading}>Game paused</Text>
-			<Text style={styles.message}>
-				The admins have paused the game.{'\n'}Sit tight!
-			</Text>
+			<Text style={styles.finishedHeading}>{copy.paused.heading}</Text>
+			<Text style={styles.message}>{copy.paused.message}</Text>
 		</View>
 	);
 }
@@ -684,10 +673,8 @@ function EndedView({ game }: { game: Game }) {
 			<View style={styles.finishedIcon}>
 				<Icon name="flag-checkered" size={72} color={colors.text} />
 			</View>
-			<Text style={styles.finishedHeading}>
-				The admins have ended the game.
-			</Text>
-			<Text style={styles.finishedSub}>Thanks for playing!</Text>
+			<Text style={styles.finishedHeading}>{copy.ended.heading}</Text>
+			<Text style={styles.finishedSub}>{copy.ended.thanks}</Text>
 		</View>
 	);
 }
@@ -706,7 +693,7 @@ function ActivityList({
 	if (!entries.length) {
 		return (
 			<Text style={[styles.message, { marginTop: 32 }]}>
-				Nothing has happened yet.
+				{copy.activity.empty}
 			</Text>
 		);
 	}
@@ -738,7 +725,9 @@ function ActivityList({
 								{entry.visibility === 'team' && (
 									<>
 										<Icon name="lock-outline" size={12} color={colors.muted} />
-										<Text style={styles.activityTime}>Only your team</Text>
+										<Text style={styles.activityTime}>
+											{copy.activity.onlyYourTeam}
+										</Text>
 									</>
 								)}
 							</View>
@@ -759,8 +748,8 @@ function HotlineBar({ number }: { number: string }) {
 			onPress={() => Linking.openURL(`tel:${number}`)}
 		>
 			<Text style={styles.hotlineBarText}>
-				Something wrong?{' '}
-				<Text style={styles.hotlineBarLink}>Call the hosts</Text>
+				{copy.chat.somethingWrong}{' '}
+				<Text style={styles.hotlineBarLink}>{copy.chat.callHosts}</Text>
 			</Text>
 		</TouchableOpacity>
 	);
@@ -833,7 +822,7 @@ function ChatView({
 			>
 				{messages.length === 0 && (
 					<Text style={[styles.message, { marginVertical: 24 }]}>
-						Chat with your hosts.
+						{copy.chat.empty}
 					</Text>
 				)}
 
@@ -867,7 +856,7 @@ function ChatView({
 											m.fromHost ? styles.bubbleMetaHost : styles.bubbleMetaMine
 										}
 									>
-										{m.fromHost ? 'Hosts' : m.authorName} ·{' '}
+										{m.fromHost ? copy.chat.hosts : m.authorName} ·{' '}
 										{formatActivityTime(m.sentAt)}
 									</Text>
 								</View>
@@ -879,8 +868,8 @@ function ChatView({
 										m.fromHost ? styles.seenLabelLeft : styles.seenLabelRight,
 									]}
 								>
-									Seen
-								</Text>
+									{copy.chat.seen}
+</Text>
 							)}
 						</View>
 					);
@@ -897,7 +886,7 @@ function ChatView({
 					style={[styles.answerInput, styles.chatInput]}
 					value={draft}
 					onChangeText={setDraft}
-					placeholder="Write a message…"
+					placeholder={copy.chat.placeholder}
 					placeholderTextColor={colors.mutedOnSurface}
 					multiline
 				/>
@@ -981,11 +970,11 @@ function LeaderboardModal({
 									style={tab === name ? styles.tabLabelActive : styles.tabLabel}
 								>
 									{name === 'activity'
-										? 'Activity'
+										? copy.tabs.activity
 										: name === 'chat'
-											? 'Chat'
-											: 'Board'}
-									{name === 'chat' && chatUnread > 0 ? ` (${chatUnread})` : ''}
+											? copy.tabs.chat
+											: copy.tabs.board}
+									{name === 'chat' && chatUnread > 0 ? copy.tabs.unread(chatUnread) : ''}
 								</Text>
 							</TouchableOpacity>
 						))}
@@ -1048,7 +1037,7 @@ function LeaderboardModal({
 												]}
 											>
 												{t.name}
-												{isCurrent ? ' (you)' : ''}
+												{isCurrent ? copy.board.you : ''}
 											</Text>
 											<Text
 												style={[
@@ -1057,8 +1046,8 @@ function LeaderboardModal({
 												]}
 											>
 												{duration !== null
-													? `Finished · ${formatDuration(duration)}`
-													: `${completed} / ${totalQuests} quests`}
+													? copy.board.finished(formatDuration(duration))
+													: copy.board.progress(completed, totalQuests)}
 											</Text>
 										</View>
 									</View>
@@ -1075,10 +1064,8 @@ function SpreadOverlay() {
 	const styles = useStyles();
 	return (
 		<View style={styles.spreadOverlay}>
-			<Text style={styles.spreadTitle}>Team too spread out</Text>
-			<Text style={styles.spreadMessage}>
-				Get back together before you can submit an answer.
-			</Text>
+			<Text style={styles.spreadTitle}>{copy.spread.title}</Text>
+			<Text style={styles.spreadMessage}>{copy.spread.message}</Text>
 		</View>
 	);
 }
@@ -1094,12 +1081,11 @@ function CursedView({ by, msLeft }: { by: string; msLeft: number }) {
 			<View style={styles.finishedIcon}>
 				<Icon name="skull-outline" size={96} color={colors.text} />
 			</View>
-			<Text style={styles.finishedHeading}>Cursed!</Text>
-			<Text style={styles.finishedSub}>by {by}</Text>
+			<Text style={styles.finishedHeading}>{copy.cursed.heading}</Text>
+			<Text style={styles.finishedSub}>{copy.cursed.by(by)}</Text>
 			<Countdown ms={total * 1000} />
 			<Text style={[styles.message, { marginTop: 24 }]}>
-				No hint, no answers and no shop until it wears off. Steps you take
-				now don't count.
+				{copy.cursed.message}
 			</Text>
 		</View>
 	);
@@ -1109,11 +1095,8 @@ function LocationDeniedView() {
 	const styles = useStyles();
 	return (
 		<View style={styles.container}>
-			<Text style={styles.heading}>Location access needed</Text>
-			<Text style={styles.message}>
-				This game uses your location to unlock quests. Please enable location
-				access in your device settings.
-			</Text>
+			<Text style={styles.heading}>{copy.locationDenied.heading}</Text>
+			<Text style={styles.message}>{copy.locationDenied.message}</Text>
 		</View>
 	);
 }
@@ -1138,7 +1121,7 @@ function CelebrationOverlay({
 			>
 				<Icon name="party-popper" size={88} color={colors.text} />
 			</Animated.View>
-			<Text style={styles.celebrationText}>Well done!</Text>
+			<Text style={styles.celebrationText}>{copy.celebration}</Text>
 		</Animated.View>
 	);
 }
@@ -1205,15 +1188,14 @@ function ProfileSheet({
 					{confirmingLeave ? (
 						<View style={styles.sheetRow}>
 							<Text style={styles.sheetConfirmText}>
-								Leave this game? Your team keeps its progress, and you can
-								rejoin with the invite code.
+								{copy.profile.leaveConfirm}
 							</Text>
 							<View style={styles.sheetConfirmRow}>
 								<TouchableOpacity
 									onPress={() => setConfirmingLeave(false)}
 									style={styles.sheetCancel}
 								>
-									<Text style={styles.sheetCancelText}>Cancel</Text>
+									<Text style={styles.sheetCancelText}>{copy.common.cancel}</Text>
 								</TouchableOpacity>
 								<TouchableOpacity
 									onPress={onLeaveGame}
@@ -1221,7 +1203,7 @@ function ProfileSheet({
 									style={[styles.sheetLeave, leaving && { opacity: 0.4 }]}
 								>
 									<Text style={styles.sheetLeaveText}>
-										{leaving ? 'Leaving…' : 'Leave game'}
+										{leaving ? copy.profile.leaving : copy.profile.leaveGame}
 									</Text>
 								</TouchableOpacity>
 							</View>
@@ -1231,7 +1213,7 @@ function ProfileSheet({
 							style={styles.sheetRow}
 							onPress={() => setConfirmingLeave(true)}
 						>
-							<Text style={styles.sheetRowText}>Leave game</Text>
+							<Text style={styles.sheetRowText}>{copy.profile.leaveGame}</Text>
 						</TouchableOpacity>
 					)}
 
@@ -1239,29 +1221,31 @@ function ProfileSheet({
 						style={styles.sheetRow}
 						onPress={() => signOut(auth)}
 					>
-						<Text style={styles.sheetRowText}>Sign out</Text>
+						<Text style={styles.sheetRowText}>{copy.common.signOut}</Text>
 					</TouchableOpacity>
 
 					<TouchableOpacity
 						style={styles.sheetRow}
 						onPress={() => Linking.openURL(LEGAL.help)}
 					>
-						<Text style={styles.sheetRowText}>How to play</Text>
+						<Text style={styles.sheetRowText}>{copy.common.howToPlay}</Text>
 					</TouchableOpacity>
 
 					<TouchableOpacity style={styles.sheetRow} onPress={onReport}>
-						<Text style={styles.sheetRowText}>Report a problem</Text>
+						<Text style={styles.sheetRowText}>{copy.common.reportProblem}</Text>
 					</TouchableOpacity>
 
 					<TouchableOpacity
 						style={styles.sheetRow}
 						onPress={() => Linking.openURL(LEGAL.privacy)}
 					>
-						<Text style={styles.sheetRowText}>Privacy &amp; terms</Text>
+						<Text style={styles.sheetRowText}>{copy.profile.privacy}</Text>
 					</TouchableOpacity>
 
 					<TouchableOpacity style={styles.sheetRow} onPress={onDeleteAccount}>
-						<Text style={styles.sheetRowDestructive}>Delete account</Text>
+						<Text style={styles.sheetRowDestructive}>
+							{copy.common.deleteAccount}
+						</Text>
 					</TouchableOpacity>
 				</View>
 			</View>
@@ -1487,7 +1471,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		addDoc(collection(db, 'games', game.id, 'messages'), {
 			teamId: team.id,
 			authorId: auth.currentUser?.uid ?? '',
-			authorName: profile?.name ?? 'A nameless player',
+			authorName: profile?.name ?? copy.common.namelessPlayer,
 			fromHost: false,
 			text,
 			sentAt: Date.now(),
@@ -1613,9 +1597,8 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 							// hour unless it runs as a foreground service, which also
 							// tells the player, in a notification, that it is running
 							foregroundService: {
-								notificationTitle: 'Your race is on',
-								notificationBody:
-									'Grand City Race uses your location to count distance and keep your team’s trail until you leave the game.',
+								notificationTitle: copy.backgroundLocation.title,
+								notificationBody: copy.backgroundLocation.body,
 								notificationColor: '#111111',
 							},
 						});
@@ -1930,27 +1913,27 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 	// radar only have a job while the team is still looking for a place.
 	const otherTeams = allTeams.filter((t) => t.id !== team?.id);
 	const shopClosed = !team
-		? 'Not on a team'
+		? copy.shop.notOnTeam
 		: team.finishedAt
-			? 'Your race is over'
+			? copy.shop.raceOver
 			: cursed
-				? 'You’re cursed'
+				? copy.shop.youreCursed
 				: !gameRunning
-					? 'The shop opens while the race is running'
+					? copy.shop.notRunning
 					: null;
 	const findingBlocked =
 		quest?.trigger !== 'location' || !quest?.location
-			? 'Nothing to point at on this quest'
+			? copy.shop.nothingToPoint
 			: unlocked
-				? 'You’re already there'
+				? copy.shop.alreadyThere
 				: null;
 	const itemBlocked: Partial<Record<ShopItemType, string | null>> = {
 		compass: shopClosed ?? findingBlocked,
 		radar: shopClosed ?? findingBlocked,
 		shield: shopClosed,
-		curse: shopClosed ?? (otherTeams.length ? null : 'No other teams yet'),
-		robbery: shopClosed ?? (otherTeams.length ? null : 'No other teams yet'),
-		donate: shopClosed ?? (otherTeams.length ? null : 'No other teams yet'),
+		curse: shopClosed ?? (otherTeams.length ? null : copy.shop.noOtherTeams),
+		robbery: shopClosed ?? (otherTeams.length ? null : copy.shop.noOtherTeams),
+		donate: shopClosed ?? (otherTeams.length ? null : copy.shop.noOtherTeams),
 	};
 	const itemRunning: Partial<Record<ShopItemType, number>> = {
 		compass: compassLeft,
@@ -1979,7 +1962,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			teamId: team.id,
 			teamName: team.name,
 			itemType: type,
-			itemName: `a ${SHOP_ITEMS_BY_TYPE[type].name.toLowerCase()}`,
+			itemName: copy.items[type].bought,
 			amount: price,
 		});
 		batch
@@ -1997,7 +1980,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		targetTeamId: string,
 		amount?: number,
 	): Promise<string> {
-		if (!game) throw new Error('No game');
+		if (!game) throw new Error(copy.network.somethingWrong);
 		setBuyingItem(type);
 		try {
 			const res = await callApi<{
@@ -2006,12 +1989,12 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 				amount: number | null;
 			}>('/api/use-item', { gameId: game.id, item: type, targetTeamId, amount });
 			const n = res.amount ?? 0;
-			const coinsText = `${n} coin${n === 1 ? '' : 's'}`;
+			const team = res.targetTeamName;
 			return {
-				cursed: `${res.targetTeamName} is cursed for ${shop.curse.durationMinutes} min.`,
-				robbed: n > 0 ? `You stole ${coinsText} from ${res.targetTeamName}.` : `${res.targetTeamName} had nothing to steal.`,
-				blocked: `${res.targetTeamName} had a shield. It’s gone now, and so are your coins.`,
-				donated: `You gave ${res.targetTeamName} ${coinsText}.`,
+				cursed: copy.shop.cursed(team, shop.curse.durationMinutes),
+				robbed: copy.shop.robbed(n, team),
+				blocked: copy.shop.blocked(team),
+				donated: copy.shop.donated(n, team),
 			}[res.outcome];
 		} finally {
 			setBuyingItem(null);
@@ -2186,7 +2169,10 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		if (now < game.startDateTime) return <WaitingView game={game} now={now} />;
 		if (cursed)
 			return (
-				<CursedView by={team.cursedByName ?? 'another team'} msLeft={cursedLeft} />
+				<CursedView
+					by={team.cursedByName ?? copy.cursed.anotherTeam}
+					msLeft={cursedLeft}
+				/>
 			);
 		if (team.finishedAt)
 			return (
@@ -2200,7 +2186,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		if (!quest) {
 			return (
 				<View style={styles.container}>
-					<Text style={styles.message}>No quests available yet.</Text>
+					<Text style={styles.message}>{copy.quest.none}</Text>
 				</View>
 			);
 		}

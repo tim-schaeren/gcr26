@@ -17,6 +17,7 @@ import {
 	type ShopItemDefinition,
 	type ShopItemType,
 	type Theme,
+	copy,
 } from '@gcr26/shared';
 import Icon from '../theme/Icon';
 import { useTheme } from '../theme/ThemeContext';
@@ -103,11 +104,11 @@ export default function ShopSheet({
 		const busy = buying === item.type;
 
 		let note: string | null = null;
-		if (msLeft > 0) note = `Running · ${formatLeft(msLeft)} left`;
+		if (msLeft > 0) note = copy.shop.running(formatLeft(msLeft));
 		else if (reason) note = reason;
-		else if (!affordable && !isAiming) note = `You need ${config.price - coins} more coins`;
+		else if (!affordable && !isAiming) note = copy.shop.needMore(config.price - coins);
 		if (item.type === 'shield' && shields > 0 && !note) {
-			note = `Your team has ${shields} ${shields === 1 ? 'shield' : 'shields'}`;
+			note = copy.shop.shields(shields);
 		}
 		const canStart = msLeft <= 0 && !reason && coins >= config.price && !busy;
 
@@ -117,20 +118,21 @@ export default function ShopSheet({
 					<Icon name={item.icon} size={20} color={colors.onSurface} />
 					<Text style={styles.itemName}>{item.name}</Text>
 					<Text style={styles.price}>
-						{config.price > 0 ? `${config.price} coins` : 'Free'}
+						{copy.shop.price(config.price)}
 					</Text>
 				</View>
 				<Text style={styles.itemText}>
 					{item.description}
-					{config.durationMinutes > 0 && item.settings.durationMinutes?.startsWith('Lasts')
-						? ` Lasts ${config.durationMinutes} min.`
+					{/* Robbery's minutes are its cooldown, not how long it lasts */}
+					{config.durationMinutes > 0 && item.settings.durationMinutes && item.type !== 'robbery'
+						? copy.shop.lasts(config.durationMinutes)
 						: ''}
 				</Text>
 
 				{isAiming ? (
 					<View style={styles.aim}>
 						<Text style={styles.aimLabel}>
-							{item.type === 'donate' ? 'Give to' : 'Use on'}
+							{item.type === 'donate' ? copy.shop.giveTo : copy.shop.useOn}
 						</Text>
 						{targets.map((t) => (
 							<TouchableOpacity
@@ -148,7 +150,7 @@ export default function ShopSheet({
 								style={styles.amount}
 								value={amount}
 								onChangeText={(v) => setAmount(v.replace(/[^0-9]/g, ''))}
-								placeholder="How many coins"
+								placeholder={copy.shop.amount}
 								placeholderTextColor={colors.mutedOnSurface}
 								keyboardType="number-pad"
 							/>
@@ -161,7 +163,7 @@ export default function ShopSheet({
 									setTargetId(null);
 								}}
 							>
-								<Text style={styles.cancelText}>Cancel</Text>
+								<Text style={styles.cancelText}>{copy.common.cancel}</Text>
 							</TouchableOpacity>
 							<TouchableOpacity
 								style={[
@@ -174,7 +176,11 @@ export default function ShopSheet({
 								onPress={() => useOnTeam(item)}
 							>
 								<Text style={styles.buyButtonText}>
-									{busy ? 'Working…' : item.type === 'donate' ? `Give ${gift || ''}`.trim() : item.name}
+									{busy
+										? copy.shop.working
+										: item.type === 'donate'
+											? copy.shop.give(gift)
+											: item.name}
 								</Text>
 							</TouchableOpacity>
 						</View>
@@ -196,7 +202,13 @@ export default function ShopSheet({
 							disabled={!canStart}
 						>
 							<Text style={styles.buyButtonText}>
-								{msLeft > 0 ? 'Active' : busy ? 'Buying…' : item.targetsTeam ? 'Choose team' : 'Buy'}
+								{msLeft > 0
+								? copy.shop.active
+								: busy
+									? copy.shop.buying
+									: item.targetsTeam
+										? copy.shop.chooseTeam
+										: copy.shop.buy}
 							</Text>
 						</TouchableOpacity>
 					</View>
@@ -215,7 +227,7 @@ export default function ShopSheet({
 				behavior={Platform.OS === 'ios' ? 'padding' : undefined}
 			>
 				<View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-					<Text style={styles.title}>Shop</Text>
+					<Text style={styles.title}>{copy.shop.title}</Text>
 					<TouchableOpacity onPress={close} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
 						<Icon name="close" size={26} color={colors.text} />
 					</TouchableOpacity>
@@ -237,7 +249,7 @@ export default function ShopSheet({
 					</View>
 
 					{items.length === 0 ? (
-						<Text style={styles.empty}>The shop is closed for this game.</Text>
+						<Text style={styles.empty}>{copy.shop.closed}</Text>
 					) : (
 						items.map(renderItem)
 					)}

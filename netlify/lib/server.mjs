@@ -4,6 +4,7 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { copy } from '@gcr26/shared';
 
 export class HttpError extends Error {
   constructor(status, message) {
@@ -20,7 +21,7 @@ export function firebase() {
       initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? 'gcr26-d76cc' });
     } else {
       const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-      if (!raw) throw new HttpError(500, 'The server is missing its Firebase key');
+      if (!raw) throw new HttpError(500, copy.server.missingKey);
       const key = JSON.parse(raw);
       initializeApp({ credential: cert(key), projectId: key.project_id });
     }
@@ -32,11 +33,11 @@ export function firebase() {
 export async function callerUid(req) {
   const header = req.headers.get('authorization') ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) throw new HttpError(401, 'Sign in first');
+  if (!token) throw new HttpError(401, copy.network.signInFirst);
   try {
     return (await firebase().auth.verifyIdToken(token)).uid;
   } catch {
-    throw new HttpError(401, 'Your sign-in has expired. Sign in again.');
+    throw new HttpError(401, copy.network.sessionExpired);
   }
 }
 
@@ -76,7 +77,7 @@ export async function handle(req, fn) {
   } catch (e) {
     if (e instanceof HttpError) return json(e.status, { error: e.message });
     console.error(e);
-    return json(500, { error: 'Something went wrong. Try again.' });
+    return json(500, { error: copy.network.somethingWrong });
   }
 }
 

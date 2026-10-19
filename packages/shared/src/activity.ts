@@ -1,3 +1,5 @@
+import { copy } from './copy';
+
 // The bulletin board: a record of what happened during a game.
 // Entries live in games/{gameId}/activity. Rules decide who may read each one:
 // 'public' entries are visible to everyone in the game, 'team' entries only to
@@ -109,97 +111,79 @@ const ITEM_ICONS: Record<string, IconName> = {
   shield: 'shield-outline',
 };
 
-function ordinal(n: number): string {
-  if (n >= 11 && n <= 13) return `${n}th`;
-  switch (n % 10) {
-    case 1: return `${n}st`;
-    case 2: return `${n}nd`;
-    case 3: return `${n}rd`;
-    default: return `${n}th`;
-  }
-}
 
-// One place for the wording, so the admin console and the app never disagree.
-// Pass the reader's team id to address them directly: a team reads "You revealed
-// a hint", while admins and rival teams read "Team Blue revealed a hint".
+// One place for the logic, so the admin console and the app never disagree;
+// the wording itself is in the copy catalog. Pass the reader's team id to
+// address them directly: a team reads "You revealed a hint", while admins and
+// rival teams read "Team Blue revealed a hint".
 export function formatActivity(entry: ActivityEntry, viewerTeamId?: string | null): { icon: string; text: string } {
+  const f = copy.feed;
   const mine = !!viewerTeamId && entry.teamId === viewerTeamId;
-  const team = mine ? 'You' : entry.teamName ?? 'A team';
-  const quest = entry.questTitle ? `“${entry.questTitle}”` : 'a quest';
+  const teamName = entry.teamName ?? f.aTeam;
+  const who = mine ? f.you : teamName;
+  const whoObject = mine ? f.youObject : teamName;
+  const quest = entry.questTitle ? f.quoted(entry.questTitle) : f.aQuest;
   const icon =
     (entry.type === 'item_bought' && entry.itemType && ITEM_ICONS[entry.itemType]) ||
     ICONS[entry.type] ||
     'circle-small';
   // Items one team uses on another name both: "You", "you" or the team's name
   const targetMine = !!viewerTeamId && entry.targetTeamId === viewerTeamId;
-  const target = targetMine ? 'you' : entry.targetTeamName ?? 'a team';
-  const coins = (n: number | undefined) => `${n ?? 0} coin${n === 1 ? '' : 's'}`;
-
-  switch (entry.type) {
-    case 'quest_solved': {
-      // Solves are public, so they name the quest by number: a title like
-      // "The Oldest Tree" would hand every other team their next hint
-      if (entry.questTitle) {
-        const number = entry.questNumber ? ` (quest ${entry.questNumber})` : '';
-        return { icon, text: `${team} solved “${entry.questTitle}”${number}` };
+  const target = targetMine ? f.youObject : entry.targetTeamName ?? f.aTeamObject;
+  const amount = entry.amount ?? 0;
+  // Solves are public, so they name the quest by number: a title like
+  // "The Oldest Tree" would hand every other team their next hint
+  const text = ((): string => {
+    switch (entry.type) {
+      case 'quest_solved':
+        return f.questSolved({ who, mine, questTitle: entry.questTitle, questNumber: entry.questNumber });
+      case 'team_finished':
+        return f.teamFinished({ who, mine, placement: entry.placement });
+      case 'hint_revealed':
+        return f.hintRevealed({ who, mine, quest, amount });
+      case 'item_bought': {
+        const known = entry.itemType ? (copy.items as Record<string, { bought: string }>)[entry.itemType] : undefined;
+        return f.itemBought({ who, mine, item: known?.bought ?? entry.itemName ?? f.anItem, amount });
       }
-      return {
-        icon,
-        text: entry.questNumber ? `${team} solved quest ${entry.questNumber}` : `${team} solved a quest`,
-      };
+      case 'coins_adjusted':
+        return f.coinsAdjusted({ who: whoObject, mine, amount, reason: entry.reason });
+      case 'game_started':
+        return f.gameStarted;
+      case 'game_paused':
+        return f.gamePaused;
+      case 'game_resumed':
+        return f.gameResumed;
+      case 'game_ended':
+        return f.gameEnded;
+      case 'admin_note':
+        return entry.text ?? '';
+      case 'team_cursed':
+        return f.teamCursed({ who, mine, target, targetMine, minutes: entry.durationMinutes });
+      case 'team_robbed':
+        return f.teamRobbed({ who, mine, target, targetMine, amount });
+      case 'coins_donated':
+        return f.coinsDonated({ who, mine, target, targetMine, amount });
+      case 'attack_blocked':
+        return f.attackBlocked({
+          team: entry.teamName ?? f.aTeamObject,
+          mine,
+          target: entry.targetTeamName ?? f.aTeam,
+          targetMine,
+          robbery: entry.itemType === 'robbery',
+        });
+      case 'admin_marked_solved':
+        return f.adminMarkedSolved({ who: whoObject, mine, quest });
+      case 'admin_moved':
+        return f.adminMoved({ who: whoObject, mine, quest });
+      case 'admin_finished':
+        return f.adminFinished({ team: who, mine });
+      case 'admin_unfinished':
+        return f.adminUnfinished({ team: who, mine });
+      default:
+        return '';
     }
-    case 'team_finished':
-      return {
-        icon,
-        text: entry.placement
-          ? `${team} finished in ${ordinal(entry.placement)} place`
-          : `${team} finished the race`,
-      };
-    case 'hint_revealed':
-      return { icon, text: `${team} revealed a hint on ${quest} for ${entry.amount ?? 0} coins` };
-    case 'item_bought':
-      return { icon, text: `${team} bought ${entry.itemName ?? 'an item'} for ${entry.amount ?? 0} coins` };
-    case 'coins_adjusted': {
-      const amount = entry.amount ?? 0;
-      const who = mine ? 'you' : team;
-      const action = amount >= 0 ? `gave ${who} ${amount} coins` : `took ${Math.abs(amount)} coins from ${who}`;
-      return { icon, text: `Admins ${action}${entry.reason ? ` — ${entry.reason}` : ''}` };
-    }
-    case 'game_started':
-      return { icon, text: 'The game started' };
-    case 'game_paused':
-      return { icon, text: 'The game was paused' };
-    case 'game_resumed':
-      return { icon, text: 'The game resumed' };
-    case 'game_ended':
-      return { icon, text: 'The admins ended the game' };
-    case 'admin_note':
-      return { icon, text: entry.text ?? '' };
-    case 'team_cursed': {
-      const time = entry.durationMinutes ? ` for ${entry.durationMinutes} min` : '';
-      return { icon, text: `${team} cursed ${target}${time}` };
-    }
-    case 'team_robbed':
-      return { icon, text: `${team} robbed ${target} of ${coins(entry.amount)}` };
-    case 'coins_donated':
-      return { icon, text: `${team} gave ${target} ${coins(entry.amount)}` };
-    case 'attack_blocked': {
-      const owner = targetMine ? 'Your' : `${entry.targetTeamName ?? 'A team'}’s`;
-      const attacker = mine ? 'your' : `${entry.teamName ?? 'a team'}’s`;
-      const what = entry.itemType === 'robbery' ? 'robbery' : 'curse';
-      return { icon, text: `${owner} shield blocked ${attacker} ${what}` };
-    }
-    case 'admin_marked_solved':
-      return { icon, text: `Admins marked ${quest} solved for ${mine ? 'you' : team}` };
-    case 'admin_moved':
-      return { icon, text: `Admins moved ${mine ? 'you' : team} to ${quest}` };
-    case 'admin_finished':
-      return { icon, text: `Admins marked ${mine ? 'your race' : `${team}'s race`} as finished` };
-    case 'admin_unfinished':
-      return { icon, text: `Admins reopened ${mine ? 'your race' : `${team}'s race`}` };
-    default:
-      return { icon, text: '' };
-  }
+  })();
+  return { icon, text };
 }
 
 // "14:32" style clock for feed rows

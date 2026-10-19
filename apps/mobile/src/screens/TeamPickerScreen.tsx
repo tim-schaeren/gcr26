@@ -30,6 +30,7 @@ import {
 	TEAM_COLORS,
 	themeFor,
 	type Theme,
+	copy,
 } from '@gcr26/shared';
 import { auth, db } from '../firebase';
 import DeleteAccountModal from '../components/DeleteAccountModal';
@@ -92,7 +93,7 @@ export default function TeamPickerScreen({
 			const names: Record<string, string> = {};
 			snap.docs.forEach((d) => {
 				names[d.id] =
-					(d.data() as { name?: string }).name ?? 'A nameless player';
+					(d.data() as { name?: string }).name ?? copy.common.namelessPlayer;
 			});
 			setPlayers(names);
 		});
@@ -118,7 +119,7 @@ export default function TeamPickerScreen({
 			batch.update(doc(db, 'users', uid), { teamId: team.id });
 			await batch.commit();
 		} catch {
-			setError("Couldn't join that team. Someone may have just filled it.");
+			setError(copy.teamPicker.joinFailed);
 		} finally {
 			setBusy(false);
 		}
@@ -151,7 +152,7 @@ export default function TeamPickerScreen({
 			setNewName('');
 			setNewColor(null);
 		} catch {
-			setError("Couldn't create that team. Try again.");
+			setError(copy.teamPicker.createFailed);
 		} finally {
 			setBusy(false);
 		}
@@ -168,7 +169,7 @@ export default function TeamPickerScreen({
 			await removePrivateEntry(gameId, uid).catch(() => {});
 			await updateDoc(doc(db, 'users', uid), { gameId: null, teamId: null });
 		} catch {
-			setError("Couldn't leave the game. Try again.");
+			setError(copy.teamPicker.leaveFailed);
 		} finally {
 			setBusy(false);
 		}
@@ -192,10 +193,12 @@ export default function TeamPickerScreen({
 			keyboardShouldPersistTaps="handled"
 		>
 			<View>
-				<Text style={styles.label}>Welcome to</Text>
-				<Text style={styles.title}>{game?.name ?? 'the game'}</Text>
+				<Text style={styles.label}>{copy.teamPicker.welcome}</Text>
+				<Text style={styles.title}>{game?.name ?? copy.teamPicker.theGame}</Text>
 
-				{teams.length > 0 && <Text style={styles.section}>Join a team</Text>}
+				{teams.length > 0 && (
+					<Text style={styles.section}>{copy.teamPicker.joinATeam}</Text>
+				)}
 				{teams.map((team) => {
 					const memberIds = team.memberIds ?? [];
 					const full = maxTeamSize != null && memberIds.length >= maxTeamSize;
@@ -218,32 +221,32 @@ export default function TeamPickerScreen({
 								/>
 								<Text style={styles.teamName}>{team.name}</Text>
 								<Text style={styles.teamMeta}>
-									{memberIds.length}
-									{maxTeamSize ? ` / ${maxTeamSize}` : ''}
-									{full ? ' · full' : ''}
+									{copy.teamPicker.members(memberIds.length, maxTeamSize, full)}
 								</Text>
 							</TouchableOpacity>
 
 							{open && (
 								<View style={styles.teamDetail}>
 									{memberIds.length === 0 ? (
-										<Text style={styles.detailEmpty}>Nobody here yet.</Text>
+										<Text style={styles.detailEmpty}>{copy.teamPicker.nobodyHere}</Text>
 									) : (
 										memberIds.map((id) => (
 											<Text key={id} style={styles.memberName}>
-												{players[id] ?? 'A nameless player'}
+												{players[id] ?? copy.common.namelessPlayer}
 											</Text>
 										))
 									)}
 									{full ? (
-										<Text style={styles.detailEmpty}>This team is full.</Text>
+										<Text style={styles.detailEmpty}>{copy.teamPicker.teamFull}</Text>
 									) : (
 										<TouchableOpacity
 											style={[styles.joinButton, busy && styles.disabled]}
 											onPress={() => joinTeam(team)}
 											disabled={busy}
 										>
-											<Text style={styles.joinButtonText}>Join {team.name}</Text>
+											<Text style={styles.joinButtonText}>
+												{copy.teamPicker.join(team.name)}
+											</Text>
 										</TouchableOpacity>
 									)}
 								</View>
@@ -254,24 +257,26 @@ export default function TeamPickerScreen({
 
 				{gameFull ? (
 					<Text style={styles.empty}>
-						This game already has {MAX_TEAMS_PER_GAME} teams. Join one of them.
+						{copy.teamPicker.gameFull(MAX_TEAMS_PER_GAME)}
 					</Text>
 				) : (
 					<View style={teams.length > 0 && styles.createBlock}>
 						<Text style={styles.section}>
-							{teams.length > 0 ? 'Or start your own' : 'Start the first team'}
+							{teams.length > 0
+								? copy.teamPicker.startOwn
+								: copy.teamPicker.startFirst}
 						</Text>
 						<View style={styles.createRow}>
 							<TouchableOpacity
 								style={[styles.colorButton, { backgroundColor: chosenColor }]}
 								onPress={() => setPickingColor(true)}
-								accessibilityLabel="Team colour"
+								accessibilityLabel={copy.teamPicker.teamColour}
 							/>
 							<TextInput
 								style={styles.input}
 								value={newName}
 								onChangeText={setNewName}
-								placeholder="Team name"
+								placeholder={copy.teamPicker.teamName}
 								placeholderTextColor={theme.colors.mutedOnSurface}
 								returnKeyType="done"
 								onSubmitEditing={createTeam}
@@ -286,7 +291,9 @@ export default function TeamPickerScreen({
 							onPress={createTeam}
 							disabled={!newName.trim() || busy}
 						>
-							<Text style={styles.createButtonText}>Create team</Text>
+							<Text style={styles.createButtonText}>
+								{copy.teamPicker.createTeam}
+							</Text>
 						</TouchableOpacity>
 					</View>
 				)}
@@ -296,19 +303,19 @@ export default function TeamPickerScreen({
 
 			<View style={styles.footer}>
 				<TouchableOpacity onPress={leaveGame} disabled={busy} hitSlop={8}>
-					<Text style={styles.leaveText}>Leave this game</Text>
+					<Text style={styles.leaveText}>{copy.teamPicker.leaveGame}</Text>
 				</TouchableOpacity>
 				<TouchableOpacity onPress={() => Linking.openURL(LEGAL.help)} hitSlop={8}>
-					<Text style={styles.leaveText}>How to play</Text>
+					<Text style={styles.leaveText}>{copy.common.howToPlay}</Text>
 				</TouchableOpacity>
 				<TouchableOpacity
 					onPress={() => reportProblem({ gameId, gameName: game?.name })}
 					hitSlop={8}
 				>
-					<Text style={styles.leaveText}>Report a problem</Text>
+					<Text style={styles.leaveText}>{copy.common.reportProblem}</Text>
 				</TouchableOpacity>
 				<TouchableOpacity onPress={() => setDeletingAccount(true)} hitSlop={8}>
-					<Text style={styles.leaveText}>Delete account</Text>
+					<Text style={styles.leaveText}>{copy.common.deleteAccount}</Text>
 				</TouchableOpacity>
 			</View>
 
@@ -362,13 +369,15 @@ function ColorSheet({
 			<View style={sheet.backdrop}>
 				<TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
 				<View style={[sheet.panel, { paddingBottom: insets.bottom + SHEET_PADDING }]}>
-					<Text style={sheet.title}>Team colour</Text>
+					<Text style={sheet.title}>{copy.teamPicker.teamColour}</Text>
 					<View style={sheet.grid}>
 						{colors.map((color) => (
 							<TouchableOpacity
 								key={color}
 								onPress={() => onPick(color)}
-								accessibilityLabel={color === chosen ? 'Chosen colour' : 'Colour'}
+								accessibilityLabel={
+									color === chosen ? copy.teamPicker.chosenColour : copy.teamPicker.colour
+								}
 								style={[
 									sheet.ring,
 									{ width: size, height: size, borderRadius: size / 2 },

@@ -9,6 +9,7 @@ import {
   teamCoins,
   curseMsLeft,
   robberyTake,
+  copy,
 } from '@gcr26/shared';
 import { firebase, callerUid, handle, HttpError, pushToPlayers } from '../lib/server.mjs';
 
@@ -16,7 +17,7 @@ const TARGETED = ['curse', 'robbery', 'donate'];
 
 export default (req) => handle(req, async ({ gameId, item, targetTeamId, amount }) => {
   const uid = await callerUid(req);
-  if (!gameId || !TARGETED.includes(item) || !targetTeamId) throw new HttpError(400, 'Bad request');
+  if (!gameId || !TARGETED.includes(item) || !targetTeamId) throw new HttpError(400, copy.server.badRequest);
   const { db } = firebase();
   const definition = SHOP_ITEMS_BY_TYPE[item];
 
@@ -24,44 +25,44 @@ export default (req) => handle(req, async ({ gameId, item, targetTeamId, amount 
     const now = Date.now();
     const gameRef = db.doc(`games/${gameId}`);
     const game = (await tx.get(gameRef)).data();
-    if (!game) throw new HttpError(404, 'This game no longer exists');
-    if (game.endedAt) throw new HttpError(409, 'The game is over');
-    if (game.pausedAt) throw new HttpError(409, 'The game is paused');
-    if (now < game.startDateTime) throw new HttpError(409, 'The game hasn’t started yet');
+    if (!game) throw new HttpError(404, copy.server.noGame);
+    if (game.endedAt) throw new HttpError(409, copy.server.gameOver);
+    if (game.pausedAt) throw new HttpError(409, copy.server.gamePaused);
+    if (now < game.startDateTime) throw new HttpError(409, copy.server.notStarted);
 
     const config = shopConfig(game)[item];
-    if (!config.enabled) throw new HttpError(409, `${definition.name} isn’t for sale in this game`);
+    if (!config.enabled) throw new HttpError(409, copy.server.notForSale(definition.name));
     const economy = gameEconomy(game);
 
     const mine = await tx.get(
       db.collection('teams').where('gameId', '==', gameId).where('memberIds', 'array-contains', uid).limit(1),
     );
-    if (mine.empty) throw new HttpError(403, 'You aren’t on a team in this game');
+    if (mine.empty) throw new HttpError(403, copy.server.notOnTeam);
     const buyerRef = mine.docs[0].ref;
     const buyer = { id: buyerRef.id, ...mine.docs[0].data() };
-    if (buyer.id === targetTeamId) throw new HttpError(400, 'Pick another team');
-    if (buyer.finishedAt) throw new HttpError(409, 'Your race is over');
-    if (curseMsLeft(buyer, now) > 0) throw new HttpError(409, 'You’re cursed');
+    if (buyer.id === targetTeamId) throw new HttpError(400, copy.server.pickAnother);
+    if (buyer.finishedAt) throw new HttpError(409, copy.server.raceOver);
+    if (curseMsLeft(buyer, now) > 0) throw new HttpError(409, copy.server.youreCursed);
 
     const targetRef = db.doc(`teams/${targetTeamId}`);
     const targetSnap = await tx.get(targetRef);
     const target = targetSnap.exists ? { id: targetSnap.id, ...targetSnap.data() } : null;
-    if (!target || target.gameId !== gameId) throw new HttpError(404, 'That team isn’t in this game');
+    if (!target || target.gameId !== gameId) throw new HttpError(404, copy.server.notInGame);
 
     const gift = item === 'donate' ? Math.floor(Number(amount)) : 0;
-    if (item === 'donate' && !(gift > 0)) throw new HttpError(400, 'Choose how many coins to give');
+    if (item === 'donate' && !(gift > 0)) throw new HttpError(400, copy.server.chooseAmount);
 
     const buyerCoins = teamCoins(buyer, economy);
     const cost = config.price + gift;
-    if (buyerCoins < cost) throw new HttpError(409, 'Not enough coins');
+    if (buyerCoins < cost) throw new HttpError(409, copy.server.notEnoughCoins);
 
     // Checked before anything is paid, since these aren't the buyer's gamble
     if (item === 'curse') {
-      if (target.finishedAt) throw new HttpError(409, `${target.name} has already finished`);
-      if (curseMsLeft(target, now) > 0) throw new HttpError(409, `${target.name} is already cursed`);
+      if (target.finishedAt) throw new HttpError(409, copy.server.alreadyFinished(target.name));
+      if (curseMsLeft(target, now) > 0) throw new HttpError(409, copy.server.alreadyCursed(target.name));
     }
     if (item === 'robbery' && target.robbedAt && now - target.robbedAt < config.durationMinutes * 60000) {
-      throw new HttpError(409, `${target.name} was robbed recently. Try again later.`);
+      throw new HttpError(409, copy.server.robbedRecently(target.name));
     }
 
     const activityRef = db.collection(`games/${gameId}/activity`).doc();
@@ -106,13 +107,12 @@ export default (req) => handle(req, async ({ gameId, item, targetTeamId, amount 
 
   // The team on the receiving end hears about it straight away
   const { outcome, buyer, target, amount: n, minutes } = result;
-  const coins = `${n} coin${n === 1 ? '' : 's'}`;
   const message = {
-    blocked: [`Your shield held`, `It blocked ${buyer.name}’s ${item}.`],
-    cursed: [`Cursed!`, `${buyer.name} cursed your team for ${minutes} min.`],
-    robbed: [`Robbed!`, `${buyer.name} stole ${coins} from your team.`],
-    donated: [`A gift`, `${buyer.name} gave your team ${coins}.`],
-  }[outcome];
+    blocked: () => copy.server.pushBlocked(buyer.name, item),
+    cursed: () => copy.server.pushCursed(buyer.name, minutes),
+    robbed: () => copy.server.pushRobbed(buyer.name, n),
+    donated: () => copy.server.pushDonated(buyer.name, n),
+  }[outcome]();
   await pushToPlayers(db, gameId, target.memberIds ?? [], ...message);
 
   return { outcome, targetTeamName: target.name, amount: n ?? null };

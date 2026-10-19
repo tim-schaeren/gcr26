@@ -1,4 +1,5 @@
 import type { Game, Team } from './types';
+import { copy } from './copy';
 
 // Items a team can buy with coins. Hosts turn each one on or off per game and
 // set its price, so one race can run without a shop while another leans on it.
@@ -19,7 +20,7 @@ export interface ShopItemDefinition {
   type: ShopItemType;
   name: string;
   icon: string;          // Material Design Icons name
-  description: string;   // shown to hosts and players, so the wording can't drift
+  description: string;   // shown to hosts and players; the wording lives in the copy catalog
   // Aimed at another team. These are applied by the server, since a team's
   // app may only ever change its own team.
   targetsTeam: boolean;
@@ -37,10 +38,9 @@ const NO_EXTRAS = { durationMinutes: 0, percent: 0, cap: 0 };
 export const SHOP_ITEMS: ShopItemDefinition[] = [
   {
     type: 'compass',
-    name: 'Compass',
+    name: copy.items.compass.name,
     icon: 'compass-outline',
-    description:
-      'Shows the direction to the next quest and how far away it is, for a while.',
+    description: copy.items.compass.description,
     targetsTeam: false,
     isAttack: false,
     settings: { durationMinutes: 'Lasts (minutes)' },
@@ -48,10 +48,9 @@ export const SHOP_ITEMS: ShopItemDefinition[] = [
   },
   {
     type: 'radar',
-    name: 'Radar',
+    name: copy.items.radar.name,
     icon: 'radar',
-    description:
-      'Pings faster the closer you get to the next quest, and shows how far away it is, but not which way. For a while.',
+    description: copy.items.radar.description,
     targetsTeam: false,
     isAttack: false,
     settings: { durationMinutes: 'Lasts (minutes)' },
@@ -59,10 +58,9 @@ export const SHOP_ITEMS: ShopItemDefinition[] = [
   },
   {
     type: 'shield',
-    name: 'Shield',
+    name: copy.items.shield.name,
     icon: 'shield-outline',
-    description:
-      'Blocks the next curse or robbery against your team, then it is used up. Other teams can’t see you have one.',
+    description: copy.items.shield.description,
     targetsTeam: false,
     isAttack: false,
     settings: {},
@@ -70,10 +68,9 @@ export const SHOP_ITEMS: ShopItemDefinition[] = [
   },
   {
     type: 'curse',
-    name: 'Curse',
+    name: copy.items.curse.name,
     icon: 'skull-outline',
-    description:
-      'Freezes another team for a while: no answers, no navigation hint, no shopping, and walking doesn’t count.',
+    description: copy.items.curse.description,
     targetsTeam: true,
     isAttack: true,
     settings: { durationMinutes: 'Lasts (minutes)' },
@@ -81,10 +78,9 @@ export const SHOP_ITEMS: ShopItemDefinition[] = [
   },
   {
     type: 'robbery',
-    name: 'Robbery',
+    name: copy.items.robbery.name,
     icon: 'sack-percent',
-    description:
-      'Steals a share of another team’s coins. The price is gone even if they have nothing, or a shield. A team just robbed can’t be robbed again for a while.',
+    description: copy.items.robbery.description,
     targetsTeam: true,
     isAttack: true,
     settings: { percent: 'Share taken (%)', cap: 'At most (coins)', durationMinutes: 'Cooldown (minutes)' },
@@ -92,9 +88,9 @@ export const SHOP_ITEMS: ShopItemDefinition[] = [
   },
   {
     type: 'donate',
-    name: 'Donate',
+    name: copy.items.donate.name,
     icon: 'hand-coin-outline',
-    description: 'Give some of your coins to another team. Alliances, deals, or a peace offering.',
+    description: copy.items.donate.description,
     targetsTeam: true,
     isAttack: false,
     settings: {},

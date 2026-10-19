@@ -28,6 +28,7 @@ import {
 import { auth, db } from '../firebase';
 import { removePrivateEntry } from '../utils/privateEntry';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { copy } from '@gcr26/shared';
 
 // Deleting the person, not the race: their account, profile, location history
 // and messages go. Their team's progress stays — it belongs to the team, and
@@ -104,8 +105,8 @@ export default function DeleteAccountModal({
 			const code = e?.code ?? '';
 			setError(
 				code === 'auth/wrong-password' || code === 'auth/invalid-credential'
-					? 'That password is not right.'
-					: "Couldn't delete the account just now. Try again.",
+					? copy.deleteAccount.wrongPassword
+					: copy.deleteAccount.failed,
 			);
 			setWorking(false);
 		}
@@ -126,18 +127,11 @@ export default function DeleteAccountModal({
 					<ScrollView
 						contentContainerStyle={{ padding: 24, paddingBottom: insets.bottom + 24 }}
 					>
-						<Text style={styles.title}>Delete your account</Text>
-						<Text style={styles.body}>
-							This removes your account, your profile and your location history,
-							and deletes the messages you sent to the organizers. It cannot be
-							undone.
-						</Text>
-						<Text style={styles.body}>
-							Your team keeps the quests it has solved, so the race carries on
-							for everyone else.
-						</Text>
+						<Text style={styles.title}>{copy.deleteAccount.title}</Text>
+						<Text style={styles.body}>{copy.deleteAccount.what}</Text>
+						<Text style={styles.body}>{copy.deleteAccount.team}</Text>
 
-						<Text style={styles.label}>Confirm your password</Text>
+						<Text style={styles.label}>{copy.deleteAccount.confirm}</Text>
 						<TextInput
 							style={styles.input}
 							value={password}
@@ -147,7 +141,7 @@ export default function DeleteAccountModal({
 							}}
 							secureTextEntry
 							autoCapitalize="none"
-							placeholder="Password"
+							placeholder={copy.deleteAccount.password}
 							placeholderTextColor="#bbb"
 						/>
 						{error && <Text style={styles.error}>{error}</Text>}
@@ -158,11 +152,11 @@ export default function DeleteAccountModal({
 							disabled={!password || working}
 						>
 							<Text style={styles.deleteText}>
-								{working ? 'Deleting…' : 'Delete my account'}
+								{working ? copy.deleteAccount.deleting : copy.deleteAccount.button}
 							</Text>
 						</TouchableOpacity>
 						<TouchableOpacity style={styles.cancel} onPress={onClose}>
-							<Text style={styles.cancelText}>Cancel</Text>
+							<Text style={styles.cancelText}>{copy.common.cancel}</Text>
 						</TouchableOpacity>
 					</ScrollView>
 				</View>
