@@ -1,3 +1,5 @@
+import { rich } from '../utils/rich';
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useMatch, useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
@@ -145,7 +147,7 @@ export default function Layout() {
           className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left"
         >
           <p className="font-semibold text-gray-900 truncate">
-            {currentGame?.name ?? 'Select game'}
+            {currentGame?.name ?? cc.layout.selectGame}
           </p>
           <span className="text-gray-400 text-[10px] ml-2 shrink-0">
             {switcherOpen ? '▲' : '▼'}
@@ -155,7 +157,7 @@ export default function Layout() {
         {switcherOpen && (
           <div className="absolute left-3 right-3 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
             {games.length === 0 && (
-              <p className="px-3 py-2 text-sm text-gray-400">No games yet</p>
+              <p className="px-3 py-2 text-sm text-gray-400">{cc.layout.noGamesYet}</p>
             )}
             {games.map(game => (
               <div key={game.id} className="flex items-center group">
@@ -172,7 +174,7 @@ export default function Layout() {
                 <button
                   onClick={() => { setEditingGame(game); setSwitcherOpen(false); }}
                   className="px-2 py-2 text-xs text-gray-300 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-                  title="Edit game"
+                  title={cc.layout.editGame}
                 >
                   <Icon name="pencil-outline" size={14} />
                 </button>
@@ -182,7 +184,7 @@ export default function Layout() {
               onClick={() => { setEditingGame('new'); setSwitcherOpen(false); }}
               className="w-full text-left px-3 py-2.5 text-sm text-gray-400 hover:bg-gray-50 border-t border-gray-100 transition-colors"
             >
-              + New game
+              {cc.layout.newGame}
             </button>
           </div>
         )}
@@ -192,27 +194,26 @@ export default function Layout() {
       <nav className="flex-1 px-3 py-4 space-y-1">
         {activeGameId && (
           <>
-            <NavLink to={`/games/${activeGameId}/game`} className={navClass}>Game</NavLink>
-            <NavLink to={`/games/${activeGameId}/quests`} className={navClass}>Quests</NavLink>
-            <NavLink to={`/games/${activeGameId}/teams`} className={navClass}>Teams</NavLink>
-            <NavLink to={`/games/${activeGameId}/items`} className={navClass}>Items</NavLink>
+            <NavLink to={`/games/${activeGameId}/game`} className={navClass}>{cc.layout.game}</NavLink>
+            <NavLink to={`/games/${activeGameId}/quests`} className={navClass}>{cc.layout.quests}</NavLink>
+            <NavLink to={`/games/${activeGameId}/teams`} className={navClass}>{cc.layout.teams}</NavLink>
+            <NavLink to={`/games/${activeGameId}/items`} className={navClass}>{cc.layout.items}</NavLink>
             {/* Avatar (temporary) */}
-            <NavLink to={`/games/${activeGameId}/avatars`} className={navClass}>Avatars</NavLink>
-            <NavLink to={`/games/${activeGameId}/leaderboard`} className={navClass}>Leaderboard</NavLink>
-            <NavLink to={`/games/${activeGameId}/live-map`} className={navClass}>Live Map</NavLink>
-            <NavLink to={`/games/${activeGameId}/activity`} className={navClass}>Activity</NavLink>
+            <NavLink to={`/games/${activeGameId}/avatars`} className={navClass}>{cc.layout.avatars}</NavLink>
+            <NavLink to={`/games/${activeGameId}/leaderboard`} className={navClass}>{cc.layout.leaderboard}</NavLink>
+            <NavLink to={`/games/${activeGameId}/live-map`} className={navClass}>{cc.layout.liveMap}</NavLink>
+            <NavLink to={`/games/${activeGameId}/activity`} className={navClass}>{cc.layout.activity}</NavLink>
             <NavLink to={`/games/${activeGameId}/chat`} className={navClass}>
               <span className="flex items-center gap-2">
-                Chat
-                {chatUnread > 0 && (
+                {rich(cc.layout.chat({ chatUnread: chatUnread > 0 && (
                   <span className="text-xs font-semibold text-white bg-red-500 rounded-full px-1.5 py-0.5">{chatUnread}</span>
-                )}
+                ) }))}
               </span>
             </NavLink>
             <div className="pt-2 mt-2 border-t border-gray-100" />
           </>
         )}
-        {isAdmin && <NavLink to="/players" className={navClass}>Players</NavLink>}
+        {isAdmin && <NavLink to="/players" className={navClass}>{cc.layout.players}</NavLink>}
       </nav>
 
       <div className="px-3 py-4 border-t border-gray-100">
@@ -222,13 +223,13 @@ export default function Layout() {
           rel="noreferrer"
           className="block w-full text-left px-3 py-2 text-sm text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
         >
-          Hosting guide
+          {cc.layout.hostingGuide}
         </a>
         <button
           onClick={() => signOut(auth)}
           className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
         >
-          Sign out
+          {cc.layout.signOut}
         </button>
       </div>
     </>
@@ -269,7 +270,7 @@ export default function Layout() {
             </svg>
           </button>
           <span className="ml-3 font-semibold text-gray-900 truncate">
-            {currentGame?.name ?? 'GCR Admin'}
+            {currentGame?.name ?? cc.layout.gcrAdmin}
           </span>
         </div>
 
@@ -280,17 +281,16 @@ export default function Layout() {
               // First run: a new host has nowhere to go until a game exists
               <div className="max-w-md mx-auto mt-16 text-center">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                  Welcome to Grand City Race
+                  {cc.layout.welcomeToGrandCityRace}
                 </h1>
                 <p className="text-sm text-gray-500 mb-6">
-                  Create a game, add some quests, and share its invite code with
-                  your players. They join from the app with that code.
+                  {cc.layout.createAGameAddSome}
                 </p>
                 <button
                   onClick={() => setEditingGame('new')}
                   className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
                 >
-                  Create your first game
+                  {cc.layout.createYourFirstGame}
                 </button>
               </div>
             ) : (

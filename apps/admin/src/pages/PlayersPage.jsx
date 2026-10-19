@@ -1,3 +1,4 @@
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import { collection, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -47,18 +48,18 @@ export default function PlayersPage() {
   if (!isAdmin) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Players</h1>
-        <p className="text-gray-400">The player list is available to platform admins only.</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">{cc.playersPage.players}</h1>
+        <p className="text-gray-400">{cc.playersPage.thePlayerListIsAvailable}</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Players</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{cc.playersPage.players}</h1>
 
       {sorted.length === 0 ? (
-        <p className="text-gray-400">No players yet.</p>
+        <p className="text-gray-400">{cc.playersPage.noPlayersYet}</p>
       ) : (
         <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
           {sorted.map(user => {
@@ -75,7 +76,7 @@ export default function PlayersPage() {
                     <span className="text-sm font-medium text-gray-900">{user.name}</span>
                     {user.isAdmin && (
                       <span className="text-xs bg-gray-900 text-white px-1.5 py-0.5 rounded font-medium">
-                        Admin
+                        {cc.playersPage.admin}
                       </span>
                     )}
                   </div>
@@ -89,7 +90,7 @@ export default function PlayersPage() {
                         {team.name}
                       </button>
                     ) : (
-                      <span className="text-gray-300">Unassigned</span>
+                      <span className="text-gray-300">{cc.playersPage.unassigned}</span>
                     )}
                     {game && <span className="text-gray-400"> · {game.name}</span>}
                   </p>
@@ -107,7 +108,7 @@ export default function PlayersPage() {
                       {game && <span className="text-gray-400"> · {game.name}</span>}
                     </span>
                   ) : (
-                    <span className="text-gray-300">Unassigned</span>
+                    <span className="text-gray-300">{cc.playersPage.unassigned}</span>
                   )}
                 </div>
 
@@ -115,7 +116,7 @@ export default function PlayersPage() {
                   onClick={() => toggleAdmin(user)}
                   className="text-xs text-gray-400 hover:text-gray-700 transition-colors shrink-0"
                 >
-                  {user.isAdmin ? 'Revoke' : 'Make admin'}
+                  {user.isAdmin ? cc.playersPage.revoke : cc.playersPage.makeAdmin}
                 </button>
               </div>
             );

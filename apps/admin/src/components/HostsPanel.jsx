@@ -1,3 +1,4 @@
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -20,7 +21,7 @@ export default function HostsPanel({ gameId, game, isAdmin, currentUserId }) {
     if (!canManage) return;
     callApi('/api/hosts', { gameId, action: 'list' })
       .then(res => setHosts(res.hosts))
-      .catch(() => setHosts(hostIds.map(uid => ({ uid, name: uid === currentUserId ? 'You' : 'A host' }))));
+      .catch(() => setHosts(hostIds.map(uid => ({ uid, name: uid === currentUserId ? cc.hostsPanel.you : cc.hostsPanel.aHost }))));
   }, [gameId, canManage, hostIds.join(',')]);
 
   async function run(body) {
@@ -45,28 +46,27 @@ export default function HostsPanel({ gameId, game, isAdmin, currentUserId }) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
-      <h2 className="text-sm font-semibold text-gray-900 mb-1">Hosts</h2>
+      <h2 className="text-sm font-semibold text-gray-900 mb-1">{cc.hostsPanel.hosts}</h2>
       <p className="text-xs text-gray-400 mb-3">
-        Hosts run this game: quests, teams, coins and the activity board. Add a co-host by
-        the email they signed up with.
+        {cc.hostsPanel.hostsRunThisGameQuests}
       </p>
 
       {hostIds.length === 0 ? (
         <p className="text-xs text-yellow-600 mb-3">
-          No hosts yet — only platform admins can run this game.
+          {cc.hostsPanel.noHostsYetOnlyPlatform}
         </p>
       ) : (
         <div className="space-y-1 mb-3">
           {hosts.map(({ uid, name }) => (
             <div key={uid} className="flex items-center justify-between text-sm text-gray-700">
-              <span>{name}{uid === currentUserId ? ' (you)' : ''}</span>
+              <span>{name}{uid === currentUserId ? cc.hostsPanel.you2 : ''}</span>
               {canManage && hosts.length > 1 && (
                 <button
                   onClick={() => run({ action: 'remove', uid })}
                   disabled={busy}
                   className="text-xs text-gray-300 hover:text-red-500 transition-colors"
                 >
-                  Remove
+                  {cc.hostsPanel.remove}
                 </button>
               )}
             </div>
@@ -82,14 +82,14 @@ export default function HostsPanel({ gameId, game, isAdmin, currentUserId }) {
               value={email}
               onChange={e => { setEmail(e.target.value); setError(null); }}
               onKeyDown={e => e.key === 'Enter' && addHost()}
-              placeholder="cohost@example.com"
+              placeholder={cc.hostsPanel.cohostExampleCom}
             />
             <button
               onClick={addHost}
               disabled={!email.trim() || busy}
               className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition-colors"
             >
-              Add host
+              {cc.hostsPanel.addHost}
             </button>
           </div>
           {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
@@ -98,7 +98,7 @@ export default function HostsPanel({ gameId, game, isAdmin, currentUserId }) {
               onClick={() => updateDoc(doc(db, 'games', gameId), { hostIds: arrayUnion(currentUserId) })}
               className="text-xs text-gray-400 hover:text-gray-700 transition-colors mt-2"
             >
-              + Add me as host
+              {cc.hostsPanel.addMeAsHost}
             </button>
           )}
         </>

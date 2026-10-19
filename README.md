@@ -212,8 +212,13 @@ grouped by screen: buttons, messages, the activity feed, item names and
 descriptions, sign-in errors, and what the server functions say to players.
 Change wording there, not in the screens. Sentences with names or numbers are
 small functions; keep their `${...}` parts. A second language is a copy of the
-file (`de.ts`), which TypeScript checks for completeness. The console's copy
-isn't in it yet.
+file (`de.ts`), which TypeScript checks for completeness.
+
+The console's words are in `packages/shared/src/copy/console.en.ts`, grouped by
+screen; texts both sides show (items, themes, the feed) stay in `en.ts`. The
+console is plain JavaScript, so `node local/check-console-copy.mjs` checks that
+every catalog name it uses exists. The manuals and legal pages are long-form
+and stay in their pages.
 
 ### Themes and icons
 

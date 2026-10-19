@@ -1,3 +1,5 @@
+import { rich } from '../utils/rich';
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import {
   doc, collection, query, where,
@@ -42,7 +44,7 @@ const STATUS_STYLES = {
   ended:    'bg-red-100 text-red-600',
 };
 const STATUS_LABELS = {
-  upcoming: 'Upcoming', running: 'Running', paused: 'Paused', ended: 'Ended',
+  upcoming: cc.gamePage.upcoming, running: cc.gamePage.running, paused: cc.gamePage.paused, ended: cc.gamePage.ended,
 };
 
 export default function GamePage() {
@@ -173,7 +175,7 @@ export default function GamePage() {
   return (
     <div className="max-w-sm">
       <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Game</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{cc.gamePage.game}</h1>
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[status]}`}>
           {STATUS_LABELS[status]}
         </span>
@@ -182,15 +184,15 @@ export default function GamePage() {
       {/* Info */}
       <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6 space-y-2">
         <p className="text-sm font-semibold text-gray-900">{game.name}</p>
-        <p className="text-xs text-gray-500">Scheduled start: {formatDateTime(game.startDateTime)}</p>
+        <p className="text-xs text-gray-500">{cc.gamePage.scheduledStart({ formatDateTime: formatDateTime(game.startDateTime) })}</p>
         {totalPaused > 0 && (
-          <p className="text-xs text-gray-500">Total paused: {formatDuration(totalPaused)}</p>
+          <p className="text-xs text-gray-500">{cc.gamePage.totalPaused({ formatDuration: formatDuration(totalPaused) })}</p>
         )}
         {game.pausedAt && (
-          <p className="text-xs text-yellow-600">Paused at {formatDateTime(game.pausedAt)}</p>
+          <p className="text-xs text-yellow-600">{cc.gamePage.pausedAt({ formatDateTime: formatDateTime(game.pausedAt) })}</p>
         )}
         {game.endedAt && (
-          <p className="text-xs text-red-500">Ended at {formatDateTime(game.endedAt)}</p>
+          <p className="text-xs text-red-500">{cc.gamePage.endedAt({ formatDateTime: formatDateTime(game.endedAt) })}</p>
         )}
       </div>
 
@@ -208,7 +210,7 @@ export default function GamePage() {
                 disabled={busy}
                 className="w-full py-3 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-700 disabled:opacity-50 transition-colors"
               >
-                Start now
+                {cc.gamePage.startNow}
               </button>
             )}
 
@@ -218,7 +220,7 @@ export default function GamePage() {
                 disabled={busy}
                 className="w-full py-3 bg-yellow-500 text-white rounded-lg text-sm font-semibold hover:bg-yellow-600 disabled:opacity-50 transition-colors"
               >
-                Pause game
+                {cc.gamePage.pauseGame}
               </button>
             )}
 
@@ -228,7 +230,7 @@ export default function GamePage() {
                 disabled={busy}
                 className="w-full py-3 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
               >
-                Resume game
+                {cc.gamePage.resumeGame}
               </button>
             )}
 
@@ -236,28 +238,27 @@ export default function GamePage() {
               showEndConfirm ? (
                 <div className="border border-red-200 rounded-lg p-4 space-y-3">
                   <p className="text-sm text-gray-700">
-                    This will end the game for all players and notify them.
-                    Type <span className="font-mono font-bold">END</span> to confirm.
+                    {rich(cc.gamePage.thisWillEndTheGame({ span: <span className="font-mono font-bold">{cc.gamePage.end}</span> }))}
                   </p>
                   <input
                     value={endInput}
                     onChange={e => setEndInput(e.target.value)}
-                    placeholder="Type END"
+                    placeholder={cc.gamePage.typeEnd({ word: cc.gamePage.end })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-red-400"
                   />
                   <div className="flex gap-2">
                     <button
                       onClick={endGame}
-                      disabled={busy || endInput !== 'END'}
+                      disabled={busy || endInput !== cc.gamePage.end}
                       className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-40 transition-colors"
                     >
-                      End game
+                      {cc.gamePage.endGame}
                     </button>
                     <button
                       onClick={() => { setShowEndConfirm(false); setEndInput(''); }}
                       className="flex-1 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
                     >
-                      Cancel
+                      {cc.gamePage.cancel}
                     </button>
                   </div>
                 </div>
@@ -266,7 +267,7 @@ export default function GamePage() {
                   onClick={() => setShowEndConfirm(true)}
                   className="w-full py-3 border border-red-200 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-50 transition-colors"
                 >
-                  End game
+                  {cc.gamePage.endGame}
                 </button>
               )
             )}
@@ -278,31 +279,27 @@ export default function GamePage() {
           showResetConfirm ? (
             <div className="border border-gray-300 rounded-lg p-4 space-y-3">
               <p className="text-sm text-gray-700">
-                This sends every team back to the start and clears everything the
-                race left behind: progress, coins, the activity feed, chat, wrong
-                answers, and positions and trails on the live map. Teams and players
-                stay.
-                Type <span className="font-mono font-bold">RESET</span> to confirm.
+                {rich(cc.gamePage.thisSendsEveryTeamBack({ span: <span className="font-mono font-bold">{cc.gamePage.reset}</span> }))}
               </p>
               <input
                 value={resetInput}
                 onChange={e => setResetInput(e.target.value)}
-                placeholder="Type RESET"
+                placeholder={cc.gamePage.typeReset({ word: cc.gamePage.reset })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-gray-500"
               />
               <div className="flex gap-2">
                 <button
                   onClick={resetGame}
-                  disabled={busy || resetInput !== 'RESET'}
+                  disabled={busy || resetInput !== cc.gamePage.reset}
                   className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-700 disabled:opacity-40 transition-colors"
                 >
-                  Reset game
+                  {cc.gamePage.resetGame}
                 </button>
                 <button
                   onClick={() => { setShowResetConfirm(false); setResetInput(''); }}
                   className="flex-1 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  {cc.gamePage.cancel}
                 </button>
               </div>
             </div>
@@ -311,7 +308,7 @@ export default function GamePage() {
               onClick={() => setShowResetConfirm(true)}
               className="w-full py-3 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
             >
-              Reset game
+              {cc.gamePage.resetGame}
             </button>
           )
         )}

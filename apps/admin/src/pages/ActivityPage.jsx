@@ -1,3 +1,5 @@
+import { rich } from '../utils/rich';
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, orderBy, query, limit } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
@@ -57,35 +59,34 @@ export default function ActivityPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Activity</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{cc.activityPage.activity}</h1>
 
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Post a note</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{cc.activityPage.postANote}</label>
         <div className="flex gap-2">
           <input
             className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
             value={note}
             onChange={e => setNote(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && postNote()}
-            placeholder="Bonus challenge at the fountain, 15:00"
+            placeholder={cc.activityPage.bonusChallengeAtTheFountain}
           />
           <button
             onClick={postNote}
             disabled={!note.trim() || posting}
             className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {posting ? 'Posting…' : 'Post'}
+            {posting ? cc.activityPage.posting : cc.activityPage.post}
           </button>
         </div>
         <label className="flex items-center gap-2 mt-2 text-xs text-gray-500 cursor-pointer">
-          <input type="checkbox" checked={alsoPush} onChange={e => setAlsoPush(e.target.checked)} className="accent-gray-900" />
-          Also send as a push notification to every player
+          {rich(cc.activityPage.alsoSendAsAPush({ input: <input type="checkbox" checked={alsoPush} onChange={e => setAlsoPush(e.target.checked)} className="accent-gray-900" /> }))}
         </label>
       </div>
 
       {teams.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
-          {[['all', 'All teams'], ...teams].map(([id, name]) => (
+          {[[cc.activityPage.all, cc.activityPage.allTeams], ...teams].map(([id, name]) => (
             <button
               key={id}
               onClick={() => setTeamFilter(id)}
@@ -100,7 +101,7 @@ export default function ActivityPage() {
       )}
 
       {visible.length === 0 ? (
-        <p className="text-gray-400">Nothing has happened yet.</p>
+        <p className="text-gray-400">{cc.activityPage.nothingHasHappenedYet}</p>
       ) : (
         groupByDay(visible).map(group => (
           <div key={group.day} className="mb-6">
@@ -113,7 +114,7 @@ export default function ActivityPage() {
                     <Icon name={icon} size={18} className="text-gray-500" />
                     <span className="flex-1 text-sm text-gray-900">{text}</span>
                     {entry.visibility === 'team' && (
-                      <span className="text-xs text-gray-300 shrink-0" title="Only this team can see this entry">private</span>
+                      <span className="text-xs text-gray-300 shrink-0" title={cc.activityPage.onlyThisTeamCanSee}>{cc.activityPage.private}</span>
                     )}
                     <span className="text-xs text-gray-400 shrink-0 tabular-nums">{formatActivityTime(entry.at)}</span>
                   </div>

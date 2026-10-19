@@ -1,3 +1,5 @@
+import { rich } from '../utils/rich';
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -61,10 +63,10 @@ export default function LocationPicker({ value, onChange, defaultCenter, fenceRa
       {hasLocation ? (
         <p className="text-xs text-gray-500">
           {parseFloat(value.lat).toFixed(6)}, {parseFloat(value.lng).toFixed(6)}
-          <button onClick={() => onChange({ lat: '', lng: '' })} className="ml-2 inline-flex items-center gap-0.5 text-gray-400 hover:text-red-400 transition-colors"><Icon name="close" size={12} /> clear</button>
+          <button onClick={() => onChange({ lat: '', lng: '' })} className="ml-2 inline-flex items-center gap-0.5 text-gray-400 hover:text-red-400 transition-colors">{rich(cc.locationPicker.clear({ icon: <Icon name="close" size={12} /> }))}</button>
         </p>
       ) : (
-        <p className="text-xs text-gray-400">Click on the map to set the location.</p>
+        <p className="text-xs text-gray-400">{cc.locationPicker.clickOnTheMapTo}</p>
       )}
     </div>
   );

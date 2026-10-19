@@ -1,3 +1,4 @@
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect, useRef } from 'react';
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
@@ -50,20 +51,20 @@ function QuestRow({ quest, index, isSelected, onClick, onToggle, onViewMap }) {
         {optionLabel(TRIGGER_OPTIONS, quest.trigger)} · {optionLabel(TASK_OPTIONS, quest.task)}
       </span>
       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${quest.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-        {quest.isActive ? 'Active' : 'Inactive'}
+        {quest.isActive ? cc.questsPage.active : cc.questsPage.inactive}
       </span>
       <button
         onClick={e => { e.stopPropagation(); onToggle(quest); }}
         className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
       >
-        {quest.isActive ? 'Deactivate' : 'Activate'}
+        {quest.isActive ? cc.questsPage.deactivate : cc.questsPage.activate}
       </button>
       {quest.location?.lat && (
         <button
           onClick={e => { e.stopPropagation(); onViewMap(quest); }}
           className="text-xs text-gray-400 hover:text-gray-700 transition-colors shrink-0"
         >
-          Map →
+          {cc.questsPage.map}
         </button>
       )}
     </div>
@@ -160,7 +161,7 @@ export default function QuestsPage() {
   }
 
   function tryClose(callback) {
-    if (isDirty.current && !confirm('You have unsaved changes. Discard them?')) return;
+    if (isDirty.current && !confirm(cc.questsPage.youHaveUnsavedChangesDiscard)) return;
     isDirty.current = false;
     callback?.();
   }
@@ -213,42 +214,42 @@ export default function QuestsPage() {
     <div className="flex h-full gap-6">
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Quests</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{cc.questsPage.quests}</h1>
           <div className="flex items-center gap-2">
             <button
               onClick={handleExport}
               disabled={!orderedQuests.length}
               className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Export
+              {cc.questsPage.export}
             </button>
             <button
               onClick={() => tryClose(() => setImportOpen(true))}
               disabled={atQuestLimit}
-              title={atQuestLimit ? `A game may hold at most ${MAX_QUESTS_PER_GAME} quests.` : undefined}
+              title={atQuestLimit ? cc.questsPage.aGameMayHoldAt({ maxQuestsPerGame: MAX_QUESTS_PER_GAME }) : undefined}
               className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Import
+              {cc.questsPage.import}
             </button>
             <button
               onClick={() => tryClose(() => setSelected('new'))}
               disabled={atQuestLimit}
-              title={atQuestLimit ? `A game may hold at most ${MAX_QUESTS_PER_GAME} quests.` : undefined}
+              title={atQuestLimit ? cc.questsPage.aGameMayHoldAt({ maxQuestsPerGame: MAX_QUESTS_PER_GAME }) : undefined}
               className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              + New Quest
+              {cc.questsPage.newQuest}
             </button>
           </div>
         </div>
 
         {atQuestLimit && (
           <p className="text-xs text-yellow-600 mb-4">
-            This game has reached the limit of {MAX_QUESTS_PER_GAME} quests. Delete one to add another.
+            {cc.questsPage.thisGameHasReachedThe({ maxQuestsPerGame: MAX_QUESTS_PER_GAME })}
           </p>
         )}
 
         {orderedQuests.length === 0 ? (
-          <p className="text-gray-400">No quests yet. Create the first one.</p>
+          <p className="text-gray-400">{cc.questsPage.noQuestsYetCreateThe}</p>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={questOrder} strategy={verticalListSortingStrategy}>

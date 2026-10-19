@@ -1,3 +1,5 @@
+import { rich } from '../utils/rich';
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
@@ -25,7 +27,7 @@ import Icon from '../components/Icon';
 function DraggableMemberRow({ user, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: user.id });
   const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    ? { transform: cc.teamsPage.translate3dPxPx0({ transformX: transform.x, transformY: transform.y }) }
     : undefined;
 
   return (
@@ -58,7 +60,7 @@ function DraggableMemberRow({ user, onRemove }) {
 function DraggablePlayerChip({ user }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: user.id });
   const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    ? { transform: cc.teamsPage.translate3dPxPx0({ transformX: transform.x, transformY: transform.y }) }
     : undefined;
 
   return (
@@ -104,7 +106,7 @@ function DroppableTeamCard({ team, members, maxTeamSize, coins, onRemove, onEdit
         <div className="flex items-center gap-3">
           <button
             onClick={() => onAdjustCoins(team)}
-            title="Adjust coins"
+            title={cc.teamsPage.adjustCoins}
             className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors"
           >
             <Icon name="circle-multiple-outline" size={14} /> {coins}
@@ -113,26 +115,26 @@ function DroppableTeamCard({ team, members, maxTeamSize, coins, onRemove, onEdit
             onClick={() => onProgress(team)}
             className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
           >
-            Progress
+            {cc.teamsPage.progress}
           </button>
           <button
             onClick={() => onViewMap(team)}
             className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
           >
-            Map →
+            {cc.teamsPage.map}
           </button>
           <button
             onClick={() => onEdit(team)}
             className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
           >
-            Edit
+            {cc.teamsPage.edit}
           </button>
         </div>
       </div>
 
       <div className="space-y-1 min-h-[2rem]">
         {members.length === 0 && !isOver && (
-          <p className="text-sm text-gray-300 italic">Drop players here</p>
+          <p className="text-sm text-gray-300 italic">{cc.teamsPage.dropPlayersHere}</p>
         )}
         {members.map(user => (
           <DraggableMemberRow
@@ -143,7 +145,7 @@ function DroppableTeamCard({ team, members, maxTeamSize, coins, onRemove, onEdit
         ))}
       </div>
 
-      {isFull && isOver && <p className="text-xs text-red-400 mt-2">Team is full</p>}
+      {isFull && isOver && <p className="text-xs text-red-400 mt-2">{cc.teamsPage.teamIsFull}</p>}
     </div>
   );
 }
@@ -160,19 +162,19 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
   return (
     <div className="flex flex-col h-full">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-base font-semibold text-gray-900">{team ? 'Edit Team' : 'New Team'}</h2>
+        <h2 className="text-base font-semibold text-gray-900">{team ? cc.teamsPage.editTeam : cc.teamsPage.newTeam}</h2>
       </div>
 
       <div className="flex-1 px-6 py-5">
         {confirming ? (
           <div className="space-y-4">
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm font-semibold text-red-700 mb-1">Delete this team?</p>
-              <p className="text-sm text-red-600">All members will be unassigned. This cannot be undone.</p>
+              <p className="text-sm font-semibold text-red-700 mb-1">{cc.teamsPage.deleteThisTeam}</p>
+              <p className="text-sm text-red-600">{cc.teamsPage.allMembersWillBeUnassigned}</p>
             </div>
             <div>
               <label className="block text-sm text-gray-700 mb-1">
-                Type <span className="font-semibold">{team.name}</span> to confirm:
+                {rich(cc.teamsPage.typeToConfirm({ span: <span className="font-semibold">{team.name}</span> }))}
               </label>
               <input
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
@@ -186,17 +188,17 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{cc.teamsPage.name}</label>
               <input
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="e.g. Team Alpha"
+                placeholder={cc.teamsPage.eGTeamAlpha}
                 autoFocus
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{cc.teamsPage.color}</label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {TEAM_COLORS.map(c => (
                   <button
@@ -216,7 +218,7 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
                 className="w-8 h-8 rounded cursor-pointer border border-gray-300 p-0.5"
                 value={color}
                 onChange={e => setColor(e.target.value)}
-                title="Custom color"
+                title={cc.teamsPage.customColor}
               />
             </div>
           </div>
@@ -230,14 +232,14 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
               onClick={() => { setConfirming(false); setDeleteInput(''); }}
               className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
             >
-              ← Back
+              {cc.teamsPage.back}
             </button>
             <button
               onClick={onDelete}
               disabled={!deleteConfirmed}
               className="ml-auto px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Delete team
+              {cc.teamsPage.deleteTeam}
             </button>
           </>
         ) : (
@@ -247,7 +249,7 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
                 onClick={() => setConfirming(true)}
                 className="text-sm text-red-400 hover:text-red-600 transition-colors"
               >
-                Delete
+                {cc.teamsPage.delete}
               </button>
             )}
             <div className="ml-auto flex gap-2">
@@ -255,14 +257,14 @@ function TeamForm({ team, onSave, onCancel, onDelete, saving }) {
                 onClick={onCancel}
                 className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100"
               >
-                Cancel
+                {cc.teamsPage.cancel}
               </button>
               <button
                 onClick={() => onSave({ name: name.trim(), color })}
                 disabled={!name.trim() || saving}
                 className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50"
               >
-                {saving ? 'Saving…' : 'Save Team'}
+                {saving ? cc.teamsPage.saving : cc.teamsPage.saveTeam}
               </button>
             </div>
           </>
@@ -341,7 +343,7 @@ export default function TeamsPage() {
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       el.style.transition = 'box-shadow 0.3s';
-      el.style.boxShadow = '0 0 0 3px #111';
+      el.style.boxShadow = cc.teamsPage.t0003px111;
       setTimeout(() => { el.style.boxShadow = ''; }, 1500);
     }
   }, [state?.highlightTeamId, teams.length]);
@@ -513,18 +515,18 @@ export default function TeamsPage() {
     <div className="flex h-full gap-6">
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Teams</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{cc.teamsPage.teams}</h1>
           <button
             onClick={() => setSelected('new')}
             className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
           >
-            + New Team
+            {cc.teamsPage.newTeam2}
           </button>
         </div>
 
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           {teams.length === 0 && unassigned.length === 0 ? (
-            <p className="text-gray-400">No teams yet. Create the first one.</p>
+            <p className="text-gray-400">{cc.teamsPage.noTeamsYetCreateThe}</p>
           ) : (
             <div className="space-y-8">
               {teams.length > 0 && (
@@ -552,10 +554,9 @@ export default function TeamsPage() {
               {unassigned.length > 0 && (
                 <div>
                   <h2 className="text-sm font-medium text-gray-500 mb-3">
-                    Unassigned Players
-                    {teams.length > 0 && (
-                      <span className="ml-1 font-normal text-gray-400">— drag into a team</span>
-                    )}
+                    {rich(cc.teamsPage.unassignedPlayers({ teamsLength: teams.length > 0 && (
+                      <span className="ml-1 font-normal text-gray-400">{cc.teamsPage.dragIntoATeam}</span>
+                    ) }))}
                   </h2>
                   <div className="flex flex-wrap gap-2">
                     {unassigned.map(user => (

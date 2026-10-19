@@ -1,3 +1,5 @@
+import { rich } from '../utils/rich';
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -25,13 +27,13 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    if (!emailLooksValid(email)) return setError('That email address doesn’t look right.');
+    if (!emailLooksValid(email)) return setError(cc.loginPage.thatEmailAddressDoesnT);
     if (signingUp) {
-      if (!name.trim()) return setError('Enter your name.');
+      if (!name.trim()) return setError(cc.loginPage.enterYourName);
       if (password.length < MIN_PASSWORD_LENGTH) {
-        return setError(`Pick a password with at least ${MIN_PASSWORD_LENGTH} characters.`);
+        return setError(cc.loginPage.pickAPasswordWithAt({ minPasswordLength: MIN_PASSWORD_LENGTH }));
       }
-      if (!accepted) return setError('Please accept the terms to continue.');
+      if (!accepted) return setError(cc.loginPage.pleaseAcceptTheTermsTo);
     }
 
     setLoading(true);
@@ -61,9 +63,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-bold text-center mb-2 tracking-widest">GCR</h1>
+        <h1 className="text-3xl font-bold text-center mb-2 tracking-widest">{cc.loginPage.gcr}</h1>
         <p className="text-center text-sm text-gray-500 mb-8">
-          {signingUp ? 'Create an account to host a game.' : 'Sign in to run your games.'}
+          {signingUp ? cc.loginPage.createAnAccountToHost : cc.loginPage.signInToRunYour}
         </p>
 
         <form
@@ -72,7 +74,7 @@ export default function LoginPage() {
         >
           {signingUp && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Your name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{cc.loginPage.yourName}</label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
@@ -83,7 +85,7 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{cc.loginPage.email}</label>
             <input
               type="email"
               value={email}
@@ -94,7 +96,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{cc.loginPage.password}</label>
             <input
               type="password"
               value={password}
@@ -112,9 +114,7 @@ export default function LoginPage() {
                 className="mt-0.5 accent-gray-900"
               />
               <span>
-                I agree to the <Link to="/terms" className="underline">terms</Link>,{' '}
-                <Link to="/privacy" className="underline">privacy policy</Link> and{' '}
-                <Link to="/guidelines" className="underline">community guidelines</Link>.
+                {rich(cc.loginPage.iAgreeToTheAnd({ link: <Link to="/terms" className="underline">{cc.loginPage.terms}</Link>, link2: <Link to="/privacy" className="underline">{cc.loginPage.privacyPolicy}</Link>, link3: <Link to="/guidelines" className="underline">{cc.loginPage.communityGuidelines}</Link> }))}
               </span>
             </label>
           )}
@@ -126,12 +126,12 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors"
           >
-            {loading ? 'Working…' : signingUp ? 'Create account' : 'Sign in'}
+            {loading ? cc.loginPage.working : signingUp ? cc.loginPage.createAccount : cc.loginPage.signIn}
           </button>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-5">
-          {signingUp ? 'Already have an account?' : 'Want to host your own game?'}{' '}
+          {signingUp ? cc.loginPage.alreadyHaveAnAccount : cc.loginPage.wantToHostYourOwn}{' '}
           <button
             onClick={() => {
               setMode(signingUp ? 'signin' : 'signup');
@@ -139,7 +139,7 @@ export default function LoginPage() {
             }}
             className="text-gray-900 font-medium hover:underline"
           >
-            {signingUp ? 'Sign in' : 'Create an account'}
+            {signingUp ? cc.loginPage.signIn : cc.loginPage.createAnAccount}
           </button>
         </p>
       </div>

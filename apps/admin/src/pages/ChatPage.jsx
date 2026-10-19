@@ -1,3 +1,4 @@
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
 	collection,
@@ -80,7 +81,7 @@ export default function ChatPage() {
 			document.visibilityState !== 'visible'
 		) {
 			const team = teams.find((t) => t.id === newest.teamId);
-			new Notification(`${team?.name ?? 'A team'} wrote`, {
+			new Notification(`${team?.name ?? cc.chatPage.aTeam} wrote`, {
 				body: newest.text,
 			});
 		}
@@ -141,13 +142,13 @@ export default function ChatPage() {
 	return (
 		<div>
 			<div className="flex items-center justify-between mb-6">
-				<h1 className="text-2xl font-bold text-gray-900">Chat</h1>
+				<h1 className="text-2xl font-bold text-gray-900">{cc.chatPage.chat}</h1>
 				{!notifyOn && typeof Notification !== 'undefined' && (
 					<button
 						onClick={enableNotifications}
 						className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
 					>
-						Enable desktop notifications
+						{cc.chatPage.enableDesktopNotifications}
 					</button>
 				)}
 			</div>
@@ -155,7 +156,7 @@ export default function ChatPage() {
 			<div className="flex gap-6 h-[calc(100vh-12rem)]">
 				<div className="w-64 shrink-0 overflow-y-auto space-y-1">
 					{teams.length === 0 && (
-						<p className="text-gray-400 text-sm">No teams yet.</p>
+						<p className="text-gray-400 text-sm">{cc.chatPage.noTeamsYet}</p>
 					)}
 					{teams.map((team) => {
 						const unread = unreadFor(team);
@@ -183,8 +184,8 @@ export default function ChatPage() {
 								</div>
 								<p className="text-xs text-gray-400 truncate mt-0.5">
 									{last
-										? `${last.fromHost ? 'You: ' : ''}${last.text}`
-										: 'No messages yet'}
+										? `${last.fromHost ? cc.chatPage.you : ''}${last.text}`
+										: cc.chatPage.noMessagesYet}
 								</p>
 							</button>
 						);
@@ -194,7 +195,7 @@ export default function ChatPage() {
 				<div className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg flex flex-col">
 					{!openTeam ? (
 						<div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-							Pick a team to read their thread.
+							{cc.chatPage.pickATeamToRead}
 						</div>
 					) : (
 						<>
@@ -206,7 +207,7 @@ export default function ChatPage() {
 							<div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
 								{thread.length === 0 && (
 									<p className="text-sm text-gray-400">
-										Nothing yet. Say hello.
+										{cc.chatPage.nothingYetSayHello}
 									</p>
 								)}
 								{thread.map((m) => {
@@ -233,7 +234,7 @@ export default function ChatPage() {
 												</p>
 											</div>
 											{seen && (
-												<p className="text-[10px] text-gray-400 mt-0.5">Seen</p>
+												<p className="text-[10px] text-gray-400 mt-0.5">{cc.chatPage.seen}</p>
 											)}
 										</div>
 									);
@@ -246,14 +247,14 @@ export default function ChatPage() {
 									value={draft}
 									onChange={(e) => setDraft(e.target.value)}
 									onKeyDown={(e) => e.key === 'Enter' && send()}
-									placeholder={`Reply to ${openTeam.name}…`}
+									placeholder={cc.chatPage.replyTo({ openTeamName: openTeam.name })}
 								/>
 								<button
 									onClick={send}
 									disabled={!draft.trim() || sending}
 									className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-40 transition-colors"
 								>
-									{sending ? 'Sending…' : 'Send'}
+									{sending ? cc.chatPage.sending : cc.chatPage.send}
 								</button>
 							</div>
 						</>

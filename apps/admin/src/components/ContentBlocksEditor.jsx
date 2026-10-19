@@ -1,3 +1,4 @@
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState } from 'react';
 import { parseYouTubeId } from '@gcr26/shared';
 import Icon from './Icon';
@@ -13,7 +14,7 @@ const inputClass = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm f
 function ImagePreview({ url }) {
   const [failedUrl, setFailedUrl] = useState(null);
   if (!/^https?:\/\//i.test(url.trim())) return null;
-  if (failedUrl === url) return <p className="text-xs text-red-500">Image could not be loaded.</p>;
+  if (failedUrl === url) return <p className="text-xs text-red-500">{cc.contentBlocksEditor.imageCouldNotBeLoaded}</p>;
   return (
     <img
       src={url.trim()}
@@ -45,12 +46,12 @@ export default function ContentBlocksEditor({ blocks, onChange, textPlaceholder,
           <div key={i} className={`border rounded-lg p-2 space-y-2 ${hasError ? 'border-red-300' : 'border-gray-200'}`}>
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <span className="uppercase tracking-wide font-medium">
-                {block.type === 'text' ? 'Text' : block.type === 'image' ? 'Image' : 'YouTube'}
+                {block.type === 'text' ? cc.contentBlocksEditor.text : block.type === 'image' ? cc.contentBlocksEditor.image : cc.contentBlocksEditor.youTube}
               </span>
               <div className="ml-auto flex items-center gap-2">
                 <button onClick={() => move(i, -1)} disabled={i === 0} className="hover:text-gray-700 disabled:opacity-30">↑</button>
                 <button onClick={() => move(i, 1)} disabled={i === blocks.length - 1} className="hover:text-gray-700 disabled:opacity-30">↓</button>
-                <button onClick={() => onChange(blocks.filter((_, j) => j !== i))} className="hover:text-red-400" title="Remove"><Icon name="close" size={14} /></button>
+                <button onClick={() => onChange(blocks.filter((_, j) => j !== i))} className="hover:text-red-400" title={cc.contentBlocksEditor.remove}><Icon name="close" size={14} /></button>
               </div>
             </div>
 
@@ -70,13 +71,13 @@ export default function ContentBlocksEditor({ blocks, onChange, textPlaceholder,
                   className={inputClass}
                   value={block.url}
                   onChange={e => update(i, { url: e.target.value })}
-                  placeholder="https://… (direct link to a .jpg / .png)"
+                  placeholder={cc.contentBlocksEditor.httpsDirectLinkToA}
                 />
                 <input
                   className={inputClass}
                   value={block.caption ?? ''}
                   onChange={e => update(i, { caption: e.target.value })}
-                  placeholder="Caption (optional)"
+                  placeholder={cc.contentBlocksEditor.captionOptional}
                 />
                 <ImagePreview url={block.url} />
               </>
@@ -88,14 +89,14 @@ export default function ContentBlocksEditor({ blocks, onChange, textPlaceholder,
                   className={inputClass}
                   value={block.url}
                   onChange={e => update(i, { url: e.target.value })}
-                  placeholder="https://www.youtube.com/watch?v=…"
+                  placeholder={cc.contentBlocksEditor.httpsWwwYoutubeComWatch}
                 />
                 {videoId && (
                   <div className="aspect-video">
                     <iframe
                       className="w-full h-full rounded-md"
                       src={`https://www.youtube-nocookie.com/embed/${videoId}`}
-                      title="YouTube preview"
+                      title={cc.contentBlocksEditor.youTubePreview}
                       allow="encrypted-media; picture-in-picture"
                       allowFullScreen
                     />
@@ -108,7 +109,7 @@ export default function ContentBlocksEditor({ blocks, onChange, textPlaceholder,
       })}
 
       <div className="flex gap-3">
-        {[['text', '+ Text'], ['image', '+ Image'], ['youtube', '+ YouTube']].map(([type, label]) => (
+        {[[cc.contentBlocksEditor.text2, cc.contentBlocksEditor.text3], [cc.contentBlocksEditor.image2, cc.contentBlocksEditor.image3], [cc.contentBlocksEditor.youtube, cc.contentBlocksEditor.youTube2]].map(([type, label]) => (
           <button
             key={type}
             onClick={() => onChange([...blocks, NEW_BLOCK[type]()])}

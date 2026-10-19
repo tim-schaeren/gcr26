@@ -1,3 +1,5 @@
+import { rich } from '../utils/rich';
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useMemo, useState } from 'react';
 import { parseQuestExport, uniqueQuestTitle, MAX_QUESTS_PER_GAME } from '@gcr26/shared';
 import { TRIGGER_OPTIONS, TASK_OPTIONS } from '../utils/questOptions';
@@ -9,10 +11,10 @@ const label = (options, value) => options.find(o => o.value === value)?.label ??
 function summary(data) {
   const parts = [label(TRIGGER_OPTIONS, data.trigger)];
   if (data.trigger === 'distance') parts[0] += ` ${data.distanceMeters} m`;
-  if (data.trigger === 'location') parts[0] += ` ${data.fenceRadius} m fence`;
+  if (data.trigger === 'location') parts[0] += cc.questImportModal.mFence({ dataFenceRadius: data.fenceRadius });
   let task = label(TASK_OPTIONS, data.task);
   if (data.task === 'timer') task += ` ${Math.round(data.durationSeconds / 60)} min`;
-  if (data.task === 'answer') task += ` · ${data.answers.length} answer${data.answers.length === 1 ? '' : 's'}`;
+  if (data.task === 'answer') task += cc.questImportModal.answer({ answersLength: data.answers.length, answersLength2: data.answers.length === 1 ? '' : 's' });
   parts.push(task);
   return parts.join(' · ');
 }
@@ -47,7 +49,7 @@ export default function QuestImportModal({ existingTitles, existingCount, isLive
     setEntries([]);
     setSkipped(new Set());
     if (file.size > MAX_FILE_BYTES) {
-      setFileError('That file is too large to be a quest export.');
+      setFileError(cc.questImportModal.thatFileIsTooLarge);
       return;
     }
     const result = parseQuestExport(await file.text());
@@ -68,9 +70,9 @@ export default function QuestImportModal({ existingTitles, existingCount, isLive
     <div className="fixed inset-0 z-30 bg-black/40 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-full flex flex-col">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-base font-semibold text-gray-900">Import Quests</h2>
+          <h2 className="text-base font-semibold text-gray-900">{cc.questImportModal.importQuests}</h2>
           <p className="text-xs text-gray-400 mt-1">
-            Imported quests are added to the end of this game. Existing quests are never changed or deleted.
+            {cc.questImportModal.importedQuestsAreAddedTo}
           </p>
         </div>
 
@@ -78,7 +80,7 @@ export default function QuestImportModal({ existingTitles, existingCount, isLive
           <div>
             <label className="inline-flex items-center gap-3 cursor-pointer">
               <span className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                Choose JSON file
+                {cc.questImportModal.chooseJsonFile}
               </span>
               <input type="file" accept="application/json,.json" onChange={handleFile} className="hidden" />
               {fileName && <span className="text-sm text-gray-500">{fileName}</span>}
@@ -94,8 +96,7 @@ export default function QuestImportModal({ existingTitles, existingCount, isLive
           {isLive && entries.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <p className="text-sm text-yellow-700">
-                This game is already running. Imported quests are created <span className="font-medium">inactive</span> so
-                they don't lengthen the race. Activate them when you're ready.
+                {rich(cc.questImportModal.thisGameIsAlreadyRunning({ span: <span className="font-medium">{cc.questImportModal.inactive}</span> }))}
               </p>
             </div>
           )}
@@ -123,7 +124,7 @@ export default function QuestImportModal({ existingTitles, existingCount, isLive
                         {ok && <p className="text-xs text-gray-400 mt-0.5">{summary(entry.data)}</p>}
                         {prepared[i]?.renamed && (
                           <p className="text-xs text-yellow-600 mt-0.5">
-                            A quest with this title already exists. It will be imported as “{prepared[i].data.title}”.
+                            {cc.questImportModal.aQuestWithThisTitle({ prepared: prepared[i].data.title })}
                           </p>
                         )}
                         {entry.errors.map((e, j) => (
@@ -143,8 +144,7 @@ export default function QuestImportModal({ existingTitles, existingCount, isLive
           {overCap && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-sm text-red-600">
-                This game has {existingCount} quests and a game may hold at most {MAX_QUESTS_PER_GAME}. Untick
-                {' '}{existingCount + importable.length - MAX_QUESTS_PER_GAME} more to continue.
+                {cc.questImportModal.thisGameHasQuestsAnd({ existingCount: existingCount, maxQuestsPerGame: MAX_QUESTS_PER_GAME, existingCount2: existingCount + importable.length - MAX_QUESTS_PER_GAME })}
               </p>
             </div>
           )}
@@ -152,22 +152,22 @@ export default function QuestImportModal({ existingTitles, existingCount, isLive
 
         <div className="border-t border-gray-200 px-6 py-4 flex items-center gap-3">
           <span className="text-xs text-gray-400">
-            {entries.length > 0 && `${importable.length} of ${entries.length} selected`}
-            {failedCount > 0 && ` · ${failedCount} cannot be imported`}
+            {entries.length > 0 && cc.questImportModal.ofSelected({ importableLength: importable.length, entriesLength: entries.length })}
+            {failedCount > 0 && cc.questImportModal.cannotBeImported({ failedCount: failedCount })}
           </span>
           <div className="ml-auto flex gap-2">
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
             >
-              Cancel
+              {cc.questImportModal.cancel}
             </button>
             <button
               onClick={() => onImport(importable)}
               disabled={!importable.length || overCap || importing}
               className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {importing ? 'Importing…' : `Import ${importable.length || ''} quest${importable.length === 1 ? '' : 's'}`.trim()}
+              {importing ? cc.questImportModal.importing : cc.questImportModal.importQuest({ importableLength: importable.length || '', importableLength2: importable.length === 1 ? '' : 's' }).trim()}
             </button>
           </div>
         </div>

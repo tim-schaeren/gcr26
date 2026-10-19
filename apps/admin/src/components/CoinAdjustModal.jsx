@@ -1,3 +1,4 @@
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState } from 'react';
 
 // Adjusting a balance always records why, so a mid-race change can be explained afterwards
@@ -18,7 +19,7 @@ export default function CoinAdjustModal({ teamName, balance, onSave, onClose }) 
     try {
       await onSave(delta, reason.trim(), Math.max(0, balanceAfter));
     } catch {
-      setError('Could not save that adjustment. Try again.');
+      setError(cc.coinAdjustModal.couldNotSaveThatAdjustment);
       setSaving(false);
     }
   }
@@ -27,13 +28,13 @@ export default function CoinAdjustModal({ teamName, balance, onSave, onClose }) 
     <div className="fixed inset-0 z-30 bg-black/40 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-sm">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-base font-semibold text-gray-900">Adjust coins</h2>
-          <p className="text-xs text-gray-400 mt-1">{teamName} · currently {balance} coins</p>
+          <h2 className="text-base font-semibold text-gray-900">{cc.coinAdjustModal.adjustCoins}</h2>
+          <p className="text-xs text-gray-400 mt-1">{cc.coinAdjustModal.currentlyCoins({ teamName: teamName, balance: balance })}</p>
         </div>
 
         <div className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{cc.coinAdjustModal.amount}</label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -44,21 +45,21 @@ export default function CoinAdjustModal({ teamName, balance, onSave, onClose }) 
                 placeholder="e.g. 20"
               />
               <span className="text-sm text-gray-400">
-                {Number.isFinite(delta) && delta !== 0 ? `→ ${Math.max(0, balanceAfter)} coins` : 'Use a minus sign to deduct.'}
+                {Number.isFinite(delta) && delta !== 0 ? cc.coinAdjustModal.coins({ mathMax: Math.max(0, balanceAfter) }) : cc.coinAdjustModal.useAMinusSignTo}
               </span>
             </div>
             {balanceAfter < 0 && (
-              <p className="text-xs text-yellow-600 mt-1">That would go below zero; the balance will be set to 0.</p>
+              <p className="text-xs text-yellow-600 mt-1">{cc.coinAdjustModal.thatWouldGoBelowZero}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{cc.coinAdjustModal.reason}</label>
             <input
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
               value={reason}
               onChange={e => setReason(e.target.value)}
-              placeholder="Won the side challenge"
+              placeholder={cc.coinAdjustModal.wonTheSideChallenge}
             />
           </div>
 
@@ -70,14 +71,14 @@ export default function CoinAdjustModal({ teamName, balance, onSave, onClose }) 
             onClick={onClose}
             className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
           >
-            Cancel
+            {cc.coinAdjustModal.cancel}
           </button>
           <button
             onClick={handleSave}
             disabled={!valid || saving}
             className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? cc.coinAdjustModal.saving : cc.coinAdjustModal.save}
           </button>
         </div>
       </div>

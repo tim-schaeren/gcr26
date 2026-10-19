@@ -1,3 +1,4 @@
+import { consoleCopy as cc } from '@gcr26/shared';
 // Avatar (temporary) — built for the race of 24 October 2026 and meant to be
 // removed afterwards, along with everything else marked "Avatar (temporary)".
 import { useState, useEffect } from 'react';
@@ -19,14 +20,14 @@ function PictureCell({ value, onSave }) {
         {url.trim() && !failed ? (
           <img src={url.trim()} alt="" className="max-h-full max-w-full object-contain" onError={() => setFailed(true)} />
         ) : (
-          <span className="text-[11px] text-gray-300">{failed ? 'Can’t load' : 'Previous picture'}</span>
+          <span className="text-[11px] text-gray-300">{failed ? cc.avatarsPage.canTLoad : cc.avatarsPage.previousPicture}</span>
         )}
       </div>
       <input
         value={url}
         onChange={e => { setUrl(e.target.value); setFailed(false); }}
         onBlur={() => { if (url.trim() !== (value ?? '')) onSave(url.trim()); }}
-        placeholder="Picture URL"
+        placeholder={cc.avatarsPage.pictureUrl}
         className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gray-900"
       />
     </div>
@@ -68,16 +69,13 @@ export default function AvatarsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Avatars</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">{cc.avatarsPage.avatars}</h1>
       <p className="text-sm text-gray-500 mb-6 max-w-2xl">
-        Each team's avatar picture, for every quest. A team sees the picture for the
-        quest it is on; where a quest has none, it keeps the latest earlier one, so you
-        only need a picture where the avatar changes. Teams open it from the egg button
-        in the app, which appears once their team has a picture.
+        {cc.avatarsPage.eachTeamSAvatarPicture}
       </p>
 
       {teams.length === 0 || questOrder.length === 0 ? (
-        <p className="text-gray-400">Add teams and quests first.</p>
+        <p className="text-gray-400">{cc.avatarsPage.addTeamsAndQuestsFirst}</p>
       ) : (
         <div className="overflow-x-auto pb-4">
           <table className="border-separate border-spacing-3">
@@ -86,8 +84,8 @@ export default function AvatarsPage() {
                 <th />
                 {questOrder.map((qid, i) => (
                   <th key={qid} className="text-left align-bottom">
-                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Quest {i + 1}</span>
-                    <span className="block w-40 truncate text-sm font-medium text-gray-900">{quests[qid]?.title || 'Untitled'}</span>
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-gray-400">{cc.avatarsPage.quest({ i: i + 1 })}</span>
+                    <span className="block w-40 truncate text-sm font-medium text-gray-900">{quests[qid]?.title || cc.avatarsPage.untitled}</span>
                   </th>
                 ))}
               </tr>

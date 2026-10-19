@@ -1,3 +1,4 @@
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
@@ -6,9 +7,9 @@ import { db } from '../firebase';
 import Icon from '../components/Icon';
 
 const SETTING_LIMITS = {
-  durationMinutes: { min: 1, error: 'must be at least 1 minute' },
-  percent: { min: 1, max: 100, error: 'must be between 1 and 100' },
-  cap: { min: 1, error: 'must be at least 1' },
+  durationMinutes: { min: 1, error: cc.itemsPage.mustBeAtLeast1 },
+  percent: { min: 1, max: 100, error: cc.itemsPage.mustBeBetween1And },
+  cap: { min: 1, error: cc.itemsPage.mustBeAtLeast12 },
 };
 
 function ItemCard({ item, config, onSave, saving }) {
@@ -24,7 +25,7 @@ function ItemCard({ item, config, onSave, saving }) {
 
   function save() {
     const price = parseInt(values.price);
-    if (!Number.isFinite(price) || price < 0) return setError('Price must be 0 or more.');
+    if (!Number.isFinite(price) || price < 0) return setError(cc.itemsPage.priceMustBe0Or);
     const patch = { price };
     for (const [key, label] of settings) {
       const n = parseInt(values[key]);
@@ -59,12 +60,12 @@ function ItemCard({ item, config, onSave, saving }) {
               {item.name}
             </h2>
             {item.targetsTeam && (
-              <span className="text-[11px] text-gray-400">used on another team</span>
+              <span className="text-[11px] text-gray-400">{cc.itemsPage.usedOnAnotherTeam}</span>
             )}
             <button
               onClick={() => onSave({ enabled: !config.enabled })}
               className={`relative w-10 h-6 rounded-full transition-colors ml-auto ${config.enabled ? 'bg-gray-900' : 'bg-gray-200'}`}
-              title={config.enabled ? 'On sale' : 'Hidden from teams'}
+              title={config.enabled ? cc.itemsPage.onSale : cc.itemsPage.hiddenFromTeams}
             >
               <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${config.enabled ? 'translate-x-4' : ''}`} />
             </button>
@@ -74,14 +75,14 @@ function ItemCard({ item, config, onSave, saving }) {
           {config.enabled && (
             <>
               <div className="flex flex-wrap items-end gap-3 mt-4">
-                {field('price', 'Price (coins)', 0)}
+                {field(cc.itemsPage.price, cc.itemsPage.priceCoins, 0)}
                 {settings.map(([key, label]) => field(key, label, SETTING_LIMITS[key].min))}
                 <button
                   onClick={save}
                   disabled={!dirty || saving}
                   className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  {saving ? 'Saving…' : dirty ? 'Save' : 'Saved'}
+                  {saving ? cc.itemsPage.saving : dirty ? cc.itemsPage.save : cc.itemsPage.saved}
                 </button>
               </div>
               {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
@@ -120,9 +121,9 @@ export default function ItemsPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Items</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">{cc.itemsPage.items}</h1>
       <p className="text-sm text-gray-400 mb-6">
-        What teams can buy with their coins. Switching an item off hides it from the shop. Items used on another team are announced to everyone in the activity feed.
+        {cc.itemsPage.whatTeamsCanBuyWith}
       </p>
 
       <div className="space-y-3">

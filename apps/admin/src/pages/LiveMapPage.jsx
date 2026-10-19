@@ -1,3 +1,4 @@
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import { collection, doc, query, where, onSnapshot } from 'firebase/firestore';
 import { MapContainer, TileLayer, Marker, Circle, Polyline, Popup, useMap } from 'react-leaflet';
@@ -47,16 +48,16 @@ function teamQuestStatus(team, quests, memberUsers, questOrder) {
 
 function formatAge(updatedAt, now) {
   const ms = now - updatedAt;
-  if (ms < 60000) return 'just now';
-  if (ms < 3600000) return `${Math.floor(ms / 60000)} min ago`;
-  return `${Math.floor(ms / 3600000)}h ago`;
+  if (ms < 60000) return cc.liveMapPage.justNow;
+  if (ms < 3600000) return cc.liveMapPage.minAgo({ mathFloor: Math.floor(ms / 60000) });
+  return cc.liveMapPage.hAgo({ mathFloor: Math.floor(ms / 3600000) });
 }
 
 function memberDotIcon(teamColor, isStale) {
   const fill = isStale ? '#9ca3af' : teamColor;
   return L.divIcon({
     className: '',
-    html: `<div style="width:14px;height:14px;border-radius:50%;background:${fill};border:2.5px solid ${teamColor};box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+    html: cc.liveMapPage.divStyleWidth14pxHeight({ fill: fill, teamColor: teamColor }),
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });
@@ -64,7 +65,7 @@ function memberDotIcon(teamColor, isStale) {
 
 const questIcon = L.divIcon({
   className: '',
-  html: `<div style="width:28px;height:28px;border-radius:50%;background:#6366f1;border:2px solid white;color:white;font-weight:700;font-size:15px;line-height:24px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.4)">?</div>`,
+  html: cc.liveMapPage.divStyleWidth28pxHeight,
   iconSize: [28, 28],
   iconAnchor: [14, 14],
 });
@@ -176,7 +177,7 @@ export default function LiveMapPage() {
     <div className="flex flex-col h-full -m-4 md:-m-8">
       {/* Header */}
       <div className="px-4 md:px-8 py-4 bg-white border-b border-gray-200 flex items-center gap-6 shrink-0">
-        <h1 className="text-lg font-bold text-gray-900">Live Map</h1>
+        <h1 className="text-lg font-bold text-gray-900">{cc.liveMapPage.liveMap}</h1>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {teams.map((team, i) => {
             const memberUsers = gameUsers.filter(u => team.memberIds?.includes(u.id));
@@ -192,11 +193,11 @@ export default function LiveMapPage() {
                   style={{ backgroundColor: team.color ?? teamColor(i) }}
                 />
                 <span className="font-medium">{team.name}</span>
-                {team.finishedAt && <Icon name="check" size={14} className="text-green-600" title="Finished" />}
+                {team.finishedAt && <Icon name="check" size={14} className="text-green-600" title={cc.liveMapPage.finished} />}
                 {status && (
                   <span className="text-gray-400">
                     — <span className={status.solving ? 'text-green-600' : 'text-yellow-500'}>
-                      {status.solving ? 'Solving' : 'Looking'}
+                      {status.solving ? cc.liveMapPage.solving : cc.liveMapPage.looking}
                     </span>
                     {' '}{status.label}
                   </span>
@@ -232,7 +233,7 @@ export default function LiveMapPage() {
                     >
                       {quest.title}
                     </button>
-                    {quest.fenceRadius > 0 && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>Fence: {quest.fenceRadius} m</div>}
+                    {quest.fenceRadius > 0 && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>{cc.liveMapPage.fenceM({ questFenceRadius: quest.fenceRadius })}</div>}
                   </Popup>
                 </Marker>
                 {quest.fenceRadius > 0 && (
@@ -287,7 +288,7 @@ export default function LiveMapPage() {
                       </button>
                     )}
                     <div style={{ fontSize: '0.75rem', color: isStale ? '#ef4444' : '#6b7280', marginTop: 2 }}>
-                      {u.lastLocation.updatedAt ? formatAge(u.lastLocation.updatedAt, now) : 'unknown'}
+                      {u.lastLocation.updatedAt ? formatAge(u.lastLocation.updatedAt, now) : cc.liveMapPage.unknown}
                     </div>
                   </div>
                 </Popup>

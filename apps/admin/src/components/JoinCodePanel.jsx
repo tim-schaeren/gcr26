@@ -1,3 +1,4 @@
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { generateJoinCode } from '@gcr26/shared';
@@ -33,9 +34,9 @@ export default function JoinCodePanel({ gameId, game }) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
-      <h2 className="text-sm font-semibold text-gray-900 mb-1">Invite code</h2>
+      <h2 className="text-sm font-semibold text-gray-900 mb-1">{cc.joinCodePanel.inviteCode}</h2>
       <p className="text-xs text-gray-400 mb-3">
-        Players enter this in the app to join this game.
+        {cc.joinCodePanel.playersEnterThisInThe}
       </p>
 
       {code ? (
@@ -48,14 +49,13 @@ export default function JoinCodePanel({ gameId, game }) {
               onClick={copy}
               className="text-xs text-gray-400 hover:text-gray-900 transition-colors"
             >
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? cc.joinCodePanel.copied : cc.joinCodePanel.copy}
             </button>
           </div>
           {confirmingNew ? (
             <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <p className="text-xs text-yellow-700 mb-2">
-                A new code stops the old one working. Players who already joined
-                stay in — only people still trying to join would need the new one.
+                {cc.joinCodePanel.aNewCodeStopsThe}
               </p>
               <div className="flex gap-2">
                 <button
@@ -63,13 +63,13 @@ export default function JoinCodePanel({ gameId, game }) {
                   disabled={busy}
                   className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-700 disabled:opacity-40 transition-colors"
                 >
-                  {busy ? 'Working…' : 'Yes, new code'}
+                  {busy ? cc.joinCodePanel.working : cc.joinCodePanel.yesNewCode}
                 </button>
                 <button
                   onClick={() => setConfirmingNew(false)}
                   className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors"
                 >
-                  Cancel
+                  {cc.joinCodePanel.cancel}
                 </button>
               </div>
             </div>
@@ -78,7 +78,7 @@ export default function JoinCodePanel({ gameId, game }) {
               onClick={() => setConfirmingNew(true)}
               className="text-xs text-gray-400 hover:text-gray-700 transition-colors mt-2"
             >
-              Generate a new code
+              {cc.joinCodePanel.generateANewCode}
             </button>
           )}
         </>
@@ -88,7 +88,7 @@ export default function JoinCodePanel({ gameId, game }) {
           disabled={busy}
           className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-40 transition-colors"
         >
-          {busy ? 'Working…' : 'Generate invite code'}
+          {busy ? cc.joinCodePanel.working : cc.joinCodePanel.generateInviteCode}
         </button>
       )}
     </div>

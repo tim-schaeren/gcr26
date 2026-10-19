@@ -1,3 +1,5 @@
+import { rich } from '../utils/rich';
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import { hasContent } from '@gcr26/shared';
 import LocationPicker from './LocationPicker';
@@ -146,28 +148,28 @@ export default function QuestForm({
 
 	function validate() {
 		const e = {};
-		if (!form.title.trim()) e.title = 'Title is required.';
+		if (!form.title.trim()) e.title = cc.questForm.titleIsRequired;
 		else if (
 			existingTitles?.includes(form.title.trim()) &&
 			form.title.trim() !== quest?.title
 		) {
-			e.title = 'A quest with this title already exists.';
+			e.title = cc.questForm.aQuestWithThisTitle;
 		}
 		e.description =
 			blockErrors(form.description) ??
 			(hasContent(toContentBlocks(form.description))
 				? undefined
-				: 'Description is required.');
+				: cc.questForm.descriptionIsRequired);
 
 		if (form.trigger === 'location') {
 			e.navigationHint =
 				blockErrors(form.navigationHint) ??
 				(hasContent(toContentBlocks(form.navigationHint))
 					? undefined
-					: 'Navigation hint is required.');
+					: cc.questForm.navigationHintIsRequired);
 			const radius = parseFloat(form.fenceRadius);
 			if (isNaN(radius) || radius <= 0)
-				e.fenceRadius = 'Fence radius must be a positive number.';
+				e.fenceRadius = cc.questForm.fenceRadiusMustBeA;
 			const lat = parseFloat(form.location.lat);
 			const lng = parseFloat(form.location.lng);
 			if (
@@ -176,7 +178,7 @@ export default function QuestForm({
 				!form.location.lat ||
 				!form.location.lng
 			) {
-				e.location = 'A valid location is required.';
+				e.location = cc.questForm.aValidLocationIsRequired;
 			}
 		}
 
@@ -184,18 +186,18 @@ export default function QuestForm({
 			e.navigationHint = blockErrors(form.navigationHint) ?? undefined;
 			const meters = parseFloat(form.distanceMeters);
 			if (isNaN(meters) || meters <= 0)
-				e.distanceMeters = 'Distance must be a positive number.';
+				e.distanceMeters = cc.questForm.distanceMustBeAPositive;
 		}
 
 		if (form.task === 'answer') {
 			const answers = form.answers.map((a) => a.trim()).filter(Boolean);
-			if (answers.length === 0) e.answers = 'At least one answer is required.';
+			if (answers.length === 0) e.answers = cc.questForm.atLeastOneAnswerIs;
 		}
 
 		if (form.task === 'timer') {
 			const minutes = parseFloat(form.durationMinutes);
 			if (isNaN(minutes) || minutes <= 0)
-				e.durationMinutes = 'Duration must be a positive number.';
+				e.durationMinutes = cc.questForm.durationMustBeAPositive;
 		}
 
 		Object.keys(e).forEach((k) => e[k] === undefined && delete e[k]);
@@ -246,7 +248,7 @@ export default function QuestForm({
 		<div className="flex flex-col h-full">
 			<div className="px-6 py-4 border-b border-gray-200">
 				<h2 className="text-base font-semibold text-gray-900">
-					{quest ? 'Edit Quest' : 'New Quest'}
+					{quest ? cc.questForm.editQuest : cc.questForm.newQuest}
 				</h2>
 			</div>
 
@@ -255,18 +257,15 @@ export default function QuestForm({
 					<div className="space-y-4">
 						<div className="bg-red-50 border border-red-200 rounded-lg p-4">
 							<p className="text-sm font-semibold text-red-700 mb-1">
-								Delete this quest?
+								{cc.questForm.deleteThisQuest}
 							</p>
 							<p className="text-sm text-red-600">
-								This will permanently delete{' '}
-								<span className="font-medium">{quest.title}</span>. This cannot
-								be undone.
+								{rich(cc.questForm.thisWillPermanentlyDeleteThis({ span: <span className="font-medium">{quest.title}</span> }))}
 							</p>
 						</div>
 						<div>
 							<label className="block text-sm text-gray-700 mb-1">
-								Type <span className="font-semibold">{quest.title}</span> to
-								confirm:
+								{rich(cc.questForm.typeToConfirm({ span: <span className="font-semibold">{quest.title}</span> }))}
 							</label>
 							<input
 								className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
@@ -281,13 +280,13 @@ export default function QuestForm({
 					<>
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Title
+								{cc.questForm.title}
 							</label>
 							<input
 								className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.title ? 'border-red-400' : 'border-gray-300'}`}
 								value={form.title}
 								onChange={(e) => set('title', e.target.value)}
-								placeholder="Quest title"
+								placeholder={cc.questForm.questTitle}
 							/>
 							{errors.title && (
 								<p className="text-xs text-red-500 mt-1">{errors.title}</p>
@@ -296,7 +295,7 @@ export default function QuestForm({
 
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Trigger
+								{cc.questForm.trigger}
 							</label>
 							<SegmentedControl
 								options={TRIGGER_OPTIONS}
@@ -307,7 +306,7 @@ export default function QuestForm({
 
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Task
+								{cc.questForm.task}
 							</label>
 							<SegmentedControl
 								options={TASK_OPTIONS}
@@ -318,17 +317,17 @@ export default function QuestForm({
 
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Description
+								{cc.questForm.description}
 							</label>
 							<ContentBlocksEditor
 								blocks={form.description}
 								onChange={(blocks) => set('description', blocks)}
 								textPlaceholder={
 									form.task === 'answer'
-										? 'What must players do to complete this quest?'
+										? cc.questForm.descriptionAnswer
 										: form.task === 'timer'
-											? 'Shown during the countdown (e.g. "Lunch break — enjoy!")'
-											: 'Information for the players'
+											? cc.questForm.descriptionTimer
+											: cc.questForm.descriptionContinue
 								}
 								hasError={!!errors.description}
 							/>
@@ -342,21 +341,19 @@ export default function QuestForm({
 						{form.trigger !== 'none' && (
 							<div>
 								<label className="block text-sm font-medium text-gray-700 mb-1">
-									Navigation Hint
-									{form.trigger === 'distance' && (
+									{rich(cc.questForm.navigationHint({ formTrigger: form.trigger === 'distance' && (
 										<span className="font-normal text-gray-400">
-											{' '}
-											(optional)
+											{cc.questForm.optional}
 										</span>
-									)}
+									) }))}
 								</label>
 								<ContentBlocksEditor
 									blocks={form.navigationHint}
 									onChange={(blocks) => set('navigationHint', blocks)}
 									textPlaceholder={
 										form.trigger === 'location'
-											? "How do players find this quest? (e.g. 'Find the oldest tree in the city')"
-											: "Shown while walking (e.g. 'Head towards the lake')"
+											? cc.questForm.navigationLocation
+											: cc.questForm.navigationDistance
 									}
 									hasError={!!errors.navigationHint}
 								/>
@@ -372,7 +369,7 @@ export default function QuestForm({
 							<>
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-1">
-										Fence Radius (meters)
+										{cc.questForm.fenceRadiusMeters}
 									</label>
 									<input
 										type="number"
@@ -391,7 +388,7 @@ export default function QuestForm({
 
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-1">
-										Location
+										{cc.questForm.location}
 									</label>
 									<LocationPicker
 										value={form.location}
@@ -411,7 +408,7 @@ export default function QuestForm({
 						{form.trigger === 'distance' && (
 							<div>
 								<label className="block text-sm font-medium text-gray-700 mb-1">
-									Distance (meters)
+									{cc.questForm.distanceMeters}
 								</label>
 								<input
 									type="number"
@@ -422,7 +419,7 @@ export default function QuestForm({
 									placeholder="500"
 								/>
 								<p className="text-xs text-gray-400 mt-1">
-									Measured by GPS from when the team starts this quest.
+									{cc.questForm.measuredByGpsFromWhen}
 								</p>
 								{errors.distanceMeters && (
 									<p className="text-xs text-red-500 mt-1">
@@ -442,10 +439,9 @@ export default function QuestForm({
 										/>
 									</button>
 									<div>
-										<span className="text-sm text-gray-700">Show progress</span>
+										<span className="text-sm text-gray-700">{cc.questForm.showProgress}</span>
 										<p className="text-xs text-gray-400">
-											Off hides the bar and the meters walked, so teams don't
-											know how far they've come.
+											{cc.questForm.offHidesTheBarAnd}
 										</p>
 									</div>
 								</div>
@@ -455,7 +451,7 @@ export default function QuestForm({
 						{form.task === 'timer' && (
 							<div>
 								<label className="block text-sm font-medium text-gray-700 mb-1">
-									Duration (minutes)
+									{cc.questForm.durationMinutes}
 								</label>
 								<input
 									type="number"
@@ -467,7 +463,7 @@ export default function QuestForm({
 									placeholder="15"
 								/>
 								<p className="text-xs text-gray-400 mt-1">
-									Game pauses don't count toward the timer.
+									{cc.questForm.gamePausesDonTCount}
 								</p>
 								{errors.durationMinutes && (
 									<p className="text-xs text-red-500 mt-1">
@@ -481,7 +477,7 @@ export default function QuestForm({
 							<>
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-1">
-										Valid Answers
+										{cc.questForm.validAnswers}
 									</label>
 									<div className="space-y-2">
 										{form.answers.map((answer, i) => (
@@ -492,7 +488,7 @@ export default function QuestForm({
 													onChange={(e) =>
 														setArrayItem('answers', i, e.target.value)
 													}
-													placeholder={`Answer ${i + 1}`}
+													placeholder={cc.questForm.answer({ i: i + 1 })}
 												/>
 												{form.answers.length > 1 && (
 													<button
@@ -511,7 +507,7 @@ export default function QuestForm({
 											onClick={() => addArrayItem('answers')}
 											className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
 										>
-											+ Add answer
+											{cc.questForm.addAnswer}
 										</button>
 									</div>
 								</div>
@@ -519,13 +515,12 @@ export default function QuestForm({
 								{attempts.length > 0 && (
 									<div>
 										<label className="block text-sm font-medium text-gray-700 mb-1">
-											Rejected answers{' '}
-											<span className="font-normal text-gray-400">
+											{rich(cc.questForm.rejectedAnswers({ span: <span className="font-normal text-gray-400">
 												({attempts.length})
-											</span>
+											</span> }))}
 										</label>
 										<p className="text-xs text-gray-400 mb-2">
-											Accept to add as valid answers. Save to apply.
+											{cc.questForm.acceptToAddAsValid}
 										</p>
 										<div className="space-y-1 max-h-56 overflow-y-auto">
 											{summarizeAttempts(attempts).map((group) => {
@@ -550,7 +545,7 @@ export default function QuestForm({
 														</span>
 														{alreadyAccepted ? (
 															<span className="text-xs text-green-600 shrink-0">
-																accepted
+																{cc.questForm.accepted}
 															</span>
 														) : (
 															<button
@@ -565,7 +560,7 @@ export default function QuestForm({
 																}
 																className="text-xs text-gray-400 hover:text-gray-900 shrink-0 transition-colors"
 															>
-																Accept
+																{cc.questForm.accept}
 															</button>
 														)}
 													</div>
@@ -577,14 +572,12 @@ export default function QuestForm({
 
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-1">
-										Hints{' '}
-										<span className="font-normal text-gray-400">
-											(optional)
-										</span>
+										{rich(cc.questForm.hints({ span: <span className="font-normal text-gray-400">
+											{cc.questForm.optional}
+										</span> }))}
 									</label>
 									<p className="text-xs text-gray-400 mb-2">
-										Teams pay coins to reveal these, one at a time. Each hint
-										can hold text, pictures and videos.
+										{cc.questForm.teamsPayCoinsToReveal}
 									</p>
 									<div className="space-y-3">
 										{form.hints.map((hint, i) => (
@@ -594,7 +587,7 @@ export default function QuestForm({
 											>
 												<div className="flex items-center mb-2">
 													<span className="text-xs font-medium uppercase tracking-wide text-gray-400">
-														Hint {i + 1}
+														{cc.questForm.hint({ i: i + 1 })}
 													</span>
 													{form.hints.length > 1 && (
 														<button
@@ -608,7 +601,7 @@ export default function QuestForm({
 												<ContentBlocksEditor
 													blocks={hint}
 													onChange={(blocks) => setArrayItem('hints', i, blocks)}
-													textPlaceholder={`Hint ${i + 1}`}
+													textPlaceholder={cc.questForm.hintPlaceholder({ n: i + 1 })}
 												/>
 											</div>
 										))}
@@ -624,7 +617,7 @@ export default function QuestForm({
 											}
 											className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
 										>
-											+ Add hint
+											{cc.questForm.addHint}
 										</button>
 									</div>
 								</div>
@@ -640,7 +633,7 @@ export default function QuestForm({
 									className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-4' : ''}`}
 								/>
 							</button>
-							<span className="text-sm text-gray-700">Active</span>
+							<span className="text-sm text-gray-700">{cc.questForm.active}</span>
 						</div>
 					</>
 				)}
@@ -656,14 +649,14 @@ export default function QuestForm({
 							}}
 							className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
 						>
-							← Back
+							{cc.questForm.back}
 						</button>
 						<button
 							onClick={onDelete}
 							disabled={!deleteConfirmed}
 							className="ml-auto px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 						>
-							Delete quest
+							{cc.questForm.deleteQuest}
 						</button>
 					</>
 				) : (
@@ -673,7 +666,7 @@ export default function QuestForm({
 								onClick={() => setConfirming(true)}
 								className="text-sm text-red-400 hover:text-red-600 transition-colors"
 							>
-								Delete
+								{cc.questForm.delete}
 							</button>
 						)}
 						<div className="ml-auto flex gap-2">
@@ -681,14 +674,14 @@ export default function QuestForm({
 								onClick={onCancel}
 								className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
 							>
-								Cancel
+								{cc.questForm.cancel}
 							</button>
 							<button
 								onClick={handleSave}
 								disabled={saving}
 								className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
 							>
-								{saving ? 'Saving…' : 'Save Quest'}
+								{saving ? cc.questForm.saving : cc.questForm.saveQuest}
 							</button>
 						</div>
 					</>

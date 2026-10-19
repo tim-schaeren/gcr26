@@ -1,5 +1,5 @@
 import type { Game, Team } from './types';
-import { copy } from './copy';
+import { copy, consoleCopy } from './copy';
 
 // Items a team can buy with coins. Hosts turn each one on or off per game and
 // set its price, so one race can run without a shop while another leans on it.
@@ -43,7 +43,7 @@ export const SHOP_ITEMS: ShopItemDefinition[] = [
     description: copy.items.compass.description,
     targetsTeam: false,
     isAttack: false,
-    settings: { durationMinutes: 'Lasts (minutes)' },
+    settings: { durationMinutes: consoleCopy.itemSettings.lasts },
     defaults: { ...NO_EXTRAS, enabled: true, price: 25, durationMinutes: 5 },
   },
   {
@@ -53,7 +53,7 @@ export const SHOP_ITEMS: ShopItemDefinition[] = [
     description: copy.items.radar.description,
     targetsTeam: false,
     isAttack: false,
-    settings: { durationMinutes: 'Lasts (minutes)' },
+    settings: { durationMinutes: consoleCopy.itemSettings.lasts },
     defaults: { ...NO_EXTRAS, enabled: false, price: 15, durationMinutes: 5 },
   },
   {
@@ -73,7 +73,7 @@ export const SHOP_ITEMS: ShopItemDefinition[] = [
     description: copy.items.curse.description,
     targetsTeam: true,
     isAttack: true,
-    settings: { durationMinutes: 'Lasts (minutes)' },
+    settings: { durationMinutes: consoleCopy.itemSettings.lasts },
     defaults: { ...NO_EXTRAS, enabled: false, price: 40, durationMinutes: 2 },
   },
   {
@@ -83,7 +83,11 @@ export const SHOP_ITEMS: ShopItemDefinition[] = [
     description: copy.items.robbery.description,
     targetsTeam: true,
     isAttack: true,
-    settings: { percent: 'Share taken (%)', cap: 'At most (coins)', durationMinutes: 'Cooldown (minutes)' },
+    settings: {
+      percent: consoleCopy.itemSettings.shareTaken,
+      cap: consoleCopy.itemSettings.atMost,
+      durationMinutes: consoleCopy.itemSettings.cooldown,
+    },
     defaults: { ...NO_EXTRAS, enabled: false, price: 30, percent: 25, cap: 30, durationMinutes: 15 },
   },
   {

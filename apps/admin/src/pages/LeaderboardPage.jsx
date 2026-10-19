@@ -1,3 +1,5 @@
+import { rich } from '../utils/rich';
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import { collection, doc, query, where, onSnapshot } from 'firebase/firestore';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -101,10 +103,10 @@ export default function LeaderboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Leaderboard</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{cc.leaderboardPage.leaderboard}</h1>
 
       {sorted.length === 0 ? (
-        <p className="text-gray-400">No teams yet.</p>
+        <p className="text-gray-400">{cc.leaderboardPage.noTeamsYet}</p>
       ) : (
         <div className="space-y-2">
           {sorted.map((team, i) => {
@@ -133,7 +135,7 @@ export default function LeaderboardPage() {
                     <div className="flex items-baseline justify-between gap-2 mb-1">
                       <p className="text-sm font-semibold text-gray-900 truncate">{team.name}</p>
                       <p className="text-xs text-gray-500 shrink-0">
-                        <span className="inline-flex items-center gap-1 text-gray-400 mr-2 align-middle" title="Coins · hints revealed">
+                        {rich(cc.leaderboardPage.quests({ span: <span className="inline-flex items-center gap-1 text-gray-400 mr-2 align-middle" title={cc.leaderboardPage.coinsHintsRevealed}>
                           <Icon name="circle-multiple-outline" size={13} /> {teamCoins(team, economy)}
                           {hintsUsed > 0 && (
                             <>
@@ -141,18 +143,16 @@ export default function LeaderboardPage() {
                               <Icon name="lightbulb-outline" size={13} /> {hintsUsed}
                             </>
                           )}
-                        </span>
-                        {completed} / {totalQuests} quests
-                        {team.finishedAt && game && (
+                        </span>, completed: completed, totalQuests: totalQuests, teamFinishedAt: team.finishedAt && game && (
                           <span className="ml-2 inline-flex items-center gap-1 text-green-600 font-medium align-middle">
                             <Icon name="check" size={13} /> {formatDuration(team.finishedAt - game.startDateTime - totalPausedMs)}
                           </span>
-                        )}
+                        ) }))}
                       </p>
                     </div>
                     {wrongTries >= STUCK_THRESHOLD && (
                       <p className="text-xs text-yellow-600 mb-1">
-                        Stuck · {wrongTries} wrong answers on this quest
+                        {cc.leaderboardPage.stuckWrongAnswersOnThis({ wrongTries: wrongTries })}
                       </p>
                     )}
                     {status && (
@@ -160,7 +160,7 @@ export default function LeaderboardPage() {
                         <span
                           className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle ${status.solving ? 'bg-green-500' : 'bg-yellow-400'}`}
                         />
-                        {status.solving ? 'Solving' : 'Looking for'}{' '}
+                        {status.solving ? cc.leaderboardPage.solving : cc.leaderboardPage.lookingFor}{' '}
                         <span className="text-gray-500">{status.label}</span>
                       </p>
                     )}

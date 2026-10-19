@@ -1,3 +1,5 @@
+import { rich } from '../utils/rich';
+import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import {
 	DEFAULT_ECONOMY,
@@ -46,7 +48,7 @@ function ThemeOption({ theme, selected, onSelect }) {
 	const c = theme.colors;
 	const edge = theme.shape.shadowOffset;
 	const display = theme.fonts.display
-		? `'${theme.fonts.display}', system-ui, sans-serif`
+		? cc.gameForm.systemUiSansSerif({ fontsDisplay: theme.fonts.display })
 		: undefined;
 	return (
 		<button
@@ -62,7 +64,7 @@ function ThemeOption({ theme, selected, onSelect }) {
 					className="text-[9px] tracking-[0.2em] uppercase"
 					style={{ color: theme.uppercaseHeadings ? c.text : c.muted, fontFamily: display }}
 				>
-					Quest 3 of 8
+					{cc.gameForm.quest3Of8}
 				</span>
 				<span
 					className="text-lg leading-tight text-center"
@@ -74,7 +76,7 @@ function ThemeOption({ theme, selected, onSelect }) {
 						textShadow: theme.headingShadow ? `2px 2px 0 ${c.shadow}` : 'none',
 					}}
 				>
-					The old fountain
+					{cc.gameForm.theOldFountain}
 				</span>
 				<span
 					className="text-[11px] px-3 py-1 mt-1"
@@ -87,7 +89,7 @@ function ThemeOption({ theme, selected, onSelect }) {
 						textTransform: theme.uppercaseHeadings ? 'uppercase' : 'none',
 					}}
 				>
-					Continue
+					{cc.gameForm.continue}
 				</span>
 			</div>
 			<div className="px-1 pt-2 pb-1">
@@ -118,18 +120,18 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 
 	function validate() {
 		const e = {};
-		if (!form.name.trim()) e.name = 'Name is required.';
+		if (!form.name.trim()) e.name = cc.gameForm.nameIsRequired;
 		if (!form.startDateTime)
-			e.startDateTime = 'Start date and time are required.';
-		if (!form.city.trim()) e.city = 'City is required.';
+			e.startDateTime = cc.gameForm.startDateAndTimeAre;
+		if (!form.city.trim()) e.city = cc.gameForm.cityIsRequired;
 		for (const [field, label] of [
-			['startingCoins', 'Starting coins'],
-			['coinsPerQuest', 'Coins per quest'],
-			['hintCost', 'Hint cost'],
+			['startingCoins', cc.gameForm.startingCoins],
+			['coinsPerQuest', cc.gameForm.coinsPerQuest],
+			['hintCost', cc.gameForm.hintCost],
 		]) {
 			const value = parseInt(form[field]);
 			if (!Number.isFinite(value) || value < 0)
-				e[field] = `${label} must be 0 or more.`;
+				e[field] = cc.gameForm.mustBe0OrMore({ label: label });
 		}
 		setErrors(e);
 		return Object.keys(e).length === 0;
@@ -143,7 +145,7 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 			if (!coords) {
 				setErrors((e) => ({
 					...e,
-					city: 'Could not find this city. Check the spelling.',
+					city: cc.gameForm.couldNotFindThisCity,
 				}));
 				return;
 			}
@@ -179,7 +181,7 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 		<div className="flex flex-col h-full">
 			<div className="px-6 py-4 border-b border-gray-200">
 				<h2 className="text-base font-semibold text-gray-900">
-					{game ? 'Edit Game' : 'New Game'}
+					{game ? cc.gameForm.editGame : cc.gameForm.newGame}
 				</h2>
 			</div>
 
@@ -188,18 +190,15 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 					<div className="space-y-4">
 						<div className="bg-red-50 border border-red-200 rounded-lg p-4">
 							<p className="text-sm font-semibold text-red-700 mb-1">
-								Delete this game?
+								{cc.gameForm.deleteThisGame}
 							</p>
 							<p className="text-sm text-red-600">
-								This will permanently delete{' '}
-								<span className="font-medium">{game.name}</span> and all its
-								quests. This cannot be undone.
+								{rich(cc.gameForm.thisWillPermanentlyDeleteAnd({ span: <span className="font-medium">{game.name}</span> }))}
 							</p>
 						</div>
 						<div>
 							<label className="block text-sm text-gray-700 mb-1">
-								Type <span className="font-semibold">{game.name}</span> to
-								confirm:
+								{rich(cc.gameForm.typeToConfirm({ span: <span className="font-semibold">{game.name}</span> }))}
 							</label>
 							<input
 								className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
@@ -214,13 +213,13 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 					<div className="space-y-5">
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Name
+								{cc.gameForm.name}
 							</label>
 							<input
 								className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.name ? 'border-red-400' : 'border-gray-300'}`}
 								value={form.name}
 								onChange={(e) => set('name', e.target.value)}
-								placeholder="e.g. Grand City Race 2026"
+								placeholder={cc.gameForm.eGGrandCityRace}
 							/>
 							{errors.name && (
 								<p className="text-xs text-red-500 mt-1">{errors.name}</p>
@@ -229,7 +228,7 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Start date & time
+								{cc.gameForm.startDateTime}
 							</label>
 							<input
 								type="datetime-local"
@@ -246,25 +245,25 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-1">
-								City
+								{cc.gameForm.city}
 							</label>
 							<input
 								className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${errors.city ? 'border-red-400' : 'border-gray-300'}`}
 								value={form.city}
 								onChange={(e) => set('city', e.target.value)}
-								placeholder="e.g. Zurich"
+								placeholder={cc.gameForm.eGZurich}
 							/>
 							{errors.city && (
 								<p className="text-xs text-red-500 mt-1">{errors.city}</p>
 							)}
 							<p className="text-xs text-gray-400 mt-1">
-								Used as the default map location when adding quests.
+								{cc.gameForm.usedAsTheDefaultMap}
 							</p>
 						</div>
 
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Max team size
+								{cc.gameForm.maxTeamSize}
 							</label>
 							<input
 								type="number"
@@ -272,16 +271,16 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 								className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
 								value={form.maxTeamSize}
 								onChange={(e) => set('maxTeamSize', e.target.value)}
-								placeholder="No limit"
+								placeholder={cc.gameForm.noLimit}
 							/>
 							<p className="text-xs text-gray-400 mt-1">
-								Leave blank for no limit.
+								{cc.gameForm.leaveBlankForNoLimit}
 							</p>
 						</div>
 
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Max team spread (meters)
+								{cc.gameForm.maxTeamSpreadMeters}
 							</label>
 							<input
 								type="number"
@@ -289,16 +288,16 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 								className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
 								value={form.maxTeamSpreadMeters}
 								onChange={(e) => set('maxTeamSpreadMeters', e.target.value)}
-								placeholder="No limit"
+								placeholder={cc.gameForm.noLimit}
 							/>
 							<p className="text-xs text-gray-400 mt-1">
-								Max distance between team members. Leave blank for no limit.
+								{cc.gameForm.maxDistanceBetweenTeamMembers}
 							</p>
 						</div>
 
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Hotline number
+								{cc.gameForm.hotlineNumber}
 							</label>
 							<input
 								type="tel"
@@ -308,16 +307,16 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 								placeholder="+41 79 123 45 67"
 							/>
 							<p className="text-xs text-gray-400 mt-1">
-								Shown to players as “Call the hosts". Leave blank to hide it.
+								{cc.gameForm.shownToPlayersAsCall}
 							</p>
 						</div>
 
 						<div className="border-t border-gray-200 pt-5">
 							<h3 className="text-sm font-semibold text-gray-900 mb-1">
-								Look
+								{cc.gameForm.look}
 							</h3>
 							<p className="text-xs text-gray-400 mb-3">
-								How the game looks on players' phones.
+								{cc.gameForm.howTheGameLooksOn}
 							</p>
 							<div className="grid grid-cols-2 gap-3">
 								{THEME_LIST.map((theme) => (
@@ -333,16 +332,16 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 
 						<div className="border-t border-gray-200 pt-5">
 							<h3 className="text-sm font-semibold text-gray-900 mb-1">
-								Coins
+								{cc.gameForm.coins}
 							</h3>
 							<p className="text-xs text-gray-400 mb-3">
-								Teams spend coins to reveal hints.
+								{cc.gameForm.teamsSpendCoinsToReveal}
 							</p>
 							<div className="grid grid-cols-3 gap-3">
 								{[
-									['startingCoins', 'Starting'],
-									['coinsPerQuest', 'Per quest'],
-									['hintCost', 'Per hint'],
+									[cc.gameForm.startingCoins2, cc.gameForm.starting],
+									[cc.gameForm.coinsPerQuest2, cc.gameForm.perQuest],
+									[cc.gameForm.hintCost2, cc.gameForm.perHint],
 								].map(([field, label]) => (
 									<div key={field}>
 										<label className="block text-xs font-medium text-gray-700 mb-1">
@@ -358,7 +357,7 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 									</div>
 								))}
 							</div>
-							{['startingCoins', 'coinsPerQuest', 'hintCost'].map(
+							{[cc.gameForm.startingCoins2, cc.gameForm.coinsPerQuest2, cc.gameForm.hintCost2].map(
 								(f) =>
 									errors[f] && (
 										<p key={f} className="text-xs text-red-500 mt-1">
@@ -381,14 +380,14 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 							}}
 							className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
 						>
-							← Back
+							{cc.gameForm.back}
 						</button>
 						<button
 							onClick={onDelete}
 							disabled={!deleteConfirmed}
 							className="ml-auto px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 						>
-							Delete game
+							{cc.gameForm.deleteGame}
 						</button>
 					</>
 				) : (
@@ -398,7 +397,7 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 								onClick={() => setConfirming(true)}
 								className="text-sm text-red-400 hover:text-red-600 transition-colors"
 							>
-								Delete
+								{cc.gameForm.delete}
 							</button>
 						)}
 						<div className="ml-auto flex gap-2">
@@ -406,14 +405,14 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 								onClick={onCancel}
 								className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
 							>
-								Cancel
+								{cc.gameForm.cancel}
 							</button>
 							<button
 								onClick={handleSave}
 								disabled={isBusy}
 								className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
 							>
-								{isBusy ? 'Saving…' : 'Save Game'}
+								{isBusy ? cc.gameForm.saving : cc.gameForm.saveGame}
 							</button>
 						</div>
 					</>
