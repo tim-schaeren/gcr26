@@ -10,6 +10,7 @@ import {
 	updateDoc,
 } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
+import { copy } from '@gcr26/shared';
 import { db, auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { sendPushToTeam } from '../utils/push';
@@ -118,13 +119,14 @@ export default function ChatPage() {
 			await addDoc(collection(db, 'games', gameId, 'messages'), {
 				teamId: openTeam.id,
 				authorId: user?.uid ?? '',
-				authorName: auth.currentUser?.email ?? 'Hosts',
+				// Players can read this record, so never the host's email address
+				authorName: copy.chat.hosts,
 				fromHost: true,
 				text,
 				sentAt: Date.now(),
 			});
 			setDraft('');
-			await sendPushToTeam(gameId, openTeam.id, 'Message from the hosts', text);
+			await sendPushToTeam(gameId, openTeam.id, copy.hostPush.chatReply, text);
 		} finally {
 			setSending(false);
 		}

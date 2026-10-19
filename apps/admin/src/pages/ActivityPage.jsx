@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, orderBy, query, limit } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
-import { formatActivity, formatActivityTime } from '@gcr26/shared';
+import { formatActivity, formatActivityTime, copy } from '@gcr26/shared';
 import { db } from '../firebase';
 import { logActivity } from '../utils/activity';
 import { sendPushToPlayers } from '../utils/push';
@@ -47,7 +47,7 @@ export default function ActivityPage() {
     setPosting(true);
     try {
       await logActivity(gameId, { type: 'admin_note', text });
-      if (alsoPush) await sendPushToPlayers(gameId, 'Announcement', text);
+      if (alsoPush) await sendPushToPlayers(gameId, copy.hostPush.announcement, text);
       setNote('');
       setAlsoPush(false);
     } finally {

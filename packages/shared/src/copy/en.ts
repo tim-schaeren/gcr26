@@ -202,10 +202,10 @@ export const en = {
   },
   paused: {
     heading: 'Game paused',
-    message: 'The admins have paused the game.\nSit tight!',
+    message: 'The hosts have paused the game.\nSit tight!',
   },
   ended: {
-    heading: 'The admins have ended the game.',
+    heading: 'The hosts have ended the game.',
     thanks: 'Thanks for playing!',
   },
 
@@ -423,7 +423,19 @@ export const en = {
     notAHost: 'Not a host of this game',
     lastHost: 'A game needs at least one host',
     aHost: 'A host',
-    missingKey: 'The server is missing its Firebase key. Talk to an admin.',
+    missingKey: 'The server is missing its Firebase key. Try again later.',
+  },
+
+  // ── Push notifications hosts send from the console ───────────────────────
+  // Each is a title and a body; announcements and chat replies carry the
+  // host's own words as the body.
+  hostPush: {
+    started: ['The game has started!', 'Good luck — your first quest awaits.'] as const,
+    paused: ['Game paused', 'The hosts have paused the game. Sit tight!'] as const,
+    resumed: ['Game resumed', 'The game is back on — keep going!'] as const,
+    ended: ['Game over', 'The hosts have ended the game. Thanks for playing!'] as const,
+    announcement: 'Announcement',
+    chatReply: 'Message from the hosts',
   },
 };
 

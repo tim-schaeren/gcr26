@@ -4,7 +4,7 @@ import {
   updateDoc, getDocs, onSnapshot, writeBatch, deleteField,
 } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
-import { gameEconomy } from '@gcr26/shared';
+import { gameEconomy, copy } from '@gcr26/shared';
 import { db } from '../firebase';
 import { sendPushToPlayers } from '../utils/push';
 import {
@@ -74,7 +74,7 @@ export default function GamePage() {
     await run(async () => {
       await updateDoc(doc(db, 'games', gameId), { startDateTime: Date.now() });
       await logActivity(gameId, { type: 'game_started' });
-      await sendPushToPlayers(gameId, 'The game has started!', 'Good luck — your first quest awaits.');
+      await sendPushToPlayers(gameId, ...copy.hostPush.started);
     });
   }
 
@@ -82,7 +82,7 @@ export default function GamePage() {
     await run(async () => {
       await updateDoc(doc(db, 'games', gameId), { pausedAt: Date.now() });
       await logActivity(gameId, { type: 'game_paused' });
-      await sendPushToPlayers(gameId, 'Game paused', 'The admins have paused the game. Sit tight!');
+      await sendPushToPlayers(gameId, ...copy.hostPush.paused);
     });
   }
 
@@ -94,7 +94,7 @@ export default function GamePage() {
         totalPausedMs: (game.totalPausedMs ?? 0) + extra,
       });
       await logActivity(gameId, { type: 'game_resumed' });
-      await sendPushToPlayers(gameId, '▶️ Game resumed', 'The game is back on — keep going!');
+      await sendPushToPlayers(gameId, ...copy.hostPush.resumed);
     });
   }
 
@@ -102,7 +102,7 @@ export default function GamePage() {
     await run(async () => {
       await updateDoc(doc(db, 'games', gameId), { endedAt: Date.now() });
       await logActivity(gameId, { type: 'game_ended' });
-      await sendPushToPlayers(gameId, 'Game over', 'The admins have ended the game. Thanks for playing!');
+      await sendPushToPlayers(gameId, ...copy.hostPush.ended);
     });
     setShowEndConfirm(false);
     setEndInput('');
