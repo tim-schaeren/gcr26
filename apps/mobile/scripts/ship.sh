@@ -9,6 +9,10 @@ else
   exit 1
 fi
 
+# Old builds and caches pile up quickly; clear them and check there's room
+source "$(dirname "$0")/free-space.sh"
+free_space 12
+
 echo "▶ Building..."
 eas build --platform ios --profile preview --local
 

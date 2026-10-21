@@ -133,7 +133,7 @@ export const en = {
     locationWhat:
       'Grand City Race collects location data to unlock quests, count how far your team walks and show your hosts where your team is, even when the app is closed or not in use.',
     locationWho: (choice: string) =>
-      `This only happens while you are in a game. Your location is shared with the hosts of that game and nobody else. Choosing ${choice} keeps the race going while your phone is in your pocket.`,
+      `This only happens while your race is running, from the start until you finish. Your location is shared with the hosts of that game and nobody else. Choosing ${choice} keeps the race going while your phone is in your pocket.`,
     alwaysIos: '“Always”',
     alwaysAndroid: '“Allow all the time”',
     notifications: 'Notifications',
@@ -145,7 +145,7 @@ export const en = {
   // The notification Android shows while background location runs
   backgroundLocation: {
     title: 'Your race is on',
-    body: 'Grand City Race uses your location to keep track of your team’s location until you leave the game.',
+    body: 'Grand City Race uses your location to keep track of your team’s location until your race is over.',
   },
 
   // ── The race ─────────────────────────────────────────────────────────────

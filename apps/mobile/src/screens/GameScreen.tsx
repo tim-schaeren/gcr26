@@ -1577,37 +1577,49 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 		}
 	}
 
-	// Location — watch position, write lastLocation + trail to Firestore (throttled)
+	// Location is read only while the race is on for this player: from the
+	// start until the game ends or their team finishes. Joining early asks for
+	// the permissions, so nobody meets the prompts at the start line, but
+	// tracks nothing until the start.
+	const raceOver = !!game?.endedAt || !!team?.finishedAt;
+	const raceStarted = !!game && now >= game.startDateTime;
+	const [permissionsAsked, setPermissionsAsked] = useState(false);
 	useEffect(() => {
 		if (introState !== 'done') return;
-		let sub: Location.LocationSubscription | null = null;
 		(async () => {
 			const { status } = await Location.requestForegroundPermissionsAsync();
 			if (status !== 'granted') {
 				setLocationDenied(true);
 				return;
 			}
+			// "Always", for the background task. Background location isn't
+			// available in every host app (Expo Go throws ERR_LOCATION_INFO_PLIST),
+			// so failing here must not stop foreground tracking.
+			await Location.requestBackgroundPermissionsAsync().catch(() => {});
+			setPermissionsAsked(true);
+		})();
+	}, [introState]);
+	const tracking = permissionsAsked && raceStarted && !raceOver && !!team && !!game;
 
+	// Location — watch position, write lastLocation + trail to Firestore (throttled)
+	useEffect(() => {
+		if (!tracking || !team || !game) return;
+		let sub: Location.LocationSubscription | null = null;
+		let cancelled = false;
+		(async () => {
 			// Persist IDs for background task, and whether teammates need this
 			// player's position (see the spread check below)
 			const uid = auth.currentUser?.uid ?? '';
-			if (team && game) {
-				await AsyncStorage.multiSet([
-					['uid', uid],
-					['teamId', team.id],
-					['gameId', game.id],
-					['spreadCheck', game.maxTeamSpreadMeters ? '1' : ''],
-				]);
-			}
+			await AsyncStorage.multiSet([
+				['uid', uid],
+				['teamId', team.id],
+				['gameId', game.id],
+				['spreadCheck', game.maxTeamSpreadMeters ? '1' : ''],
+			]);
 
-			// Request "always" background permission and start background task.
-			// Background location isn't available in every host app (Expo Go throws
-			// ERR_LOCATION_INFO_PLIST), so failing here must not stop foreground tracking below.
 			try {
-				const { status: bgStatus } =
-					await Location.requestBackgroundPermissionsAsync();
-				const finished = !!game?.endedAt || !!team?.finishedAt;
-				if (bgStatus === 'granted' && !finished) {
+				const { status: bgStatus } = await Location.getBackgroundPermissionsAsync();
+				if (bgStatus === 'granted' && !cancelled) {
 					const running =
 						await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK);
 					if (!running) {
@@ -1631,7 +1643,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 				// Foreground tracking still works; the team trail just won't update in the background
 			}
 
-			sub = await Location.watchPositionAsync(
+			const watch = await Location.watchPositionAsync(
 				{ accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
 				(loc) => {
 					const { latitude: lat, longitude: lng, accuracy } = loc.coords;
@@ -1683,19 +1695,21 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 					}
 				},
 			);
+			if (cancelled) watch.remove();
+			else sub = watch;
 		})();
 		return () => {
+			cancelled = true;
 			sub?.remove();
 		};
-	}, [team?.id, game?.id, introState]);
+	}, [tracking, team?.id, game?.id]);
 
-	// The race is over for this player once the game ends or their team
-	// finishes; leaving the game, signing out and deleting the account all
-	// unmount this screen
-	const raceOver = !!game?.endedAt || !!team?.finishedAt;
+	// The background task runs only while tracking: it stops before the start
+	// (a player who joined early) and once the race is over. Leaving the game,
+	// signing out and deleting the account all unmount this screen.
 	useEffect(() => {
-		if (raceOver) stopBackgroundTracking();
-	}, [raceOver]);
+		if (permissionsAsked && !tracking) stopBackgroundTracking();
+	}, [permissionsAsked, tracking]);
 	useEffect(() => () => void stopBackgroundTracking(), []);
 
 	// Team member locations — for spread check

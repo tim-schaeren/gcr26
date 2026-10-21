@@ -29,7 +29,7 @@ export default function PlayerHelpPage() {
         <li><strong>Location</strong> unlocks quests and lets your hosts see where your team
           is. Allow it <strong>all the time</strong> (Android) or <strong>Always</strong> (iPhone),
           or your team's progress stops whenever your screen goes dark. It's only used while
-          you are in a game, and during the race only your hosts see it. After the race, the
+          your race is running, from the start until you finish, and only your hosts see it then. After the race, the
           recap shows each team's route, smoothed and approximate, never one person's.</li>
         <li><strong>Notifications</strong> bring announcements from your hosts and replies to
           your messages.</li>

@@ -18,7 +18,8 @@ export default function PrivacyPage() {
 					never visible to us.
 				</li>
 				<li>
-					<strong>Your location:</strong> while you are taking part in a game,
+					<strong>Your location:</strong> while a race you take part in is
+					running, from its start until it ends or your team finishes,
 					including when the app is in the background if you allow it. We keep
 					your most recent position and a trail of earlier positions during the
 					game.
