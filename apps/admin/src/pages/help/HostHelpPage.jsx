@@ -5,7 +5,7 @@ import LegalLayout, { H2, UL } from '../legal/LegalLayout';
 // and the app: any change to hosting belongs here in the same commit.
 export default function HostHelpPage() {
   return (
-    <LegalLayout title="Hosting a race" updated="18 October 2026">
+    <LegalLayout title="Hosting a race" updated="21 October 2026">
       <p>
         Hosting happens here on the website; you don't need the app. You set up the game
         and its quests, share an invite code, and follow the race live. Players need the
@@ -108,18 +108,40 @@ export default function HostHelpPage() {
           set pictures where the avatar changes.</li>
       </UL>
 
-      <H2 id="reset">After the race</H2>
+      <H2 id="recap">After the race: the recap</H2>
+      <p>
+        Once a game has ended, the <strong>Recap</strong> panel on the Game page tells the
+        story of the race: a replay of every team's route with its curses, robberies,
+        shields, gifts and finishes, places over time, awards, a card for each team with
+        what it bought, and the final standings.
+      </p>
+      <UL>
+        <li><strong>Build recap</strong> puts it together from the race. Only hosts can see it
+          at first; <strong>Open recap</strong> shows it full screen, for a look or for a big
+          screen at the after-party, where the arrow keys step through it.</li>
+        <li><strong>Show to players</strong> when you're ready. Players get a notification the
+          first time, and a <strong>See the recap</strong> button in the app. <strong>Hide from
+          players</strong> takes it back.</li>
+        <li>After a correction (coins, a quest marked solved), <strong>Build again</strong>.
+          The recap always wears the game's current theme.</li>
+        <li>Routes are per team, merged from its members and smoothed, never one player's
+          own. The recap also reveals what each team bought, which the activity feed kept to
+          the team during the race.</li>
+      </UL>
+
+      <H2 id="reset">Starting over</H2>
       <p>
         Once a game has ended, <strong>Reset game</strong> sends every team back to the start
         and clears everything the race left behind: progress, coins, activity, chat, wrong
-        answers, and positions and trails on the map. Teams and players stay, ready for
-        another round.
+        answers, positions and trails on the map, and the recap. Build the recap first if you
+        want one. Teams and players stay, ready for another round.
       </p>
 
       <H2 id="privacy">What you can see</H2>
       <p>
         As a host you see your players' names, their teams, their positions during the
-        race, their messages to you, and their progress. Not their email addresses. Please
+        race, their messages to you, and their progress. Not their email addresses. Players
+        see other teams' routes only in a recap you've shown them. Please
         treat it with care; see the{' '}
         <a className="underline" href="/guidelines">community guidelines</a>.
       </p>

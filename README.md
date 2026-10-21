@@ -125,6 +125,9 @@ from. Two scripts in `local/` support them:
 
 - `seed-demo.mjs` fills the local emulator with a believable race to take
   screenshots of.
+- `seed-recap.mjs` turns that race into a finished one, with routes, curses,
+  robberies and shields, to try the recap on. `seed-demo.mjs` brings the live
+  race back.
 - `setup-review.mjs` creates the app reviewers' accounts and demo race in
   production, and resets it between review rounds. Its passwords live in
   `apps/mobile/store/review-credentials.local.md`, which is never committed.
@@ -195,6 +198,7 @@ See `packages/shared/src/types.ts` for the full data model. Collections:
 | `games/{id}/activity`         | The bulletin board; entries are `public` or `team`-private         |
 | `games/{id}/messages`         | Chat, one thread per team, between that team and the hosts         |
 | `games/{id}/attempts`         | Rejected answers — hosts only, never readable by players           |
+| `games/{id}/recap`            | The race recap (`summary`): hosts build it, players read it once shown |
 | `teams`                       | Teams: members, progress, coins, hints bought, active items        |
 | `teams/{id}/coinLedger`       | Why a host changed a team's balance                                |
 | `trail`                       | Location history during a game; hosts read and clear it on reset, the owner can delete |
@@ -223,11 +227,19 @@ and stay in their pages.
 ### Themes and icons
 
 A host picks a look per game in the console (`themeId` on the game): **Basic**
-(black on white) or **Retro** (Tangerine, Black Cherry and Cool Blue, set in
-Righteous). Themes are presets in `packages/shared/src/themes.ts`, each with
+(black on white), **Retro** (Tangerine, Black Cherry and Cool Blue, in
+Righteous), **Night** (navy and taxi yellow, in Bebas Neue), **Arcade** (black
+and neon, in Press Start 2P) or **Bern** (sandstone, Bern red and Aare blue-green,
+in Hind). Themes are presets in `packages/shared/src/themes.ts`, each with
 every colour role checked for contrast against its own background, which is why
 hosts choose a preset rather than free colours. The app applies the theme from
 the team picker on; sign-in and joining stay Basic.
+
+A new theme is one entry in `themes.ts` (colour roles, font with a size
+factor, shape, and whether it is dark, which turns the status bar light), its
+name in the copy catalog, and, for a new font, the file in
+`apps/mobile/assets/fonts/` loaded in `App.tsx` plus a Google Fonts link in the
+console for its preview. Old app versions show an unknown theme as Basic.
 
 Screens build their styles from the theme through
 `apps/mobile/src/theme/primitives.ts` (headings, labels, panels, buttons,
@@ -237,6 +249,25 @@ in `packages/shared/src/icons.ts`. The UI uses no emoji.
 
 App icons and splash come from `apps/mobile/app-icons/`; Expo generates every
 size from the masters referenced in `app.json`.
+
+### The recap
+
+After a race, hosts build a recap on the Game page: a replay of every team's
+route with its curses, robberies, shields, gifts and finishes, places over
+time, awards, a card per team, and the final standings. `buildRecap` in
+`packages/shared/src/recap.ts` turns the race (game, teams, activity, trail)
+into one document, `games/{id}/recap/summary`. It runs in the host's browser
+(`apps/admin/src/utils/recap.js`), which may read the whole trail and doesn't
+have a server function's time limit.
+
+Routes are per team: members' positions are merged minute by minute (the
+median), GPS spikes dropped, the line smoothed and simplified, so they are
+approximate by design. Players can read the recap once a host shows it
+(`publishedAt` on the recap, mirrored as `recapPublishedAt` on the game, which
+the app watches). The app shows the console's own page, `/recap/{gameId}`, in a
+web view and hands it the recap and the game's current theme, so the page needs
+no sign-in; `EXPO_PUBLIC_WEB_URL` points the app at a local console. Resetting
+a game deletes its recap.
 
 ### Public pages
 

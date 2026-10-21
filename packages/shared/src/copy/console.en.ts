@@ -92,13 +92,11 @@ export const consoleEn = {
     thisWillEndTheGame: <T>(p: { span: T }) =>
       ["This will end the game for all players and notify them. Type ", p.span, " to confirm."],
     thisSendsEveryTeamBack: <T>(p: { span: T }) =>
-      ["This sends every team back to the start and clears everything the race left behind: progress, coins, the activity feed, chat, wrong answers, and positions and trails on the live map. Teams and players stay. Type ", p.span, " to confirm."],
+      ["This sends every team back to the start and clears everything the race left behind: progress, coins, the activity feed, chat, wrong answers, and positions and trails on the live map, and the recap. Teams and players stay. Type ", p.span, " to confirm."],
   },
 
   // ── Creating and editing a game ───────────────────────────────────────────
   gameForm: {
-    systemUiSansSerif: (p: { fontsDisplay: unknown }) =>
-      `'${p.fontsDisplay}', system-ui, sans-serif`,
     quest3Of8: "Quest 3 of 8",
     theOldFountain: "The old fountain",
     continue: "Continue",
@@ -175,6 +173,27 @@ export const consoleEn = {
     cancel: "Cancel",
     generateANewCode: "Generate a new code",
     generateInviteCode: "Generate invite code",
+  },
+
+  // ── Recap (on the Game page) ──────────────────────────────────────────────
+  recapPanel: {
+    recap: "Recap",
+    description: "A look back at the race: a replay of every team's route, places over time, awards, and what each team bought. Build it, have a look, then show it to the players when you're ready.",
+    afterTheRace: "You can build the recap once the race has ended.",
+    build: "Build recap",
+    rebuild: "Build again",
+    building: "Building…",
+    open: "Open recap",
+    show: "Show to players",
+    hide: "Hide from players",
+    builtAt: (p: { when: unknown }) => `Built ${p.when}.`,
+    shownSince: (p: { when: unknown }) => `Players can see it since ${p.when}.`,
+    hostsOnly: "Only hosts can see it so far.",
+    failed: "The recap couldn't be built. Try again.",
+  },
+  recapPage: {
+    noRecapYet: "This race has no recap yet. Build it on the race's Game page.",
+    backToTheConsole: "Back to the console",
   },
 
   // ── Quests page ───────────────────────────────────────────────────────────

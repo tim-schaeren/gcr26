@@ -368,6 +368,26 @@ await as('playerA');
 await expect("reads their team's avatar", true, () => getDoc(avatar(GAME)));
 await expect('CANNOT change their avatar', false, () => setDoc(avatar(GAME), { [QUEST]: 'https://example.com/mine.png' }, { merge: true }));
 
+// ── the recap: hosts build it, players see it once a host shows it ─────────
+group('recap');
+const recap = g => doc(db, 'games', g, 'recap', 'summary');
+await as('host');
+await expect('builds the recap of their game', true, () => setDoc(recap(GAME), { version: 1, builtAt: 1, publishedAt: null }));
+await expect('reads it before players can', true, () => getDoc(recap(GAME)));
+await expect('CANNOT build one for a game it does not host', false, () => setDoc(recap(id('nevers')), { version: 1, builtAt: 1, publishedAt: null }));
+await as('playerA');
+await expect('CANNOT read it before a host shows it', false, () => getDoc(recap(GAME)));
+await expect('CANNOT write it', false, () => setDoc(recap(GAME), { version: 1, builtAt: 2, publishedAt: 2 }));
+await as('host');
+await expect('shows it to players', true, () => updateDoc(recap(GAME), { publishedAt: 5 }));
+await expect('flags it on the game for the app', true, () => updateDoc(doc(db, 'games', GAME), { recapPublishedAt: 5 }));
+await as('playerA');
+await expect('reads it once shown', true, () => getDoc(recap(GAME)));
+await expect('CANNOT hide it again', false, () => updateDoc(recap(GAME), { publishedAt: null }));
+await expect('CANNOT flag it on the game', false, () => updateDoc(doc(db, 'games', GAME), { recapPublishedAt: null }));
+await as('playerB');
+await expect('CANNOT read it without having joined the game', false, () => getDoc(recap(GAME)));
+
 let current = '';
 for (const r of results) {
   if (r.section !== current) { current = r.section; console.log(`\n── ${current} ──`); }

@@ -18,6 +18,7 @@ import SupportPage from './pages/legal/SupportPage';
 import PlayerHelpPage from './pages/help/PlayerHelpPage';
 import HostHelpPage from './pages/help/HostHelpPage';
 import AvatarsPage from './pages/AvatarsPage'; // Avatar (temporary)
+import RecapPage from './pages/RecapPage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -50,6 +51,8 @@ export default function App() {
         <Route path="/support" element={<SupportPage />} />
         <Route path="/help" element={<PlayerHelpPage />} />
         <Route path="/help/hosting" element={<HostHelpPage />} />
+        {/* Full screen, outside the console: hosts open it, and the app shows it to players */}
+        <Route path="/recap/:gameId" element={<RecapPage />} />
         <Route
           path="/login"
           element={user ? <Navigate to="/games" replace /> : <LoginPage />}

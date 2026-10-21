@@ -11,3 +11,4 @@ export * from './themes';
 export * from './icons';
 export * from './avatars';
 export * from './copy';
+export * from './recap';

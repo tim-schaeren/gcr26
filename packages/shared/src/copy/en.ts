@@ -209,6 +209,97 @@ export const en = {
     thanks: 'Thanks for playing!',
   },
 
+  // ── The recap, once the hosts show it ────────────────────────────────────
+  recap: {
+    open: 'See the recap',
+    close: 'Close',
+    loading: 'Loading the recap…',
+    notReady: 'The recap isn’t ready yet. Your hosts will let you know when it is.',
+    next: 'Next',
+    back: 'Back',
+    again: 'Watch again',
+    play: 'Play',
+    pause: 'Pause',
+    duration: (seconds: number) => {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.round((seconds % 3600) / 60);
+      return h ? `${h} h ${pad(m)} min` : `${m} min`;
+    },
+    distance: (meters: number) => `${(meters / 1000).toFixed(1)} km`,
+    intro: {
+      kicker: 'Race recap',
+      when: (city: string, date: string) => `${city} · ${date}`,
+      teams: (n: number) => `${n} teams`,
+      quests: (n: number) => `${n} quests`,
+      covered: (distance: string) => `${distance} covered`,
+    },
+    replay: {
+      heading: 'The race',
+      hint: 'Every team’s route, sped up. Routes are approximate.',
+      zoomIn: 'Zoom in',
+      zoomOut: 'Zoom out',
+    },
+    // The ticker under the replay map
+    events: {
+      curse: (team: string, target: string) => `${team} cursed ${target}`,
+      robbery: (team: string, target: string, n: number) => `${team} robbed ${coins(n)} from ${target}`,
+      blocked: (team: string, target: string, robbery: boolean) =>
+        `${target}’s shield stopped ${team}’s ${robbery ? 'robbery' : 'curse'}`,
+      donation: (team: string, target: string, n: number) => `${team} gave ${target} ${coins(n)}`,
+      finish: (team: string, place: number) => `${team} finished ${ordinal(place)}`,
+    },
+    places: {
+      heading: 'Places over time',
+      hint: 'Where each team stood on the leaderboard during the race. Tap a team to follow its line.',
+      place: (n: number) => ordinal(n),
+    },
+    awards: {
+      heading: 'Awards',
+      none: 'No awards this time. A very peaceful race.',
+      mostCursed: { title: 'Most cursed', text: (n: number) => `Cursed ${n} ${n === 1 ? 'time' : 'times'}. Clearly the team to beat.` },
+      curseMaster: { title: 'Curse master', text: (n: number) => `Cast ${n} ${n === 1 ? 'curse' : 'curses'} on other teams.` },
+      robinHood: { title: 'Robin Hood', text: (n: number) => `Stole ${coins(n)} from other teams.` },
+      shieldWall: { title: 'Shield wall', text: (n: number) => `Their shields stopped ${n} ${n === 1 ? 'attack' : 'attacks'}.` },
+      bouncedOff: { title: 'Bounced off', text: (n: number) => `Ran into a shield ${n === 1 ? 'once' : `${n} times`}. The coins were gone anyway.` },
+      wastedShield: { title: 'Just in case', text: (n: number) => `Finished with ${n === 1 ? 'a shield' : `${n} shields`} nobody ever tested.` },
+      hintLovers: { title: 'Hint lovers', text: (n: number) => `Bought ${n} ${n === 1 ? 'hint' : 'hints'}.` },
+      noHints: { title: 'No hints needed', text: (_n: number) => 'Didn’t buy a single hint.' },
+      scrooge: { title: 'Scrooge', text: (n: number) => `Finished with ${coins(n)} unspent. Coins don’t count at the finish…` },
+      bigSpender: { title: 'Big spender', text: (n: number) => `Spent ${coins(n)}.` },
+      generous: { title: 'Generous', text: (n: number) => `Gave away ${coins(n)}.` },
+      marathon: { title: 'Globetrotters', text: (meters: number) => `Covered about ${(meters / 1000).toFixed(1)} km.` },
+      comeback: { title: 'Comeback', text: (n: number) => `Climbed ${n} places from their lowest point.` },
+    },
+    team: {
+      heading: 'Your team',
+      allTeams: 'All teams',
+      place: (n: number) => `${ordinal(n)} place`,
+      finishedAfter: (duration: string) => `Finished after ${duration}`,
+      questsSolved: (n: number, total: number) => `${n} of ${total} quests`,
+      distance: 'Distance',
+      hints: 'Hints bought',
+      earned: 'Coins earned',
+      spent: 'Coins spent',
+      left: 'Coins left',
+      bought: 'Bought',
+      boughtNothing: 'Nothing from the shop',
+      cursed: 'Cursed others',
+      wasCursed: 'Got cursed',
+      stole: 'Stole',
+      lost: 'Lost to robbers',
+      gave: 'Gave away',
+      got: 'Got as gifts',
+      blocked: 'Attacks stopped by a shield',
+      times: (n: number) => `${n}×`,
+      coins,
+    },
+    standings: {
+      heading: 'Final standings',
+      finished: (duration: string) => `Finished after ${duration}`,
+      quests: (n: number, total: number) => `${n} of ${total} quests`,
+    },
+  },
+
   // ── The sheet behind the menu button ─────────────────────────────────────
   tabs: {
     activity: 'Activity',
@@ -384,6 +475,9 @@ export const en = {
   themes: {
     basic: { name: 'Basic', description: 'Clean black on white.' },
     retro: { name: 'Retro', description: 'Mid-century tangerine, cool blue, black cherry.' },
+    night: { name: 'Night', description: 'Deep navy and taxi yellow, for races after dark.' },
+    arcade: { name: 'Arcade', description: 'Black, neon and pixels, like an old arcade cabinet.' },
+    bern: { name: 'Bern', description: 'Sandstone, the red of the city flag and the blue-green of the Aare.' },
   },
 
   // ── Messages from the server ─────────────────────────────────────────────
@@ -434,6 +528,7 @@ export const en = {
     paused: ['Game paused', 'The hosts have paused the game. Sit tight!'] as const,
     resumed: ['Game resumed', 'The game is back on — keep going!'] as const,
     ended: ['Game over', 'The hosts have ended the game. Thanks for playing!'] as const,
+    recap: ['The recap is here', 'See how the race went, and what really happened.'] as const,
     announcement: 'Announcement',
     chatReply: 'Message from the hosts',
   },

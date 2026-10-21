@@ -9,7 +9,7 @@ import type { Theme } from '@gcr26/shared';
 export function heading(t: Theme, fontSize: number): TextStyle {
 	return {
 		fontFamily: t.fonts.display,
-		fontSize,
+		fontSize: fontSize * t.fonts.scale,
 		fontWeight: t.fonts.display ? 'normal' : '700',
 		color: t.colors.heading,
 		textTransform: t.uppercaseHeadings ? 'uppercase' : 'none',
@@ -96,7 +96,7 @@ export function input(t: Theme): ViewStyle & TextStyle {
 	return {
 		backgroundColor: t.colors.surface,
 		color: t.colors.onSurface,
-		borderColor: t.shape.shadowOffset ? t.colors.border : '#dddddd',
+		borderColor: t.colors.border,
 		borderWidth: t.shape.borderWidth,
 		borderRadius: t.shape.radius,
 		// Explicit, so a placeholder never inherits a label's tracking

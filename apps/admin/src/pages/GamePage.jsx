@@ -15,6 +15,8 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import HostsPanel from '../components/HostsPanel';
 import JoinCodePanel from '../components/JoinCodePanel';
+import RecapPanel from '../components/RecapPanel';
+import { clearRecap } from '../utils/recap';
 
 function getStatus(game) {
   if (!game) return null;
@@ -160,6 +162,7 @@ export default function GamePage() {
       await clearAttempts(gameId);
       await clearTrail(gameId);
       await clearMessages(gameId);
+      await clearRecap(gameId);
       for (const team of teamsSnap.docs) await clearCoinLedger(team.id);
       await logActivity(gameId, { type: 'game_started' });
     });
@@ -199,6 +202,8 @@ export default function GamePage() {
       <JoinCodePanel gameId={gameId} game={game} />
 
       <HostsPanel gameId={gameId} game={game} isAdmin={isAdmin} currentUserId={user?.uid} />
+
+      <RecapPanel gameId={gameId} game={game} />
 
       {/* Controls */}
       <div className="space-y-3">

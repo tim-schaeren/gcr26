@@ -9,6 +9,7 @@ import {
 	themeFor,
 } from '@gcr26/shared';
 import { geocodeCity } from '../utils/geocode';
+import { displayFont } from '../utils/themeStyle';
 
 const EMPTY = {
 	name: '',
@@ -47,9 +48,7 @@ function toFormState(game) {
 function ThemeOption({ theme, selected, onSelect }) {
 	const c = theme.colors;
 	const edge = theme.shape.shadowOffset;
-	const display = theme.fonts.display
-		? cc.gameForm.systemUiSansSerif({ fontsDisplay: theme.fonts.display })
-		: undefined;
+	const display = displayFont(theme);
 	return (
 		<button
 			type="button"
@@ -67,11 +66,12 @@ function ThemeOption({ theme, selected, onSelect }) {
 					{cc.gameForm.quest3Of8}
 				</span>
 				<span
-					className="text-lg leading-tight text-center"
+					className="leading-tight text-center"
 					style={{
 						color: c.heading,
 						fontFamily: display,
 						fontWeight: display ? 400 : 700,
+						fontSize: `${18 * theme.fonts.scale}px`,
 						textTransform: theme.uppercaseHeadings ? 'uppercase' : 'none',
 						textShadow: theme.headingShadow ? `2px 2px 0 ${c.shadow}` : 'none',
 					}}

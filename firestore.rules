@@ -194,6 +194,15 @@ service cloud.firestore {
                       || canManageGame(gameId);
         allow delete: if canManageGame(gameId);
       }
+
+      // The race recap, built by a host in the console once the race is over.
+      // It tells what each team bought, which the activity feed keeps to the
+      // team, so players may read it only after a host has shown it to them.
+      match /recap/{docId} {
+        allow read:  if canManageGame(gameId)
+                     || (hasJoined(gameId) && resource.data.publishedAt != null);
+        allow write: if canManageGame(gameId);
+      }
     }
 
     // Teams: authenticated users read; admins write

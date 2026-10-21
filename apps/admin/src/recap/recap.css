@@ -1,0 +1,54 @@
+/* The recap's motion: slides rise in, cards pop, chart lines draw themselves */
+@keyframes recap-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes recap-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes recap-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes recap-winner {
+  0% { opacity: 0; transform: scale(0.4) rotate(-4deg); }
+  65% { opacity: 1; transform: scale(1.08) rotate(1deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes recap-trophy {
+  0%, 100% { transform: none; }
+  20% { transform: rotate(-14deg) scale(1.15); }
+  40% { transform: rotate(12deg) scale(1.15); }
+  60% { transform: rotate(-8deg) scale(1.1); }
+  80% { transform: rotate(4deg); }
+}
+.recap-in { animation: recap-in 400ms ease-out both; }
+.recap-winner { animation: recap-winner 700ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.recap-trophy { display: inline-flex; animation: recap-trophy 900ms ease-in-out both; }
+.recap-pop { animation: recap-pop 500ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.recap-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: recap-draw 2.4s ease-in-out forwards; }
+.recap-draw-fast { stroke-dasharray: 1; stroke-dashoffset: 1; animation: recap-draw 0.9s ease-out forwards; }
+
+/* Events on the replay map: the one being told large, earlier ones small and faded */
+.recap-marker {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  border: 2px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.recap-marker svg { width: 60%; height: 60%; }
+.recap-marker-past { opacity: 0.55; border-width: 1px; }
+.recap-marker-now {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  animation: recap-pop 500ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recap-in, .recap-pop, .recap-marker-now, .recap-winner, .recap-trophy { animation: none; }
+  .recap-draw, .recap-draw-fast { animation: none; stroke-dashoffset: 0; }
+}

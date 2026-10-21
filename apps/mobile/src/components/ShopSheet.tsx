@@ -304,7 +304,7 @@ function makeStyles(t: Theme) {
 		},
 		card: {
 			...ui.panel(t),
-			borderColor: edge ? c.border : '#eeeeee',
+			borderColor: c.border,
 			borderWidth: edge ? t.shape.borderWidth : 1,
 			backgroundColor: edge ? c.surface : c.background,
 			padding: 16,
@@ -374,7 +374,7 @@ function makeStyles(t: Theme) {
 			paddingVertical: 12,
 			borderRadius: t.shape.radius,
 			borderWidth: 1.5,
-			borderColor: edge ? c.border : '#e5e7eb',
+			borderColor: c.border,
 		},
 		targetRowChosen: {
 			borderColor: c.accent,
@@ -404,7 +404,7 @@ function makeStyles(t: Theme) {
 		},
 		cancel: {
 			...ui.outlineButton(t),
-			borderColor: edge ? c.border : '#d4d4d8',
+			borderColor: c.border,
 			paddingHorizontal: 18,
 			paddingVertical: 10,
 		},

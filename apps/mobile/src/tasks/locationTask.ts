@@ -17,14 +17,17 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }: TaskManager.TaskManage
     await recordPosition(loc.coords.latitude, loc.coords.longitude, loc.coords.accuracy);
   }
 
-  const [uid, teamId, gameId] = await AsyncStorage.multiGet(['uid', 'teamId', 'gameId'])
+  const [uid, teamId, gameId, spreadCheck] = await AsyncStorage.multiGet(['uid', 'teamId', 'gameId', 'spreadCheck'])
     .then(pairs => pairs.map(([, v]) => v));
   if (!uid || !teamId || !gameId) return;
 
   const { latitude: lat, longitude: lng } = locations[locations.length - 1].coords;
   const t = Date.now();
 
-  await updateDoc(doc(db, 'users', uid), { lastLocation: { lat, lng, updatedAt: t } }).catch(() => {});
+  // Only teammates' spread check reads the profile's position
+  if (spreadCheck) {
+    await updateDoc(doc(db, 'users', uid), { lastLocation: { lat, lng, updatedAt: t } }).catch(() => {});
+  }
   await savePosition(gameId, uid, { lat, lng, updatedAt: t }).catch(() => {});
   await addDoc(collection(db, 'trail'), { userId: uid, teamId, gameId, lat, lng, t }).catch(() => {});
 });
@@ -40,5 +43,5 @@ export async function stopBackgroundTracking() {
   } catch {
     // Not available in this host app; nothing was started
   }
-  await AsyncStorage.multiRemove(['uid', 'teamId', 'gameId']).catch(() => {});
+  await AsyncStorage.multiRemove(['uid', 'teamId', 'gameId', 'spreadCheck']).catch(() => {});
 }

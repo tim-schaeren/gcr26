@@ -32,6 +32,8 @@ import {
   mdiSackPercent,
   mdiHandCoinOutline,
   mdiPencilOutline,
+  mdiPlus,
+  mdiMinus,
 } from '@mdi/js';
 
 // The same Material Design Icons the player app draws, by name. Only the ones
@@ -70,10 +72,15 @@ const PATHS = {
   'sack-percent': mdiSackPercent,
   'hand-coin-outline': mdiHandCoinOutline,
   'pencil-outline': mdiPencilOutline,
+  'plus': mdiPlus,
+  'minus': mdiMinus,
 };
 
+// The bare path, for drawing an icon outside React (map markers)
+export const iconPath = name => PATHS[name] ?? PATHS['circle-small'];
+
 export default function Icon({ name, size = 16, className = '', title }) {
-  const path = PATHS[name] ?? PATHS['circle-small'];
+  const path = iconPath(name);
   return (
     <svg
       viewBox="0 0 24 24"

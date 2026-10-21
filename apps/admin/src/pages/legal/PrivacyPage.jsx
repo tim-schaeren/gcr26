@@ -4,7 +4,7 @@ import LegalLayout, { H2, UL } from './LegalLayout';
 // relying on it, and keep it in step with the code when data handling changes.
 export default function PrivacyPage() {
 	return (
-		<LegalLayout title="Privacy policy" updated="18 October 2026">
+		<LegalLayout title="Privacy policy" updated="21 October 2026">
 			<p>
 				Grand City Race is a scavenger hunt you play with friends. This policy
 				explains what the app collects, why, and how to get rid of it.
@@ -60,8 +60,15 @@ export default function PrivacyPage() {
 				</li>
 				<li>
 					<strong>Other teams</strong> can see your team's name and public
-					progress. They cannot see your position, your messages, or what your
-					team buys in the shop.
+					progress. During the race they cannot see your position, your
+					messages, or what your team buys in the shop.
+				</li>
+				<li>
+					<strong>After the race</strong>, the people hosting it may share a
+					recap with everyone who played. It shows each team's route, merged
+					from its members' positions and smoothed so it is approximate and
+					never shows one person's own, along with what each team bought and
+					how it did. It never shows your messages.
 				</li>
 				<li>
 					<strong>We</strong> (the platform operator) can access data in order
@@ -87,6 +94,11 @@ export default function PrivacyPage() {
 					<strong>Netlify</strong> — hosting of the web console you are reading
 					this on.
 				</li>
+				<li>
+					<strong>Esri</strong> — the street maps in the console and in the
+					recap are loaded from Esri's map service, which sees your device's IP
+					address.
+				</li>
 			</UL>
 
 			<H2>How long we keep it</H2>
@@ -94,8 +106,9 @@ export default function PrivacyPage() {
 				Your account data stays until you delete your account. Location trails
 				are kept for the game they belong to. Deleting your account removes your
 				profile, your location history and the messages you sent. Your team's
-				progress stays, because it belongs to the team and other players are
-				still using it; it no longer identifies you once your account is gone.
+				progress, and its route in a recap, stay, because they belong to the
+				team and other players are still using them; they no longer identify
+				you once your account is gone.
 			</p>
 
 			<H2>Deleting your account</H2>

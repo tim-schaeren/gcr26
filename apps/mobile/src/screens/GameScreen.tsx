@@ -17,6 +17,7 @@ import {
 	useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { signOut } from 'firebase/auth';
 import { useUser } from '../hooks/useUser';
 import {
@@ -83,6 +84,7 @@ import {
 	scrubPlayerListEntry,
 } from '../utils/privateEntry';
 import ContentBlocks from '../components/ContentBlocks';
+import RecapModal from '../components/RecapModal';
 import ShopSheet from '../components/ShopSheet';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import PermissionsIntro from '../components/PermissionsIntro';
@@ -131,6 +133,7 @@ interface Game {
 	hintCost?: number;
 	hotlineNumber?: string;
 	themeId?: string;
+	recapPublishedAt?: number | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -171,6 +174,7 @@ const COLON_WIDTH = 0.32;
 // once, rather than being re-fitted to every new reading
 function Countdown({ ms }: { ms: number }) {
 	const styles = useStyles();
+	const { fonts } = useTheme();
 	const { width } = useWindowDimensions();
 	const text = formatCountdown(ms);
 	const units = 6 * DIGIT_WIDTH + 2 * COLON_WIDTH;
@@ -183,7 +187,7 @@ function Countdown({ ms }: { ms: number }) {
 					style={[
 						styles.countdown,
 						{
-							fontSize,
+							fontSize: fontSize * fonts.scale,
 							lineHeight: Math.round(fontSize * 1.2),
 							width: fontSize * (char === ':' ? COLON_WIDTH : DIGIT_WIDTH),
 						},
@@ -665,9 +669,10 @@ function PausedView() {
 	);
 }
 
-function EndedView({ game }: { game: Game }) {
+function EndedView({ game, teamId }: { game: Game; teamId: string | null }) {
 	const styles = useStyles();
 	const { colors } = useTheme();
+	const [recapOpen, setRecapOpen] = useState(false);
 	return (
 		<View style={styles.container}>
 			<View style={styles.finishedIcon}>
@@ -675,6 +680,22 @@ function EndedView({ game }: { game: Game }) {
 			</View>
 			<Text style={styles.finishedHeading}>{copy.ended.heading}</Text>
 			<Text style={styles.finishedSub}>{copy.ended.thanks}</Text>
+			{/* The hosts decide when the recap is ready */}
+			{!!game.recapPublishedAt && (
+				<>
+					<TouchableOpacity style={styles.recapButton} onPress={() => setRecapOpen(true)}>
+						<Text style={styles.recapButtonText}>{copy.recap.open}</Text>
+						<Icon name="arrow-right" size={18} color={colors.onAccent} />
+					</TouchableOpacity>
+					<RecapModal
+						gameId={game.id}
+						themeId={game.themeId}
+						teamId={teamId}
+						visible={recapOpen}
+						onClose={() => setRecapOpen(false)}
+					/>
+				</>
+			)}
 		</View>
 	);
 }
@@ -1567,13 +1588,15 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 				return;
 			}
 
-			// Persist IDs for background task
+			// Persist IDs for background task, and whether teammates need this
+			// player's position (see the spread check below)
 			const uid = auth.currentUser?.uid ?? '';
 			if (team && game) {
 				await AsyncStorage.multiSet([
 					['uid', uid],
 					['teamId', team.id],
 					['gameId', game.id],
+					['spreadCheck', game.maxTeamSpreadMeters ? '1' : ''],
 				]);
 			}
 
@@ -1627,9 +1650,13 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 					// Write lastLocation every 10 m or 30 s
 					if (dist > 10 || elapsed > 30000) {
 						lastWrittenRef.current = { lat, lng, t };
-						updateDoc(doc(db, 'users', currentUid), {
-							lastLocation: { lat, lng, updatedAt: t },
-						}).catch(() => {});
+						// Teammates read it from the profile for the spread check, so
+						// it goes there only when the race limits the spread
+						if (game.maxTeamSpreadMeters) {
+							updateDoc(doc(db, 'users', currentUid), {
+								lastLocation: { lat, lng, updatedAt: t },
+							}).catch(() => {});
+						}
 						// Hosts read positions from the player's private entry in the
 						// game, never from profiles, which also hold the email address
 						savePosition(game.id, currentUid, { lat, lng, updatedAt: t }).catch(
@@ -2164,7 +2191,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			);
 		}
 
-		if (game.endedAt) return <EndedView game={game} />;
+		if (game.endedAt) return <EndedView game={game} teamId={team.id} />;
 		if (game.pausedAt) return <PausedView />;
 		if (now < game.startDateTime) return <WaitingView game={game} now={now} />;
 		if (cursed)
@@ -2273,6 +2300,7 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 
 	return (
 		<ThemeProvider themeId={game?.themeId}>
+			<StatusBar style={theme.dark ? 'light' : 'dark'} />
 			<View style={{ flex: 1, backgroundColor: theme.colors.background }}>
 				{renderContent()}
 				<CelebrationOverlay visible={celebrating} anim={celebrateAnim} />
@@ -2583,6 +2611,17 @@ function makeStyles(t: Theme) {
 			...ui.buttonText(t),
 			fontSize: 15,
 			color: c.text,
+		},
+		recapButton: {
+			...ui.button(t),
+			flexDirection: 'row',
+			gap: 8,
+			paddingHorizontal: 24,
+			paddingVertical: 14,
+		},
+		recapButtonText: {
+			...ui.buttonText(t),
+			fontSize: 15,
 		},
 
 		// Spread overlay
@@ -3065,7 +3104,7 @@ function makeStyles(t: Theme) {
 		sheetLeaveText: {
 			fontSize: 15,
 			fontWeight: '600',
-			color: '#ffffff',
+			color: c.onDanger,
 		},
 		sheetRowDestructive: {
 			fontSize: 16,

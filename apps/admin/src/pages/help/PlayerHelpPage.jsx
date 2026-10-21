@@ -6,7 +6,7 @@ import Icon from '../../components/Icon';
 // change to what players see or do belongs here in the same commit.
 export default function PlayerHelpPage() {
   return (
-    <LegalLayout title="How to play" updated="18 October 2026">
+    <LegalLayout title="How to play" updated="21 October 2026">
       <p>
         Grand City Race is a scavenger hunt through your city, played in teams. Your
         hosts set the quests; your team races to solve them before the others.
@@ -29,7 +29,8 @@ export default function PlayerHelpPage() {
         <li><strong>Location</strong> unlocks quests and lets your hosts see where your team
           is. Allow it <strong>all the time</strong> (Android) or <strong>Always</strong> (iPhone),
           or your team's progress stops whenever your screen goes dark. It's only used while
-          you are in a game, and only your hosts see it.</li>
+          you are in a game, and during the race only your hosts see it. After the race, the
+          recap shows each team's route, smoothed and approximate, never one person's.</li>
         <li><strong>Notifications</strong> bring announcements from your hosts and replies to
           your messages.</li>
       </UL>
@@ -105,7 +106,8 @@ export default function PlayerHelpPage() {
       <p>The menu button at the top right opens three tabs:</p>
       <UL>
         <li><strong>Activity:</strong> every quest solved, by every team, as it happens. What
-          your team buys and what your hosts give you are only shown to your team.</li>
+          your team buys and what your hosts give you are only shown to your team, until the
+          recap after the race.</li>
         <li><strong>Chat:</strong> your team's conversation with the hosts. Other teams can't
           read it. If your hosts left a number, you can call them from here.</li>
         <li><strong>Teams:</strong> the standings.</li>
@@ -115,6 +117,25 @@ export default function PlayerHelpPage() {
         each team an avatar: the round egg button under your profile opens your team's
         picture, which changes as you play.
       </p>
+
+      <H2 id="recap">After the race: the recap</H2>
+      <p>
+        Once the race is over, your hosts can share a recap. When they do, you get a
+        notification and the end screen shows <strong>See the recap</strong>. Tap Next to step
+        through it:
+      </p>
+      <UL>
+        <li><strong>The race:</strong> every team's route on the map, sped up. It slows down
+          and zooms in on curses, robberies, shields, gifts and finishes. Drag, pinch or use
+          the + and − buttons to look around; that pauses the replay, and Play carries on.</li>
+        <li><strong>Places over time:</strong> where each team stood during the race. Tap a
+          team to follow its line.</li>
+        <li><strong>Awards</strong>, one at a time: most cursed, Robin Hood, hint lovers and
+          more.</li>
+        <li><strong>Your team:</strong> your time, distance, coins and everything you bought.
+          Tap another team to see theirs; this is where the secrets come out.</li>
+        <li><strong>Final standings.</strong></li>
+      </UL>
 
       <H2 id="profile">Your profile</H2>
       <p>The round button with your initial at the top right lets you:</p>

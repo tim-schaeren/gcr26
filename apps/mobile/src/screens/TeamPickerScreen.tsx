@@ -12,6 +12,7 @@ import {
 	Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import {
 	collection,
 	deleteDoc,
@@ -184,6 +185,8 @@ export default function TeamPickerScreen({
 	}
 
 	return (
+		<>
+		<StatusBar style={theme.dark ? 'light' : 'dark'} />
 		<ScrollView
 			style={styles.scroll}
 			contentContainerStyle={[
@@ -332,9 +335,10 @@ export default function TeamPickerScreen({
 			<DeleteAccountModal
 				visible={deletingAccount}
 				onClose={() => setDeletingAccount(false)}
-			/>
-		</ScrollView>
-	);
+/>
+</ScrollView>
+</>
+);
 }
 
 // Colours are judged on a neutral sheet rather than against the theme's
@@ -476,7 +480,7 @@ function makeStyles(t: Theme) {
 			alignItems: 'center',
 			gap: 14,
 			borderWidth: t.shape.borderWidth,
-			borderColor: retroEdge ? c.border : '#eeeeee',
+			borderColor: c.border,
 			backgroundColor: retroEdge ? c.surface : c.background,
 			borderRadius: t.shape.radius,
 			paddingHorizontal: 18,

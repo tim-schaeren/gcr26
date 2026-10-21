@@ -181,6 +181,7 @@ export interface Game {
   pausedAt: number | null;  // timestamp when game was paused; null = not paused
   totalPausedMs: number;    // accumulated pause duration in ms (updated on resume)
   endedAt: number | null;   // timestamp when admin ended the game; null = not ended
+  recapPublishedAt?: number | null; // when hosts showed players the recap (games/{id}/recap/summary)
 }
 
 // ─── Game membership ──────────────────────────────────────────────────────────
