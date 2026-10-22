@@ -511,6 +511,8 @@ export const en = {
     pushDonated: (giver: string, n: number) => ['A gift!', `${giver} gave your team ${coins(n)}.`] as const,
     // Hosts and push
     hostsOnly: 'Only this game’s hosts can do that',
+    adminsOnly: 'Only admins can do that',
+    deleteYourself: 'Delete your own account from your profile in the app',
     pushHostsOnly: 'Only this game’s hosts can send push',
     enterEmail: 'Enter an email address',
     noAccount: 'No account with that email. They need to sign up first.',

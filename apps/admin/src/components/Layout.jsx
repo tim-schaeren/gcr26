@@ -129,7 +129,7 @@ export default function Layout() {
   async function handleDeleteGame() {
     if (!editingGame || editingGame === 'new') return;
     await deleteDoc(doc(db, 'games', editingGame.id));
-    if (editingGame.id === gameId) navigate('/players');
+    if (editingGame.id === gameId) navigate('/users');
     setEditingGame(null);
   }
 
@@ -213,7 +213,7 @@ export default function Layout() {
             <div className="pt-2 mt-2 border-t border-gray-100" />
           </>
         )}
-        {isAdmin && <NavLink to="/players" className={navClass}>{cc.layout.players}</NavLink>}
+        {isAdmin && <NavLink to="/users" className={navClass}>{cc.layout.users}</NavLink>}
       </nav>
 
       <div className="px-3 py-4 border-t border-gray-100">

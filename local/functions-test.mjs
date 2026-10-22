@@ -7,6 +7,7 @@ const API = 'http://localhost:8888';
 const useItem = '/api/use-item';
 const hosts = '/api/hosts';
 const sendPush = '/api/send-push';
+const deleteUser = '/api/delete-user';
 
 const AUTH = 'http://localhost:9099/identitytoolkit.googleapis.com/v1';
 const FS = 'http://localhost:8080/v1/projects/gcr26-d76cc/databases/(default)/documents';
@@ -78,6 +79,38 @@ check('can’t remove the last host', await call(hosts, sherlock, { gameId: G, a
 check('a player can’t push', await call(sendPush, katniss, { gameId: G, title: 'hi' }), '403');
 check('a host can push', await call(sendPush, sherlock, { gameId: G, title: 'Test', body: 'Hello' }), '200 {"sent":');
 check('no sign-in, no push', await call(sendPush, 'nope', { gameId: G, title: 'x' }), '401');
+
+// An admin deletes someone's account, everything the app's own deletion removes
+async function signUp(email) {
+  const r = await fetch(`${AUTH}/accounts:signUp?key=x`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: 'pw1234', returnSecureToken: true }) });
+  const j = await r.json();
+  return { uid: j.localId, token: j.idToken };
+}
+async function exists(path) { return (await fetch(`${FS}/${path}`, { headers: OWNER })).ok; }
+const tag = Date.now();
+const doomed = await signUp(`doomed${tag}@test.dev`);
+const admin = await signUp(`admin${tag}@test.dev`);
+await patch(`users/${admin.uid}`, { name: 'Test admin', isAdmin: true });
+await patch(`users/${doomed.uid}`, { name: 'Doomed', isAdmin: false, teamId: 'demo-lost', gameId: G });
+await patch(`games/${G}/players/${doomed.uid}`, { id: doomed.uid, name: 'Doomed', joinedAt: 1 });
+await patch(`games/${G}/private/${doomed.uid}`, { lastLocation: { lat: 46.9, lng: 7.4, updatedAt: 1 } });
+await patch(`games/${G}/messages/doomed-${tag}`, { teamId: 'demo-lost', authorId: doomed.uid, authorName: 'Doomed', fromHost: false, text: 'hello', sentAt: 1 });
+await patch(`trail/doomed-${tag}`, { userId: doomed.uid, teamId: 'demo-lost', gameId: G, lat: 46.9, lng: 7.4, t: 1 });
+await fetch(`${FS}:commit`, { method: 'POST', headers: OWNER, body: JSON.stringify({ writes: [{ transform: {
+  document: `projects/gcr26-d76cc/databases/(default)/documents/teams/demo-lost`,
+  fieldTransforms: [{ fieldPath: 'memberIds', appendMissingElements: { values: [{ stringValue: doomed.uid }] } }],
+} }] }) });
+const membersOfLost = async () => ((await (await fetch(`${FS}/teams/demo-lost`, { headers: OWNER })).json()).fields.memberIds.arrayValue.values ?? []).map(v => v.stringValue);
+
+check('a player can’t delete accounts', await call(deleteUser, katniss, { uid: doomed.uid }), '403');
+check('an admin can’t delete themselves here', await call(deleteUser, admin.token, { uid: admin.uid }), '400');
+check('an admin deletes an account', await call(deleteUser, admin.token, { uid: doomed.uid }), '200 {"deleted":true,"teams":1');
+check('profile, game entries, message and trail are gone', JSON.stringify(await Promise.all([
+  exists(`users/${doomed.uid}`), exists(`games/${G}/players/${doomed.uid}`), exists(`games/${G}/private/${doomed.uid}`),
+  exists(`games/${G}/messages/doomed-${tag}`), exists(`trail/doomed-${tag}`),
+])), '[false,false,false,false,false]');
+check('off the team, which stays', String(!(await membersOfLost()).includes(doomed.uid) && await exists('teams/demo-lost')), 'true');
+check('they can no longer sign in', String(!(await token(`doomed${tag}@test.dev`, 'pw1234'))), 'true');
 
 console.log(`\n${results.filter(Boolean).length} of ${results.length} passed`);
 process.exit(results.every(Boolean) ? 0 : 1);

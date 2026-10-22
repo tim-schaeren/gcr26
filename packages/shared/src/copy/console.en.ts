@@ -27,7 +27,7 @@ export const consoleEn = {
     activity: "Activity",
     chat: <T>(p: { chatUnread: T }) =>
       ["Chat", p.chatUnread],
-    players: "Players",
+    users: "Users",
     hostingGuide: "Hosting guide",
     signOut: "Sign out",
     gcrAdmin: "GCR Admin",
@@ -590,15 +590,21 @@ export const consoleEn = {
     send: "Send",
   },
 
-  // ── Players page (platform admins) ────────────────────────────────────────
-  playersPage: {
-    players: "Players",
-    thePlayerListIsAvailable: "The player list is available to platform admins only.",
-    noPlayersYet: "No players yet.",
+  // ── Users page (platform admins) ──────────────────────────────────────────
+  usersPage: {
+    users: "Users",
+    onlyAdmins: "The user list is available to platform admins only.",
+    noUsersYet: "No users yet.",
     admin: "Admin",
+    you: "You",
+    hostOf: (p: { games: unknown }) => `Host of ${p.games}`,
     unassigned: "Unassigned",
-    revoke: "Revoke",
-    makeAdmin: "Make admin",
+    delete: "Delete",
+    deleteConfirm: (p: { name: unknown }) =>
+      `Delete ${p.name} for good? Their account, profile, location history and chat messages go, in every game they were in. Their team's progress stays. This can't be undone.`,
+    deleteForGood: "Delete for good",
+    deleting: "Deleting…",
+    cancel: "Cancel",
   },
 
   // ── api ───────────────────────────────────────────────────────────────────

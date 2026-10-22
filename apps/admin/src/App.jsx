@@ -4,7 +4,7 @@ import LoginPage from './pages/LoginPage';
 import Layout from './components/Layout';
 import QuestsPage from './pages/QuestsPage';
 import TeamsPage from './pages/TeamsPage';
-import PlayersPage from './pages/PlayersPage';
+import UsersPage from './pages/UsersPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ActivityPage from './pages/ActivityPage';
 import ChatPage from './pages/ChatPage';
@@ -65,8 +65,8 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/players" replace />} />
-          <Route path="games" element={<Navigate to="/players" replace />} />
+          <Route index element={<Navigate to="/users" replace />} />
+          <Route path="games" element={<Navigate to="/users" replace />} />
           <Route path="games/:gameId/quests" element={<QuestsPage />} />
           <Route path="games/:gameId/teams" element={<TeamsPage />} />
           <Route path="games/:gameId/items" element={<ItemsPage />} />
@@ -77,7 +77,9 @@ export default function App() {
           {/* Avatar (temporary) */}
           <Route path="games/:gameId/avatars" element={<AvatarsPage />} />
           <Route path="games/:gameId/game" element={<GamePage />} />
-          <Route path="players" element={<PlayersPage />} />
+          <Route path="users" element={<UsersPage />} />
+          {/* The page was called Players before; old links still arrive */}
+          <Route path="players" element={<Navigate to="/users" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

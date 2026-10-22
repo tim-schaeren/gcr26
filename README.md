@@ -162,7 +162,10 @@ Two separate things:
 
 - **Platform admin** — `isAdmin: true` on a user document, set via the
   [Firebase Console](https://console.firebase.google.com/project/gcr26-d76cc/firestore/data/users).
-  Runs every game and is the only role that can read the whole player list.
+  Runs every game and is the only role that sees the Users page: every
+  account, the games each one hosts, and deleting an account for someone who
+  can't do it from the app (`/api/delete-user`, which removes what the app's own
+  account deletion does, in every game).
 - **Host** — listed in a game's `hostIds`. Runs that game and sees nothing of
   any other. Whoever creates a game becomes its host, so anyone who signs up on
   the web console can host their own race.

@@ -371,7 +371,7 @@ export default function LiveMapPage() {
             return (
               <Marker key={u.id} position={[u.lastLocation.lat, u.lastLocation.lng]} icon={memberIcon(team.color ?? '#6b7280', stale)}>
                 <Popup>
-                  <button onClick={() => navigate('/players', { state: { highlightUserId: u.id } })} className="font-semibold text-gray-900 block">
+                  <button onClick={() => navigate('/users', { state: { highlightUserId: u.id } })} className="font-semibold text-gray-900 block">
                     {u.name}
                   </button>
                   <div className={`text-xs mt-0.5 ${stale ? 'text-red-500' : 'text-gray-500'}`}>
