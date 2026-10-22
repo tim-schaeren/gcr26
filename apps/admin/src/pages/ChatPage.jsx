@@ -153,8 +153,11 @@ export default function ChatPage() {
 				)}
 			</div>
 
-			<div className="flex gap-6 h-[calc(100vh-12rem)]">
-				<div className="w-64 shrink-0 overflow-y-auto space-y-1">
+			{/* Side by side on a computer; on a phone the list or one thread at a
+			    time, and the visible height so the reply box stays above the
+			    browser's toolbar */}
+			<div className="flex gap-6 h-[calc(100dvh-9.5rem)] md:h-[calc(100dvh-12rem)]">
+				<div className={`w-full md:w-64 shrink-0 overflow-y-auto space-y-1 ${openTeam ? 'hidden md:block' : ''}`}>
 					{teams.length === 0 && (
 						<p className="text-gray-400 text-sm">{cc.chatPage.noTeamsYet}</p>
 					)}
@@ -192,19 +195,25 @@ export default function ChatPage() {
 					})}
 				</div>
 
-				<div className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg flex flex-col">
+				<div className={`flex-1 min-w-0 bg-white border border-gray-200 rounded-lg flex-col ${openTeam ? 'flex' : 'hidden md:flex'}`}>
 					{!openTeam ? (
 						<div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
 							{cc.chatPage.pickATeamToRead}
 						</div>
 					) : (
 						<>
-							<div className="px-5 py-3 border-b border-gray-200">
-								<p className="text-sm font-semibold text-gray-900">
+							<div className="px-4 md:px-5 py-3 border-b border-gray-200 flex items-center gap-3">
+								<button
+									onClick={() => setOpenTeamId(null)}
+									className="md:hidden text-sm text-gray-500 hover:text-gray-900 shrink-0"
+								>
+									{cc.chatPage.allTeams}
+								</button>
+								<p className="text-sm font-semibold text-gray-900 truncate">
 									{openTeam.name}
 								</p>
 							</div>
-							<div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+							<div className="flex-1 overflow-y-auto px-4 md:px-5 py-4 space-y-3">
 								{thread.length === 0 && (
 									<p className="text-sm text-gray-400">
 										{cc.chatPage.nothingYetSayHello}
@@ -223,7 +232,7 @@ export default function ChatPage() {
 											className={`flex flex-col ${m.fromHost ? 'items-end' : 'items-start'}`}
 										>
 											<div
-												className={`max-w-[75%] rounded-xl px-3 py-2 ${m.fromHost ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}
+												className={`max-w-[85%] md:max-w-[75%] rounded-xl px-3 py-2 ${m.fromHost ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}
 											>
 												<p className="text-sm whitespace-pre-wrap break-words">
 													{m.text}
@@ -243,7 +252,7 @@ export default function ChatPage() {
 							</div>
 							<div className="border-t border-gray-200 p-3 flex gap-2">
 								<input
-									className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+									className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
 									value={draft}
 									onChange={(e) => setDraft(e.target.value)}
 									onKeyDown={(e) => e.key === 'Enter' && send()}

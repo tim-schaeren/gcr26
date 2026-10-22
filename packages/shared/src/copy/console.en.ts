@@ -575,6 +575,7 @@ export const consoleEn = {
 
   // ── Chat page ─────────────────────────────────────────────────────────────
   chatPage: {
+    allTeams: "← All teams",
     aTeam: "A team",
     chat: "Chat",
     enableDesktopNotifications: "Enable desktop notifications",
