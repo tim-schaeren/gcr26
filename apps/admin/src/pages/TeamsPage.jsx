@@ -442,7 +442,13 @@ export default function TeamsPage() {
     }
 
     if (action.type === 'move') {
-      await updateDoc(teamRef, { currentQuestId: action.questId, questProgress: null, finishedAt: null, pausedMsAtFinish: deleteField() });
+      // The team then stands where it would have got to by itself: everything
+      // before that quest solved, nothing from it on, so it plays them again
+      const solved = questOrder.slice(0, Math.max(0, questOrder.indexOf(action.questId)));
+      await updateDoc(teamRef, {
+        currentQuestId: action.questId, completedQuestIds: solved,
+        questProgress: null, finishedAt: null, pausedMsAtFinish: deleteField(),
+      });
       await logActivity(gameId, { ...entry, type: 'admin_moved', questTitle: action.questTitle });
     }
 

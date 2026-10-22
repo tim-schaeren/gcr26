@@ -368,6 +368,38 @@ await as('playerA');
 await expect("reads their team's avatar", true, () => getDoc(avatar(GAME)));
 await expect('CANNOT change their avatar', false, () => setDoc(avatar(GAME), { [QUEST]: 'https://example.com/mine.png' }, { merge: true }));
 
+// ── hosts move players between teams on the Teams page ────────────────────
+group('moving players');
+const MOVER = id('mover');
+await seed(`users/${MOVER}`, { name: S('Mover'), email: S('m@test.dev'), isAdmin: B(false), gameId: S(GAME), teamId: S(TEAM_A) });
+await seed(`users/${id('elsewhere')}`, { name: S('Elsewhere'), email: S('e@test.dev'), isAdmin: B(false), gameId: S(id('nevers')), teamId: { nullValue: null } });
+await as('host');
+await expect("moves a player of their game to another team", true, () => updateDoc(doc(db, 'users', MOVER), { teamId: TEAM_B }));
+await expect("takes a player of their game off any team", true, () => updateDoc(doc(db, 'users', MOVER), { teamId: null }));
+await expect("CANNOT change anything else on the profile", false, () => updateDoc(doc(db, 'users', MOVER), { name: 'renamed' }));
+await expect("CANNOT move a player of another game", false, () => updateDoc(doc(db, 'users', id('elsewhere')), { teamId: TEAM_B }));
+await as('playerB');
+await expect("a player CANNOT move someone else", false, () => updateDoc(doc(db, 'users', MOVER), { teamId: TEAM_B }));
+
+// ── a phone that was offline can't set its team back ──────────────────────
+group('no going back');
+const TEAM_C = id('teamC');
+await seed(`teams/${TEAM_C}`, {
+  name: S('Team C'), gameId: S(GAME), memberIds: ARR([S(people.playerB.uid)]),
+  currentQuestId: S('q3'), completedQuestIds: ARR([S(QUEST), S('q2')]), coins: I(10), finishedAt: { nullValue: null },
+});
+await as('playerB');
+await expect('CANNOT set the team back to a solved quest', false, () =>
+  updateDoc(doc(db, 'teams', TEAM_C), { currentQuestId: 'q2', completedQuestIds: [QUEST, 'q2'], questProgress: null, coins: 20 }));
+await expect('solves the quest it is on', true, () =>
+  updateDoc(doc(db, 'teams', TEAM_C), { currentQuestId: 'q4', completedQuestIds: [QUEST, 'q2', 'q3'], questProgress: null, coins: 20 }));
+await expect('buys a hint on a quest the host moved it back to', true, () =>
+  updateDoc(doc(db, 'teams', TEAM_C), { coins: 5 }));
+await as('host');
+await expect('a host can still move a team back', true, () => updateDoc(doc(db, 'teams', TEAM_C), { currentQuestId: 'q2' }));
+await as('playerB');
+await expect('after a move back, buys a hint there', true, () => updateDoc(doc(db, 'teams', TEAM_C), { coins: 4 }));
+
 // ── finishing records the pause total, for the team's race time ───────────
 group('race time');
 await as('playerA');

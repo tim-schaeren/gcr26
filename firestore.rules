@@ -89,7 +89,12 @@ service cloud.firestore {
       // Users may update their own doc but cannot promote themselves to admin
       allow update: if isAdmin()
                     || (request.auth.uid == uid
-                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']));
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']))
+                    // A host moving a player of their game between teams, on the
+                    // Teams page: the team and nothing else
+                    || (resource.data.get('gameId', null) != null
+                        && canManageGame(resource.data.gameId)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teamId']));
       // Deleting your own account is a requirement of both app stores
       allow delete: if isAdmin() || request.auth.uid == uid;
     }
@@ -226,7 +231,15 @@ service cloud.firestore {
                              .hasOnly(['currentQuestId', 'completedQuestIds', 'finishedAt',
                                        'pausedMsAtFinish', 'questProgress', 'coins', 'hintsRevealed',
                                        'teamChatReadAt', 'activeCompassUntil',
-                                       'activeRadarUntil', 'shields']))
+                                       'activeRadarUntil', 'shields'])
+                        // Never back to a quest already solved: a phone that was
+                        // offline on an old quest would otherwise set its team back.
+                        // Only a change is checked, so writes that leave the quest
+                        // alone (hints, items) always go through.
+                        && (request.resource.data.get('currentQuestId', null)
+                              == resource.data.get('currentQuestId', null)
+                            || !(request.resource.data.get('currentQuestId', null)
+                                 in resource.data.get('completedQuestIds', []))))
                     // Joining needs a membership record; leaving never does, or a
                     // player a host added by hand could never remove themselves
                     || (hasJoined(resource.data.gameId) && joiningTeamSelf())
