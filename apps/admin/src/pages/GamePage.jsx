@@ -125,8 +125,12 @@ export default function GamePage() {
         batch.update(d.ref, {
           completedQuestIds: [], currentQuestId: null, finishedAt: null, questProgress: null,
           score: 0, coins: gameEconomy(game).startingCoins, hintsRevealed: {},
-          // A compass bought before the reset would otherwise keep running for free
-          activeCompassUntil: deleteField(),
+          // Items bought or suffered before the reset would otherwise carry over:
+          // a compass or radar still running, unused shields, a curse, the
+          // cooldown after being robbed
+          activeCompassUntil: deleteField(), activeRadarUntil: deleteField(),
+          shields: deleteField(), cursedUntil: deleteField(), cursedByName: deleteField(),
+          robbedAt: deleteField(),
           teamChatReadAt: deleteField(), hostChatReadAt: deleteField(),
         });
       });
