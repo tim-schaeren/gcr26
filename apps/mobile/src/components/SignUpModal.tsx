@@ -112,6 +112,7 @@ export default function SignUpModal({ visible, onClose }: Props) {
         <TextInput
           style={styles.input}
           placeholder={copy.signUp.name}
+          placeholderTextColor="#9ca3af"
           value={name}
           onChangeText={setName}
           textContentType="name"
@@ -125,6 +126,7 @@ export default function SignUpModal({ visible, onClose }: Props) {
           ref={emailRef}
           style={styles.input}
           placeholder={copy.signUp.email}
+          placeholderTextColor="#9ca3af"
           value={email}
           onChangeText={setEmail}
           textContentType="emailAddress"
@@ -139,6 +141,7 @@ export default function SignUpModal({ visible, onClose }: Props) {
           ref={passwordRef}
           style={styles.input}
           placeholder={copy.signUp.password}
+          placeholderTextColor="#9ca3af"
           value={password}
           onChangeText={setPassword}
           textContentType="newPassword"
@@ -208,12 +211,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#888',
   },
+  // Colours set outright: Android otherwise takes them from the phone's dark
+  // mode, light grey on this white field
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
+    color: '#111',
     marginBottom: 12,
   },
   acceptRow: {

@@ -44,6 +44,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder={copy.login.email}
+          placeholderTextColor="#9ca3af"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -56,6 +57,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder={copy.login.password}
+          placeholderTextColor="#9ca3af"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -98,12 +100,15 @@ const styles = StyleSheet.create({
     marginBottom: 48,
     letterSpacing: 2,
   },
+  // Colours set outright: Android otherwise takes them from the phone's dark
+  // mode, light grey on this white field
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
+    color: '#111',
     marginBottom: 12,
   },
   buttons: {
