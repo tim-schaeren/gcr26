@@ -24,6 +24,7 @@ export interface Team {
   currentQuestId: string | null;
   completedQuestIds: string[];
   finishedAt: number | null;
+  pausedMsAtFinish?: number;                 // the game's pause total when the team finished; see raceTime.ts
   questProgress: QuestProgress | null;
   coins?: number;                            // team purse; absent means the game's startingCoins
   activeCompassUntil?: number;               // timestamp the bought compass runs out

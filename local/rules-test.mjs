@@ -368,6 +368,12 @@ await as('playerA');
 await expect("reads their team's avatar", true, () => getDoc(avatar(GAME)));
 await expect('CANNOT change their avatar', false, () => setDoc(avatar(GAME), { [QUEST]: 'https://example.com/mine.png' }, { merge: true }));
 
+// ── finishing records the pause total, for the team's race time ───────────
+group('race time');
+await as('playerA');
+await expect('records the pause total when finishing', true, () =>
+  updateDoc(doc(db, 'teams', TEAM_A), { finishedAt: Date.now(), pausedMsAtFinish: 0, currentQuestId: null }));
+
 // ── the recap: hosts build it, players see it once a host shows it ─────────
 group('recap');
 const recap = g => doc(db, 'games', g, 'recap', 'summary');

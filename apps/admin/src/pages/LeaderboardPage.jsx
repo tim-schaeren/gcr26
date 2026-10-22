@@ -3,7 +3,7 @@ import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import { collection, doc, query, where, onSnapshot } from 'firebase/firestore';
 import { useParams, useNavigate } from 'react-router-dom';
-import { gameEconomy, teamCoins } from '@gcr26/shared';
+import { gameEconomy, teamCoins, raceTimeMs } from '@gcr26/shared';
 import { db } from '../firebase';
 import Icon from '../components/Icon';
 import { useGamePlayers } from '../hooks/useGamePlayers';
@@ -69,6 +69,14 @@ export default function LeaderboardPage() {
     );
   }, [gameId]);
 
+  // Pauses and resumes, so a pause after a team finished doesn't shorten its time
+  const [pauses, setPauses] = useState([]);
+  useEffect(() => onSnapshot(
+    query(collection(db, 'games', gameId, 'activity'), where('type', 'in', ['game_paused', 'game_resumed'])),
+    snap => setPauses(snap.docs.map(d => d.data())),
+    () => setPauses([]),
+  ), [gameId]);
+
   useEffect(() => {
     return onSnapshot(collection(db, 'games', gameId, 'attempts'), snap =>
       setAttempts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
@@ -83,7 +91,6 @@ export default function LeaderboardPage() {
   }, [gameId]);
 
   const totalQuests = game?.questOrder?.length ?? 0;
-  const totalPausedMs = game?.totalPausedMs ?? 0;
   const economy = gameEconomy(game);
 
   // A team is "stuck" when it keeps getting turned away on the quest it's on now
@@ -145,7 +152,7 @@ export default function LeaderboardPage() {
                           )}
                         </span>, completed: completed, totalQuests: totalQuests, teamFinishedAt: team.finishedAt && game && (
                           <span className="ml-2 inline-flex items-center gap-1 text-green-600 font-medium align-middle">
-                            <Icon name="check" size={13} /> {formatDuration(team.finishedAt - game.startDateTime - totalPausedMs)}
+                            <Icon name="check" size={13} /> {formatDuration(raceTimeMs(team, game, pauses))}
                           </span>
                         ) }))}
                       </p>

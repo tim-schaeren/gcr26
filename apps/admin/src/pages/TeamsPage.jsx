@@ -3,7 +3,7 @@ import { consoleCopy as cc } from '@gcr26/shared';
 import { useState, useEffect } from 'react';
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
-  onSnapshot, writeBatch, arrayUnion, arrayRemove, query, where,
+  onSnapshot, writeBatch, arrayUnion, arrayRemove, query, where, deleteField,
 } from 'firebase/firestore';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -16,6 +16,7 @@ import {
   normalizeQuest,
   TEAM_COLORS,
   MAX_TEAMS_PER_GAME,
+  pausedMsNow,
 } from '@gcr26/shared';
 import { useAuth } from '../hooks/useAuth';
 import { db, auth } from '../firebase';
@@ -432,23 +433,26 @@ export default function TeamsPage() {
         // Paid as if solved, so a broken quest doesn't leave the team poorer
         coins: teamCoins(team, economy) + economy.coinsPerQuest,
       };
-      if (!nextQuestId) update.finishedAt = Date.now();
+      if (!nextQuestId) {
+        update.finishedAt = Date.now();
+        update.pausedMsAtFinish = pausedMsNow(game, Date.now());
+      }
       await updateDoc(teamRef, update);
       await logActivity(gameId, { ...entry, type: 'admin_marked_solved', questTitle: action.questTitle });
     }
 
     if (action.type === 'move') {
-      await updateDoc(teamRef, { currentQuestId: action.questId, questProgress: null, finishedAt: null });
+      await updateDoc(teamRef, { currentQuestId: action.questId, questProgress: null, finishedAt: null, pausedMsAtFinish: deleteField() });
       await logActivity(gameId, { ...entry, type: 'admin_moved', questTitle: action.questTitle });
     }
 
     if (action.type === 'finish') {
-      await updateDoc(teamRef, { finishedAt: Date.now(), questProgress: null });
+      await updateDoc(teamRef, { finishedAt: Date.now(), pausedMsAtFinish: pausedMsNow(game, Date.now()), questProgress: null });
       await logActivity(gameId, { ...entry, type: 'admin_finished' });
     }
 
     if (action.type === 'unfinish') {
-      await updateDoc(teamRef, { finishedAt: null });
+      await updateDoc(teamRef, { finishedAt: null, pausedMsAtFinish: deleteField() });
       await logActivity(gameId, { ...entry, type: 'admin_unfinished' });
     }
   }

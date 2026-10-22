@@ -1,5 +1,6 @@
 import type { ActivityEntry } from './activity';
 import { gameEconomy } from './economy';
+import { raceTimeMs } from './raceTime';
 import { shopConfig, type ShopItemType } from './shop';
 import type { Game, Team } from './types';
 
@@ -44,7 +45,7 @@ export interface RecapEvent {
 
 export interface RecapTeamStats {
   place: number;
-  finishedAt: number | null;   // seconds after the start
+  finishedAt: number | null;   // race time in seconds: start to finish, without pauses before it
   questsSolved: number;
   hints: number;
   coinsEarned: number;         // from quests
@@ -333,8 +334,11 @@ export function buildRecap({ game, teams, activity, trail, now }: RecapInput): R
   const sorted = [...activity].sort((a, b) => a.at - b.at);
   const teamIds = new Set(teams.map(t => t.id));
 
+  // The start time is when the race began: Start now moves it to that moment.
+  // A team acting before it (a test run, a race started by hand long ago)
+  // moves the start back to them.
   const firstEvent = sorted.find(e => e.teamId && teamIds.has(e.teamId))?.at ?? game.startDateTime;
-  const startedAt = sorted.find(e => e.type === 'game_started')?.at ?? Math.min(game.startDateTime, firstEvent);
+  const startedAt = Math.min(game.startDateTime, firstEvent);
   const lastFinish = Math.max(0, ...teams.map(t => t.finishedAt ?? 0));
   const endedAt = game.endedAt ?? (Math.max(lastFinish, sorted.at(-1)?.at ?? 0) || now);
   const sec = (ms: number) => Math.max(0, Math.round((ms - startedAt) / 1000));
@@ -390,7 +394,9 @@ export function buildRecap({ game, teams, activity, trail, now }: RecapInput): R
   finalOrder.forEach((team, i) => {
     stats.set(team.id, {
       place: i + 1,
-      finishedAt: team.finishedAt ? sec(team.finishedAt) : null,
+      finishedAt: team.finishedAt
+        ? Math.round((raceTimeMs(team, { ...game, startDateTime: startedAt }, activity) ?? 0) / 1000)
+        : null,
       questsSolved: finalSolves.get(team.id)!.length,
       hints: 0,
       coinsEarned: finalSolves.get(team.id)!.length * economy.coinsPerQuest,

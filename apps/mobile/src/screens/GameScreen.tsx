@@ -61,6 +61,7 @@ import {
 	type QuestHint,
 	type Theme,
 	themeFor,
+	raceTimeMs,
 	copy,
 } from '@gcr26/shared';
 import { db, auth } from '../firebase';
@@ -106,6 +107,7 @@ interface Team {
 	currentQuestId: string | null;
 	completedQuestIds: string[];
 	finishedAt: number | null;
+	pausedMsAtFinish?: number;
 	questProgress?: QuestProgress | null;
 	coins?: number;
 	hintsRevealed?: Record<string, number>;
@@ -629,9 +631,7 @@ function FinishedView({
 	const rank = allTeams.filter(
 		(t) => t.finishedAt && t.finishedAt <= (team.finishedAt ?? 0),
 	).length;
-	const duration = team.finishedAt
-		? team.finishedAt - game.startDateTime - (game.totalPausedMs ?? 0)
-		: 0;
+	const duration = raceTimeMs(team, game) ?? 0;
 	return (
 		<View style={styles.container}>
 			<View style={styles.finishedIcon}>
@@ -975,7 +975,6 @@ function LeaderboardModal({
 		);
 	});
 	const totalQuests = game.questOrder.length;
-	const totalPausedMs = game.totalPausedMs ?? 0;
 
 	return (
 		<Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -1033,9 +1032,7 @@ function LeaderboardModal({
 							sorted.map((t, i) => {
 								const isCurrent = t.id === currentTeamId;
 								const completed = t.completedQuestIds?.length ?? 0;
-								const duration = t.finishedAt
-									? t.finishedAt - game.startDateTime - totalPausedMs
-									: null;
+								const duration = raceTimeMs(t, game);
 								return (
 									<View
 										key={t.id}
@@ -2092,7 +2089,11 @@ export default function GameScreen({ teamId }: { teamId: string }) {
 			questProgress: null,
 			coins: coins + economy.coinsPerQuest,
 		};
-		if (!nextQuestId) update.finishedAt = at;
+		if (!nextQuestId) {
+			update.finishedAt = at;
+			// Pauses after this don't count against the team's time
+			update.pausedMsAtFinish = game.totalPausedMs ?? 0;
+		}
 
 		// Progress and its board entry land together, or not at all. The entry ids are
 		// derived from the quest, so two teammates solving at once write one entry.

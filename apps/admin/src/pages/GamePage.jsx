@@ -123,7 +123,7 @@ export default function GamePage() {
       const teamsSnap = await getDocs(query(collection(db, 'teams'), where('gameId', '==', gameId)));
       teamsSnap.docs.forEach(d => {
         batch.update(d.ref, {
-          completedQuestIds: [], currentQuestId: null, finishedAt: null, questProgress: null,
+          completedQuestIds: [], currentQuestId: null, finishedAt: null, pausedMsAtFinish: deleteField(), questProgress: null,
           score: 0, coins: gameEconomy(game).startingCoins, hintsRevealed: {},
           // Items bought or suffered before the reset would otherwise carry over:
           // a compass or radar still running, unused shields, a curse, the
@@ -168,7 +168,8 @@ export default function GamePage() {
       await clearMessages(gameId);
       await clearRecap(gameId);
       for (const team of teamsSnap.docs) await clearCoinLedger(team.id);
-      await logActivity(gameId, { type: 'game_started' });
+      // The feed starts empty: the race starts at its start time, or when a
+      // host presses Start now, which is what says so in the feed
     });
     setShowResetConfirm(false);
     setResetInput('');
