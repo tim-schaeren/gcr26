@@ -10,10 +10,12 @@ import {
 } from '@gcr26/shared';
 import { geocodeCity } from '../utils/geocode';
 import { displayFont } from '../utils/themeStyle';
+import { TIME_ZONES, browserTimeZone, gameTimeZone, toZonedInput, fromZonedInput } from '../utils/zonedTime';
 
 const EMPTY = {
 	name: '',
 	startDateTime: '',
+	timeZone: browserTimeZone(),
 	city: '',
 	maxTeamSize: '',
 	maxTeamSpreadMeters: '',
@@ -24,15 +26,16 @@ const EMPTY = {
 	themeId: DEFAULT_THEME_ID,
 };
 
+// The start is shown and typed by the game's own clock, and saved by it
 function toFormState(game) {
-	if (!game) return EMPTY;
-	const dt = game.startDateTime
-		? new Date(game.startDateTime).toISOString().slice(0, 16)
-		: '';
+	if (!game) return { ...EMPTY, timeZone: browserTimeZone() };
+	const timeZone = gameTimeZone(game);
+	const dt = game.startDateTime ? toZonedInput(game.startDateTime, timeZone) : '';
 	const economy = gameEconomy(game);
 	return {
 		name: game.name,
 		startDateTime: dt,
+		timeZone,
 		city: game.city,
 		maxTeamSize: game.maxTeamSize ?? '',
 		maxTeamSpreadMeters: game.maxTeamSpreadMeters ?? '',
@@ -153,7 +156,8 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 			const parsedSpread = parseInt(form.maxTeamSpreadMeters);
 			onSave({
 				name: form.name.trim(),
-				startDateTime: new Date(form.startDateTime).getTime(),
+				startDateTime: fromZonedInput(form.startDateTime, form.timeZone),
+				timeZone: form.timeZone,
 				city: form.city.trim(),
 				cityCoordinates: coords,
 				questOrder: game?.questOrder ?? [],
@@ -241,6 +245,22 @@ export default function GameForm({ game, onSave, onCancel, onDelete, saving }) {
 									{errors.startDateTime}
 								</p>
 							)}
+						</div>
+
+						<div>
+							<label className="block text-sm font-medium text-gray-700 mb-1">
+								{cc.gameForm.timeZone}
+							</label>
+							<select
+								className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+								value={form.timeZone}
+								onChange={(e) => set('timeZone', e.target.value)}
+							>
+								{(TIME_ZONES.includes(form.timeZone) ? TIME_ZONES : [form.timeZone, ...TIME_ZONES]).map((zone) => (
+									<option key={zone} value={zone}>{zone.replace(/_/g, ' ')}</option>
+								))}
+							</select>
+							<p className="text-xs text-gray-400 mt-1">{cc.gameForm.timeZoneHelp}</p>
 						</div>
 
 						<div>

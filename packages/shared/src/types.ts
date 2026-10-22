@@ -166,6 +166,7 @@ export interface Game {
   id: string;
   name: string;
   startDateTime: number;    // Unix timestamp
+  timeZone?: string;        // IANA zone the console shows and takes times in; the host's own if absent
   city: string;
   cityCoordinates: GeoPoint;
   questOrder: string[];     // ordered list of quest IDs (subcollection)

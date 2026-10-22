@@ -15,7 +15,8 @@ export default function HostHelpPage() {
       <H2 id="setup">1. Create the game</H2>
       <UL>
         <li>Sign up, then <strong>Create your first game</strong>. Give it a name, a start
-          date and time, and a city; the city centres the map when you place quests.</li>
+          date and time with the time zone they're in (usually the race's city; it starts as
+          your own), and a city; the city centres the map when you place quests.</li>
         <li><strong>Max team size</strong> and <strong>Max team spread</strong> are optional.
           With a spread set, a team can only submit answers while its members are within
           that distance of each other.</li>

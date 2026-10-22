@@ -64,6 +64,7 @@ export const consoleEn = {
 
   // ── Game page ─────────────────────────────────────────────────────────────
   gamePage: {
+    inZone: (p: { time: unknown; zone: unknown }) => `${p.time} (${p.zone})`,
     upcoming: "Upcoming",
     running: "Running",
     paused: "Paused",
@@ -97,6 +98,8 @@ export const consoleEn = {
 
   // ── Creating and editing a game ───────────────────────────────────────────
   gameForm: {
+    timeZone: "Time zone",
+    timeZoneHelp: "The start time is by this clock, usually the race's city. Players' countdowns are right wherever they are.",
     quest3Of8: "Quest 3 of 8",
     theOldFountain: "The old fountain",
     continue: "Continue",

@@ -13,6 +13,7 @@ import {
   logActivity, clearActivity, clearAttempts, clearTrail, clearMessages, clearCoinLedger,
 } from '../utils/activity';
 import { useAuth } from '../hooks/useAuth';
+import { formatInZone, gameTimeZone } from '../utils/zonedTime';
 import HostsPanel from '../components/HostsPanel';
 import JoinCodePanel from '../components/JoinCodePanel';
 import RecapPanel from '../components/RecapPanel';
@@ -26,8 +27,9 @@ function getStatus(game) {
   return 'upcoming';
 }
 
-function formatDateTime(ts) {
-  return new Date(ts).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+// Times by the game's own clock (see zonedTime.js)
+function formatDateTime(ts, game) {
+  return formatInZone(ts, gameTimeZone(game));
 }
 
 function formatDuration(ms) {
@@ -192,15 +194,15 @@ export default function GamePage() {
       {/* Info */}
       <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6 space-y-2">
         <p className="text-sm font-semibold text-gray-900">{game.name}</p>
-        <p className="text-xs text-gray-500">{cc.gamePage.scheduledStart({ formatDateTime: formatDateTime(game.startDateTime) })}</p>
+        <p className="text-xs text-gray-500">{cc.gamePage.scheduledStart({ formatDateTime: cc.gamePage.inZone({ time: formatDateTime(game.startDateTime, game), zone: gameTimeZone(game).replace(/_/g, ' ') }) })}</p>
         {totalPaused > 0 && (
           <p className="text-xs text-gray-500">{cc.gamePage.totalPaused({ formatDuration: formatDuration(totalPaused) })}</p>
         )}
         {game.pausedAt && (
-          <p className="text-xs text-yellow-600">{cc.gamePage.pausedAt({ formatDateTime: formatDateTime(game.pausedAt) })}</p>
+          <p className="text-xs text-yellow-600">{cc.gamePage.pausedAt({ formatDateTime: formatDateTime(game.pausedAt, game) })}</p>
         )}
         {game.endedAt && (
-          <p className="text-xs text-red-500">{cc.gamePage.endedAt({ formatDateTime: formatDateTime(game.endedAt) })}</p>
+          <p className="text-xs text-red-500">{cc.gamePage.endedAt({ formatDateTime: formatDateTime(game.endedAt, game) })}</p>
         )}
       </div>
 
