@@ -1,0 +1,63 @@
+/* Live map markers. --team is the team's colour. */
+
+/* A team: a dot in its colour and its name beside it, in a plain pill so the
+   dot is the only coloured mark */
+.lm-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lm-team-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--team);
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  flex-shrink: 0;
+}
+.lm-team-name {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: #fff;
+  color: #111827;
+  font: 600 12px/1.4 system-ui, sans-serif;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.lm-team-selected .lm-team-dot {
+  width: 22px;
+  height: 22px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--team) 35%, transparent), 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+.lm-team-selected .lm-team-name { font-size: 13px; }
+
+/* Nobody in the team has sent a position for a while */
+.lm-team-stale .lm-team-dot { background: #9ca3af; border-color: var(--team); }
+.lm-team-stale .lm-team-name { color: #6b7280; }
+
+/* A player, shown when zoomed in or when their team is picked */
+.lm-member {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--team);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.lm-member-stale { background: #9ca3af; }
+
+/* A quest, by its number in the race */
+.lm-quest {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  border: 2px solid #374151;
+  font: 700 12px/22px system-ui, sans-serif;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.lm-quest-current { background: #111827; color: #fff; border-color: #fff; }

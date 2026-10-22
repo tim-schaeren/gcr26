@@ -528,18 +528,30 @@ export const consoleEn = {
 
   // ── Live map ──────────────────────────────────────────────────────────────
   liveMapPage: {
+    liveMap: "Live map",
+    tapATeam: "Tap a team to follow its trail.",
+    teamsN: (p: { n: unknown }) => `Teams (${p.n})`,
+    show: "Show",
+    hide: "Hide",
+    streets: "Streets",
+    satellite: "Satellite",
+    last30Min: "Last 30 min",
+    wholeRace: "Whole race",
+    allTeams: "All teams",
+    follow: "Follow",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    questN: (p: { n: unknown }) => `Quest ${p.n}`,
+    atTheSpot: "At the spot",
+    onTheWay: "On the way",
+    finished: "Finished",
+    noPosition: "No position yet",
+    noPlayers: "No players in this team yet",
     justNow: "just now",
     minAgo: (p: { mathFloor: unknown }) =>
       `${p.mathFloor} min ago`,
     hAgo: (p: { mathFloor: unknown }) =>
       `${p.mathFloor}h ago`,
-    divStyleWidth14pxHeight: (p: { fill: unknown; teamColor: unknown }) =>
-      `<div style="width:14px;height:14px;border-radius:50%;background:${p.fill};border:2.5px solid ${p.teamColor};box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
-    divStyleWidth28pxHeight: "<div style=\"width:28px;height:28px;border-radius:50%;background:#6366f1;border:2px solid white;color:white;font-weight:700;font-size:15px;line-height:24px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.4)\">?</div>",
-    liveMap: "Live Map",
-    finished: "Finished",
-    solving: "Solving",
-    looking: "Looking",
     fenceM: (p: { questFenceRadius: unknown }) =>
       `Fence: ${p.questFenceRadius} m`,
     unknown: "unknown",

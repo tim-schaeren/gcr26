@@ -5,7 +5,7 @@ import LegalLayout, { H2, UL } from '../legal/LegalLayout';
 // and the app: any change to hosting belongs here in the same commit.
 export default function HostHelpPage() {
   return (
-    <LegalLayout title="Hosting a race" updated="21 October 2026">
+    <LegalLayout title="Hosting a race" updated="22 October 2026">
       <p>
         Hosting happens here on the website; you don't need the app. You set up the game
         and its quests, share an invite code, and follow the race live. Players need the
@@ -96,7 +96,14 @@ export default function HostHelpPage() {
         <li>The race starts at its start time, or press <strong>Start now</strong>.
           <strong> Pause</strong> freezes everything, timers included; <strong>Resume</strong>
           carries on. <strong>End game</strong> stops it for everyone.</li>
-        <li><strong>Live map:</strong> where every team is, with its trail.</li>
+        <li><strong>Live map:</strong> where every team is, with its trail of the last 30
+          minutes (or the whole race), on a street map or satellite pictures. The team list
+          (beside the map, or at the bottom on a phone) shows each team's quest, whether it's
+          at the spot, and when its last position came in; a team turns grey when nobody in it
+          has sent one for five minutes. Tap a team to fly to it, pick out its trail and list its
+          players with when each last sent a position; tap a player to go to them.{' '}
+          <strong>Follow</strong> keeps the team in view as it moves. Players appear on their own
+          when you zoom in, and markers that would cover each other are stacked apart.</li>
         <li><strong>Leaderboard:</strong> standings, what each team is doing, and a warning
           for teams stuck on a quest after several wrong answers.</li>
         <li><strong>Chat:</strong> one thread per team. Teams get a push notification when you

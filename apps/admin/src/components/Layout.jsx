@@ -236,7 +236,9 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    // The visible height, not the screen's: on phones the screen runs on
+    // under the browser's toolbar
+    <div className="flex h-[100dvh] overflow-hidden bg-gray-50">
 
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
